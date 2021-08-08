@@ -7,7 +7,7 @@ local function log(msg)
     print("[fumo] "..msg)
 end
 
-version = "1.1.2"
+version = "1.1.3"
 
 do  -- double load prevention
     if BF_LOADED then
@@ -335,6 +335,74 @@ function createLabelButton(labelText, cb)
     return label
 end
 
+cCategoryHeight = 32
+
+function createCategoryLabel(labelText)
+    local label = Instance.new("TextLabel")
+    label.Name = labelText
+    label.BackgroundTransparency = 0.9
+    label.BackgroundColor3 = cBackgroundColorDark
+    label.BorderSizePixel = 0
+    label.Font = cFont
+    label.TextSize = cCategoryHeight * 0.75
+    label.TextXAlignment = Enum.TextXAlignment.Center
+    label.TextYAlignment = Enum.TextYAlignment.Bottom
+    label.AnchorPoint = Vector2.new(0.5, 0)
+    label.Size = UDim2.new(1, 0, 0, cCategoryHeight)
+    label.TextColor3 = cForegroundColor
+    label.RichText = true
+    label.Text = "<b>"..labelText.."</b>"
+    
+    return label
+end
+
+local cButtonOff = cBackgroundColorLight
+local cButtonOn = cAccentColor
+
+cButtonHeightLarge = 30
+
+function createLabelButtonLarge(labelText, cb)
+    local label = Instance.new("TextLabel")
+    label.Name = labelText
+    label.BackgroundTransparency = 0.5
+    label.BackgroundColor3 = cButtonOff
+    label.BorderSizePixel = 0
+    label.TextColor3 = cForegroundColor
+    label.Font = cFont
+    label.TextSize = cButtonHeightLarge * 0.8
+    label.TextXAlignment = Enum.TextXAlignment.Center
+    label.TextYAlignment = Enum.TextYAlignment.Center
+    label.AnchorPoint = Vector2.new(0.5, 0)
+    label.Size = UDim2.new(1, 0, 0, cButtonHeightLarge)
+    label.Text = labelText
+
+    local labelInfo = {}
+    labelInfo.Label = label
+    labelInfo.SetActive = function(active)
+        local tweenInfo = TweenInfo.new(0.15)
+        local goal = {}
+        
+        if active then
+            goal.BackgroundColor3 = cButtonOn
+        else
+            goal.BackgroundColor3 = cButtonOff
+        end
+        
+        local tween = TWEEN:Create(label, tweenInfo, goal)
+        
+        tween:Play()
+    end
+
+    label.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            cb(labelInfo.SetActive)
+        end
+    end)
+    
+    
+    return labelInfo
+end
+
 cCheckboxSize = 25
 cCheckboxSpace = 5
 
@@ -498,7 +566,6 @@ do  -- characters
 end -- characters -- globals exposed: disconnectJump, cCharactersLabel
 
 do  -- options
-    local cOptionButtonHeight = 30
     local cOptionSpacing = 5
 
     cOptionsLabel = "Options"
@@ -516,29 +583,17 @@ do  -- options
 
     local optionButtonCount = 0
 
-    local function createOptionsButton(label, cb)
-        local button = Instance.new("TextLabel")
-        button.Parent = optionsFrame
-        button.Name = label
-        button.BackgroundTransparency = 0.1
-        button.BackgroundColor3 = cBackgroundColorDark
-        button.BorderSizePixel = 0
-        button.TextColor3 = cForegroundColor
-        button.Font = cFont
-        button.TextSize = 25
-        button.TextXAlignment = Enum.TextXAlignment.Center
-        button.TextYAlignment = Enum.TextYAlignment.Center
-        button.AnchorPoint = Vector2.new(0.5, 0.5)
-        button.Size = UDim2.new(0.8, 0, 0, cOptionButtonHeight)
-        button.Position = UDim2.new(0.5, 0, 0, optionButtonCount * (cOptionButtonHeight + cOptionSpacing))
-        button.Text = label
-        
-        button.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                closeAllTabs()
-                cb()
-            end
+    local function createOptionsButton(labelText, cb)
+        local labelInfo = createLabelButtonLarge(labelText, function()
+            closeAllTabs()
+            cb()
         end)
+        
+        local label = labelInfo.Label
+        
+        label.Parent = optionsFrame
+        label.Size = label.Size - UDim2.fromScale(0.2, 0)
+        label.Position = UDim2.new(0.5, 0, 0, optionButtonCount * (cButtonHeightLarge + cOptionSpacing))
         
         optionButtonCount = optionButtonCount + 1
     end
@@ -705,6 +760,10 @@ do  -- docs content
     addDoc(cAboutInfo)
     
     local cChangelogContent = ""
+    cChangelogContent = cChangelogContent.."<b>1.1.3</b><br />"
+    cChangelogContent = cChangelogContent.."- Increase maintainability by reusing the animation button style elsewhere<br />"
+    cChangelogContent = cChangelogContent.."- Add category labels to the animations list<br /><br />"
+
     cChangelogContent = cChangelogContent.."<b>1.1.2</b><br />"
     cChangelogContent = cChangelogContent.."- Fix two tabs opening at once when pressing two keys simultaneously<br /><br />"
 
@@ -755,14 +814,9 @@ do  -- docs content
 end -- docs content
 
 do  -- animation UI
-    local cAnimationButtonHeight = 30
-    
     local cSpeedFieldSize = 25
     local cSpeedFieldPadding = 5
 
-    local cAnimationButtonOff = cBackgroundColorLight
-    local cAnimationButtonOn = cAccentColor
-    
     local activeAnimations = {}
     local stoppingAnimations = {}
     
@@ -787,7 +841,7 @@ do  -- animation UI
     speedField.BackgroundColor3 = cBackgroundColorLight
     speedField.BorderSizePixel = 1
     speedField.Font = cFont
-    speedField.TextSize = cAnimationButtonHeight * 0.8
+    speedField.TextSize = cButtonHeightLarge * 0.8
     speedField.TextColor3 = cForegroundColor
     speedField.Text = ""
     speedField.PlaceholderColor3 = Color3.fromRGB(127, 127, 127)
@@ -850,61 +904,41 @@ do  -- animation UI
         end)
     end
     
-    local function setLabelActive(label, active)
-        local tweenInfo = TweenInfo.new(0.15)
-        local goal = {}
-        
-        if active then
-            goal.BackgroundColor3 = cAnimationButtonOn
-        else
-            goal.BackgroundColor3 = cAnimationButtonOff
-        end
-        
-        local tween = TWEEN:Create(label, tweenInfo, goal)
-        
-        tween:Play()
-    end
+    local animScrollY = 0
     
-    local animationCount = 0
+    function createAnimationCategory(name)
+        local label = createCategoryLabel(name)
+        label.Parent = animationsScroll
+        label.Position = UDim2.new(0.5, 0, 0 , animScrollY)
+        
+        animScrollY = animScrollY + cCategoryHeight
+    end
     
     function createAnimationButton(info)
-        local label = Instance.new("TextLabel")
-        label.Parent = animationsScroll
-        label.Name = info.Name
-        label.BackgroundTransparency = 0.5
-        label.BackgroundColor3 = cAnimationButtonOff
-        label.BorderSizePixel = 0
-        label.TextColor3 = cForegroundColor
-        label.Font = cFont
-        label.TextSize = cAnimationButtonHeight * 0.8
-        label.TextXAlignment = Enum.TextXAlignment.Center
-        label.TextYAlignment = Enum.TextYAlignment.Center
-        label.AnchorPoint = Vector2.new(0.5, 0)
-        label.Size = UDim2.new(1, 0, 0, cAnimationButtonHeight)
-        label.Position = UDim2.new(0.5, 0, 0, animationCount * cAnimationButtonHeight)
-        label.Text = info.Name
-        
         local active = false
-        
-        label.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                active = not active
-                
-                if active then
-                    playAnimation(info.Id, function()
-                        setLabelActive(label, false)
-                    end)
-                else
-                    stopAnimation(info.Id)
-                end
-                
-                setLabelActive(label, active)
+
+        local labelInfo = createLabelButtonLarge(info.Name, function(setActive)
+            active = not active
+            
+            if active then
+                playAnimation(info.Id, function()
+                    setActive(false)
+                    active = false
+                end)
+            else
+                stopAnimation(info.Id)
             end
+            
+            setActive(active)
         end)
+
+        local label = labelInfo.Label
+        label.Parent = animationsScroll
+        label.Position = UDim2.new(0.5, 0, 0, animScrollY)
         
-        animationCount = animationCount + 1
+        animScrollY = animScrollY + cButtonHeightLarge
     end
-end -- animation UI -- globals exposed: createAnimationButton, stopAllAnimations, cAnimationsLabel
+end -- animation UI -- globals exposed: createAnimationButton, createAnimationCategory, stopAllAnimations, cAnimationsLabel
 
 do  -- animations
     local function addAnimation(name, id)
@@ -915,6 +949,7 @@ do  -- animations
         createAnimationButton(info)
     end
     
+    createAnimationCategory("Emotes")
     addAnimation("Wave", "rbxassetid://6235397232")
     addAnimation("Point", "rbxassetid://6237758978")
     addAnimation("Dance1", "rbxassetid://6237334056")
@@ -929,6 +964,7 @@ do  -- animations
     addAnimation("Swag", "rbxassetid://6659873025")
     addAnimation("Penguin", "rbxassetid://6898226631")
 
+    createAnimationCategory("Arcade")
     addAnimation("Taiko", "rbxassetid://7162205569")
     addAnimation("SDVX", "rbxassetid://7162634952")
     addAnimation("DDR", "rbxassetid://7162282756")
@@ -937,6 +973,7 @@ do  -- animations
     addAnimation("Shoot", "rbxassetid://7162118758")
     addAnimation("Maimai", "rbxassetid://7162040292")
 
+    createAnimationCategory("Misc Default")
     addAnimation("Drip", "rbxassetid://6573833053")
     
     addAnimation("Walk", "rbxassetid://6235532038")
