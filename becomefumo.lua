@@ -7,7 +7,7 @@ local function log(msg)
     print("[fumo] "..msg)
 end
 
-version = "1.3.4"
+version = "1.3.5"
 
 do  -- double load prevention
     if BF_LOADED then
@@ -325,6 +325,7 @@ function createScroll()
     scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
     scroll.CanvasSize = UDim2.fromScale(1, 0)
     scroll.ScrollingDirection = Enum.ScrollingDirection.Y
+    scroll.ScrollBarThickness = 3
 
     return scroll
 end
@@ -391,7 +392,7 @@ function createLabelButtonLarge(labelText, cb)
     label.TextXAlignment = Enum.TextXAlignment.Center
     label.TextYAlignment = Enum.TextYAlignment.Center
     label.AnchorPoint = Vector2.new(0.5, 0)
-    label.Size = UDim2.new(0.9, 0, 0, cButtonHeightLarge)
+    label.Size = UDim2.new(0.95, 0, 0, cButtonHeightLarge)
     label.Text = labelText
 
     local labelInfo = {}
@@ -610,7 +611,6 @@ do  -- options
         local label = labelInfo.Label
         
         label.Parent = optionsFrame
-        label.Size = label.Size - UDim2.fromScale(0.2, 0)
         label.Position = UDim2.new(0.5, 0, 0, optionButtonCount * (cButtonHeightLarge + cOptionSpacing))
         
         optionButtonCount = optionButtonCount + 1
@@ -787,6 +787,9 @@ do  -- docs content
     addDoc(cAboutInfo)
     
     local cChangelogContent = ""
+    cChangelogContent = cChangelogContent.."<b>1.3.5</b><br />"
+    cChangelogContent = cChangelogContent.."- GUI tweaks<br /><br />"
+
     cChangelogContent = cChangelogContent.."<b>1.3.4</b><br />"
     cChangelogContent = cChangelogContent.."- Flash weld target on right click<br /><br />"
 
