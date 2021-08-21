@@ -7,7 +7,7 @@ local function log(msg)
     print("[fumo] "..msg)
 end
 
-version = "1.3.0"
+version = "1.3.1"
 
 do  -- double load prevention
     if BF_LOADED then
@@ -779,6 +779,9 @@ do  -- docs content
     addDoc(cAboutInfo)
     
     local cChangelogContent = ""
+    cChangelogContent = cChangelogContent.."<b>1.3.1</b><br />"
+    cChangelogContent = cChangelogContent.."- Minor fixes<br /><br />"
+
     cChangelogContent = cChangelogContent.."<b>1.3.0 - The Welds Update</b><br />"
     cChangelogContent = cChangelogContent.."- Added a welds tab (6R) and populate it with a list of welds that can be deleted<br />"
     cChangelogContent = cChangelogContent.."- Added a Knowledgebase article on welds<br /><br />"
@@ -1333,7 +1336,10 @@ do  -- welds
         wait(1.5)
         weld.Part1.Anchored = true
 
-        teleport(savedLocation)
+        if savedLocation then
+            teleport(savedLocation)
+            savedLocation = nil
+        end
     end
     
     local labels = {}
