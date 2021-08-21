@@ -7,7 +7,7 @@ local function log(msg)
     print("[fumo] "..msg)
 end
 
-version = "1.3.2"
+version = "1.3.3"
 
 do  -- double load prevention
     if BF_LOADED then
@@ -391,7 +391,7 @@ function createLabelButtonLarge(labelText, cb)
     label.TextXAlignment = Enum.TextXAlignment.Center
     label.TextYAlignment = Enum.TextYAlignment.Center
     label.AnchorPoint = Vector2.new(0.5, 0)
-    label.Size = UDim2.new(1, 0, 0, cButtonHeightLarge)
+    label.Size = UDim2.new(0.9, 0, 0, cButtonHeightLarge)
     label.Text = labelText
 
     local labelInfo = {}
@@ -787,6 +787,10 @@ do  -- docs content
     addDoc(cAboutInfo)
     
     local cChangelogContent = ""
+    cChangelogContent = cChangelogContent.."<b>1.3.3</b><br />"
+    cChangelogContent = cChangelogContent.."- I hate Yuyuko<br />"
+    cChangelogContent = cChangelogContent.."- Scale the buttons for ridiculously long weld names<br /><br />"
+
     cChangelogContent = cChangelogContent.."<b>1.3.2</b><br />"
     cChangelogContent = cChangelogContent.."- Add some UI scaling for better usability at lower resolution<br />"
     cChangelogContent = cChangelogContent.."- Remove mention of Doremy's hat's ball<br /><br />"
@@ -1327,6 +1331,7 @@ do  -- welds
     weldsScroll.Parent = weldsTab
 
     local weldsScrollY = 0
+    local cWeldSpacing = 2
     
     local savedLocation = nil
     
@@ -1365,7 +1370,7 @@ do  -- welds
                     labels[k] = nil
                 else
                     l.Label.Position = UDim2.new(0.5, 0, 0, weldsScrollY)
-                    weldsScrollY = weldsScrollY + cButtonHeightLarge
+                    weldsScrollY = weldsScrollY + cButtonHeightLarge + cWeldSpacing
                 end
             end
         end
@@ -1394,6 +1399,12 @@ do  -- welds
         
         label = labelInfo.Label
         label.Parent = weldsScroll
+        label.TextTruncate = Enum.TextTruncate.AtEnd
+        
+        -- I hate Yuyuko.
+        if not label.TextFits then
+            label.TextScaled = true
+        end
         
         local labelInfo = {}
         labelInfo.Label = label
