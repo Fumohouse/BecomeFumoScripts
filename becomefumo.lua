@@ -7,7 +7,7 @@ local function log(msg)
     print("[fumo] "..msg)
 end
 
-version = "1.3.3"
+version = "1.3.4"
 
 do  -- double load prevention
     if BF_LOADED then
@@ -412,8 +412,8 @@ function createLabelButtonLarge(labelText, cb)
     end
 
     label.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            cb(labelInfo.SetActive)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.MouseButton2 then
+            cb(labelInfo.SetActive, input.UserInputType)
         end
     end)
     
@@ -787,6 +787,9 @@ do  -- docs content
     addDoc(cAboutInfo)
     
     local cChangelogContent = ""
+    cChangelogContent = cChangelogContent.."<b>1.3.4</b><br />"
+    cChangelogContent = cChangelogContent.."- Flash weld target on right click<br /><br />"
+
     cChangelogContent = cChangelogContent.."<b>1.3.3</b><br />"
     cChangelogContent = cChangelogContent.."- I hate Yuyuko<br />"
     cChangelogContent = cChangelogContent.."- Scale the buttons for ridiculously long weld names<br /><br />"
@@ -884,7 +887,8 @@ do  -- docs content
     cWeldsContent = cWeldsContent.."Many parts are held onto the fumo's head, torso, or limbs through welds. Deleting the welds will cause the parts to effectively be removed from your body. "
     cWeldsContent = cWeldsContent.."This script automates the process of removing welds.<br />"
     cWeldsContent = cWeldsContent.."Unlike 'Replace Humanoid,' removing welds through this script does not require the use of DEX or any other scripts.<br /><br />"
-    cWeldsContent = cWeldsContent.."Welds are named with the name of the anchor point (usually something like Head, Torso, etc), then a box character, then the name of the part (e.g. hat, clothes, shoes). This is how you should identify them in the list.<br />"
+    cWeldsContent = cWeldsContent.."Welds are named with the name of the anchor point (usually something like Head, Torso, etc), then a box character, then the name of the part (e.g. hat, clothes, shoes). This is how you should identify them in the list. "
+    cWeldsContent = cWeldsContent.."If the name of a weld is ambiguous or unclear, right click it and the weld's Part1 ('target') will flash for a few seconds instead of the weld being deleted.<br />"
     cWeldsContent = cWeldsContent.."Much like Replace Humanoid, the functionality in this script can be achieved using DEX by removing the weld and quickly anchoring the part that fell. "
     cWeldsContent = cWeldsContent.."This method has proven to be unreliable and sometimes difficult to pull off, but best results are achieved by going to high locations like a hill or the treehouse.<br />"
     cWeldsContent = cWeldsContent.."Early findings indicate that leaving children in the object that falls (see Doremy's hat for an example) will make death after removal much more likely. As such, this script will clear all children of the target before removing the weld. "
@@ -1378,23 +1382,36 @@ do  -- welds
 
     local function addWeld(weld)
         local label = nil
-        local labelInfo = nil
-        labelInfo = createLabelButtonLarge(weld.Name, function()
+        local labelInfo = createLabelButtonLarge(weld.Name, function(setActive, type)
             if not weld.Parent then return end
+                
+            if type == Enum.UserInputType.MouseButton1 then
+                setActive(true)
 
-            if labelInfo then labelInfo.SetActive(true) end
-            deleteWeld(weld, function(p)
-                for k, l in pairs(labels) do
-                    if l and l.Weld == p or l.Weld.Part0 == p or l.Weld.Part1 == p then
-                        l.Label:Destroy()
-                        
-                        updateWeldsLayout()
+                deleteWeld(weld, function(p)
+                    for k, l in pairs(labels) do
+                        if l and l.Weld == p or l.Weld.Part0 == p or l.Weld.Part1 == p then
+                            l.Label:Destroy()
+                            
+                            updateWeldsLayout()
+                        end
                     end
-                end
-            end)
+                end)
 
-            if label then label:Destroy() end
-            updateWeldsLayout()
+                if label then label:Destroy() end
+                updateWeldsLayout()
+            else
+                local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, 5, true)
+                local goal = {}
+                goal.Transparency = 1
+                local tween = TWEEN:Create(weld.Part1, tweenInfo, goal)
+                
+                setActive(true)
+                tween:Play()
+                
+                tween.Completed:Wait()
+                setActive(false)
+            end
         end)
         
         label = labelInfo.Label
