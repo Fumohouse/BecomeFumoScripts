@@ -7,7 +7,7 @@ local function log(msg)
     print("[fumo] "..msg)
 end
 
-version = "1.2.0"
+version = "1.3.0"
 
 do  -- double load prevention
     if BF_LOADED then
@@ -292,6 +292,24 @@ do  -- tabs
         return content
     end
 end -- tabs -- globals exposed: createTab, setTabOpen, closeAllTabs & all constants
+
+--
+-- random functions
+--
+
+function teleport(pos)
+    local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+    if hum.SeatPart then
+        hum.Sit = false
+        wait()
+    end
+
+    local root = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    local origPos = root.CFrame
+    root.CFrame = pos
+    
+    return origPos
+end
 
 --
 -- common gui
@@ -751,7 +769,8 @@ do  -- docs content
     cAboutContent = cAboutContent.."<b>Credits:</b><br />"
     cAboutContent = cAboutContent.."- AyaShameimaruCamera - Replace Humanoid & Inspiration<br />"
     cAboutContent = cAboutContent.."- FutoLurkingAround - Emotional Support<br />"
-    cAboutContent = cAboutContent.."- gandalf872 - ?<br />"
+    cAboutContent = cAboutContent.."- LordOfCatgirls - Early user & Welds research<br />"
+    cAboutContent = cAboutContent.."- gandalf872 - ? & Welds research<br />"
 
     local cAboutInfo = {}
     cAboutInfo.Label = "About this Script"
@@ -760,6 +779,10 @@ do  -- docs content
     addDoc(cAboutInfo)
     
     local cChangelogContent = ""
+    cChangelogContent = cChangelogContent.."<b>1.3.0 - The Welds Update</b><br />"
+    cChangelogContent = cChangelogContent.."- Added a welds tab (6R) and populate it with a list of welds that can be deleted<br />"
+    cChangelogContent = cChangelogContent.."- Added a Knowledgebase article on welds<br /><br />"
+
     cChangelogContent = cChangelogContent.."<b>1.2.0</b><br />"
     cChangelogContent = cChangelogContent.."- Added a Knowledgebase article on etiquette<br />"
     cChangelogContent = cChangelogContent.."- Add waypoints tab (5W) and add waypoints to most major locations outside of Memento Mori<br /><br />"
@@ -833,8 +856,31 @@ do  -- docs content
     local cHumanoidInfo = {}
     cHumanoidInfo.Label = "Replacing Humanoid"
     cHumanoidInfo.Content = cHumanoidContent
-
+    
     addDoc(cHumanoidInfo)
+
+    local cWeldsContent =          "<i>Discovery & disclosure: gandalf872 and LordOfCatgirls</i><br />"
+    cWeldsContent = cWeldsContent.."<i>Scripting refined by: me</i><br /><br />"
+    cWeldsContent = cWeldsContent.."The 'Remove Welds' tab serves as a successor to the 'Replace Humanoid' functionality. However, it cannot remove any parts that are not held on with welds (such as Doremy's hat's ball). For those parts, continue to use 'Replace Humanoid.'<br /><br />"
+    cWeldsContent = cWeldsContent.."Many parts are held onto the fumo's head, torso, or limbs through welds. Deleting the welds will cause the parts to effectively be removed from your body. "
+    cWeldsContent = cWeldsContent.."This script automates the process of removing welds.<br />"
+    cWeldsContent = cWeldsContent.."Unlike 'Replace Humanoid,' removing welds through this script does not require the use of DEX or any other scripts.<br /><br />"
+    cWeldsContent = cWeldsContent.."Welds are named with the name of the anchor point (usually something like Head, Torso, etc), then a box character, then the name of the part (e.g. hat, clothes, shoes). This is how you should identify them in the list.<br />"
+    cWeldsContent = cWeldsContent.."Much like Replace Humanoid, the functionality in this script can be achieved using DEX by removing the weld and quickly anchoring the part that fell. "
+    cWeldsContent = cWeldsContent.."This method has proven to be unreliable and sometimes difficult to pull off, but best results are achieved by going to high locations like a hill or the treehouse.<br />"
+    cWeldsContent = cWeldsContent.."Early findings indicate that leaving children in the object that falls (see Doremy's hat for an example) will make death after removal much more likely. As such, this script will clear all children of the target before removing the weld. "
+    cWeldsContent = cWeldsContent.."The script will teleport you to the top of the treehouse to ensure that the part's falling distance is held relatively constant. "
+    cWeldsContent = cWeldsContent.."After deleting the weld, the script waits around 1.5 seconds to anchor the part, as giving too little time has also resulted in death (for unknown reasons). "
+    cWeldsContent = cWeldsContent.."After everything is done, the button you clicked will disappear and the script will teleport you back to your original location. "
+    cWeldsContent = cWeldsContent.."Support exists for removing multiple welds at once, if you wanted to do that.<br /><br />"
+    cWeldsContent = cWeldsContent.."The method used in this script may still be unstable, causing death after minutes or hours. If this occurs, please report to me how long it took, which character, and which part you removed. Include as much detail as possible.<br /><br />"
+    cWeldsContent = cWeldsContent.."Please remember that the people who discovered this did not do it for you to take off your clothes. Please do not take off your clothes. Please do not take off your clothes. Ple"
+    
+    local cWeldsInfo = {}
+    cWeldsInfo.Label = "Removing Welds"
+    cWeldsInfo.Content = cWeldsContent
+    
+    addDoc(cWeldsInfo)
 end -- docs content
 
 do  -- animation UI
@@ -1025,13 +1071,7 @@ do  -- waypoints UI
     
     function createWaypointButton(info)
         local labelInfo = createLabelButtonLarge(info.Name, function()
-            local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-            if hum.SeatPart then
-                hum.Sit = false
-                wait()
-            end
-
-            LocalPlayer.Character:FindFirstChild("HumanoidRootPart").CFrame = info.CFrame
+            teleport(info.CFrame)
         end)
         
         local label = labelInfo.Label
@@ -1264,6 +1304,107 @@ do  -- waypoints
     createWaypointButton(cUfo)
 end -- waypoints
 
+do  -- welds
+    cWeldsLabel = "Remove Welds"
+    local weldsTab = createTab(cWeldsLabel, "6R")
+    
+    local weldsScroll = createScroll()
+    weldsScroll.Parent = weldsTab
+
+    local weldsScrollY = 0
+    
+    local savedLocation = nil
+    
+    local function deleteWeld(weld, cb)
+        for k, v in pairs(weld.Part1:GetChildren()) do -- destroying parts in this loop causes death.
+            -- notify caller that something other than the weld was destroyed,
+            -- mostly so welds that were deleted in this operation are also removed from the list
+            cb(v)
+        end
+        
+        weld.Part1:ClearAllChildren()
+
+        -- allows for tp-back location to be correct between concurrent calls.
+        savedLocation = teleport(CFrame.new(31, 45, 50, 1, 0, 0, 0, 1, 0, 0, 0, 1))
+        wait(0.2)
+
+        weld:Destroy()
+        wait(1.5)
+        weld.Part1.Anchored = true
+
+        teleport(savedLocation)
+    end
+    
+    local labels = {}
+    
+    local function updateWeldsLayout()
+        weldsScrollY = 0
+
+        for k, l in pairs(labels) do
+            if l then
+                if not l.Label.Parent then
+                    labels[k] = nil
+                else
+                    l.Label.Position = UDim2.new(0.5, 0, 0, weldsScrollY)
+                    weldsScrollY = weldsScrollY + cButtonHeightLarge
+                end
+            end
+        end
+    end
+
+    local function addWeld(weld)
+        local label = nil
+        local labelInfo = nil
+        labelInfo = createLabelButtonLarge(weld.Name, function()
+            if not weld.Parent then return end
+
+            if labelInfo then labelInfo.SetActive(true) end
+            deleteWeld(weld, function(p)
+                for k, l in pairs(labels) do
+                    if l and l.Weld == p or l.Weld.Part0 == p or l.Weld.Part1 == p then
+                        l.Label:Destroy()
+                        
+                        updateWeldsLayout()
+                    end
+                end
+            end)
+
+            if label then label:Destroy() end
+            updateWeldsLayout()
+        end)
+        
+        label = labelInfo.Label
+        label.Parent = weldsScroll
+        
+        local labelInfo = {}
+        labelInfo.Label = label
+        labelInfo.Weld = weld
+        
+        labels[#labels + 1] = labelInfo
+    end
+    
+    local function updateChar(char)
+        for k, l in pairs(labels) do
+            l.Label:Destroy()
+        end
+        
+        labels = {}
+
+        for k, v in pairs(char:GetDescendants()) do
+            if v:IsA("Weld") then
+                addWeld(v)
+            end
+        end
+        
+        updateWeldsLayout()
+    end
+    
+    lCharacter = LocalPlayer.CharacterAdded:Connect(function(char)
+        updateChar(char)
+    end)
+    if LocalPlayer.Character then updateChar(LocalPlayer.Character) end
+end -- welds -- globals exposed: lCharacter, cWeldsLabel
+
 do  -- info
     local cInfoText =            "<b>Become Fumo Scripts</b><br />"
     cInfoText = cInfoText.."version "..version.."<br /><br />"
@@ -1297,6 +1438,7 @@ local function exit()
     toggleButton.Visible = true -- reenable the default character selector
     settings.Visible = true -- reenable the default settings
     if lInput then lInput:Disconnect() end
+    lCharacter:Disconnect()
     disconnectJump()
     stopAllAnimations()
 
@@ -1309,6 +1451,7 @@ cHotkeys[cOptionsLabel] = Enum.KeyCode.Two
 cHotkeys[cKnowledgebaseLabel] = Enum.KeyCode.Three
 cHotkeys[cAnimationsLabel] = Enum.KeyCode.Four
 cHotkeys[cWaypointsLabel] = Enum.KeyCode.Five
+cHotkeys[cWeldsLabel] = Enum.KeyCode.Six
 
 lInput = INPUT.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.Keyboard and not
