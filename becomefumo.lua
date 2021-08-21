@@ -1325,7 +1325,8 @@ do  -- welds
         weld.Part1:ClearAllChildren()
 
         -- allows for tp-back location to be correct between concurrent calls.
-        savedLocation = teleport(CFrame.new(31, 45, 50, 1, 0, 0, 0, 1, 0, 0, 0, 1))
+        local origPos = teleport(CFrame.new(31, 45, 50, 1, 0, 0, 0, 1, 0, 0, 0, 1))
+        if not savedLocation then savedLocation = origPos end
         wait(0.2)
 
         weld:Destroy()
