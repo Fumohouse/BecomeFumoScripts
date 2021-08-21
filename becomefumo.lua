@@ -7,7 +7,7 @@ local function log(msg)
     print("[fumo] "..msg)
 end
 
-version = "1.3.5"
+version = "1.3.6"
 
 do  -- double load prevention
     if BF_LOADED then
@@ -787,6 +787,10 @@ do  -- docs content
     addDoc(cAboutInfo)
     
     local cChangelogContent = ""
+    cChangelogContent = cChangelogContent.."<b>1.3.6</b><br />"
+    cChangelogContent = cChangelogContent.."- Attempt to fix some deaths on laggy systems<br />"
+    cChangelogContent = cChangelogContent.."- Fix early teleport back when removing multiple welds at once<br /><br />"
+
     cChangelogContent = cChangelogContent.."<b>1.3.5</b><br />"
     cChangelogContent = cChangelogContent.."- GUI tweaks<br /><br />"
 
@@ -1341,8 +1345,11 @@ do  -- welds
     local cWeldSpacing = 2
     
     local savedLocation = nil
+    local inProgress = 0
     
     local function deleteWeld(weld, cb)
+        inProgress = inProgress + 1
+
         for k, v in pairs(weld.Part1:GetChildren()) do -- destroying parts in this loop causes death.
             -- notify caller that something other than the weld was destroyed,
             -- mostly so welds that were deleted in this operation are also removed from the list
@@ -1357,13 +1364,23 @@ do  -- welds
         wait(0.2)
 
         weld:Destroy()
+
+        -- wait for movement (lag?)
+        local v0 = weld.Part1.Velocity
+        
+        while weld.Part1.Velocity == v0 do
+            wait(0.1)
+        end
+
         wait(1.5)
         weld.Part1.Anchored = true
-
-        if savedLocation then
+        
+        if savedLocation and inProgress == 1 then
             teleport(savedLocation)
             savedLocation = nil
         end
+
+        inProgress = inProgress - 1
     end
     
     local labels = {}
