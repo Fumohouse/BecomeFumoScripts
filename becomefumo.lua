@@ -7,7 +7,7 @@ local function log(msg)
     print("[fumo] "..msg)
 end
 
-version = "1.3.1"
+version = "1.3.2"
 
 do  -- double load prevention
     if BF_LOADED then
@@ -89,7 +89,7 @@ do  -- tabs
     --
 
     cTabContentWidth = 250
-    cTabContentHeight = 750
+    cTabContentHeight = 750 / 1080
 
     cTabWidth = 175
     cTabHeight = 30
@@ -206,7 +206,7 @@ do  -- tabs
         content.BorderSizePixel = 0
         content.BackgroundColor3 = cBackgroundColorDark
         content.AnchorPoint = Vector2.new(0, 0.5)
-        content.Size = UDim2.fromOffset(cTabContentWidth, cTabContentHeight)
+        content.Size = UDim2.new(0, cTabContentWidth, cTabContentHeight, 0)
         content.Position = cTabPosClosed
 
         -- functions (open/close)
@@ -319,7 +319,7 @@ function createScroll()
     local scroll = Instance.new("ScrollingFrame")
     scroll.BorderSizePixel = 0
     scroll.BackgroundTransparency = 1
-    scroll.Size = UDim2.fromOffset(cTabContentWidth, cTabContentHeight)
+    scroll.Size = UDim2.fromScale(1, 1)
     scroll.Position = UDim2.fromOffset(0, 0)
     scroll.ScrollBarImageColor3 = cForegroundColor
     scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
@@ -636,8 +636,8 @@ do  -- options
 end -- options
 
 do  -- knowledgebase UI
-    local cDocsWidth = 800
-    local cDocsHeight = 600
+    local cDocsWidth = 900 / 1920
+    local cDocsHeight = 700 / 1080
 
     local cDocsPosOpen = UDim2.fromScale(0.5, 0.5)
     local cDocsPosClosed = UDim2.fromScale(0.5, 1.5)
@@ -649,11 +649,11 @@ do  -- knowledgebase UI
     local docsFrame = Instance.new("Frame")
     docsFrame.Parent = root
     docsFrame.Name = "Knowledgebase"
-    docsFrame.BackgroundTransparency = 0.1
+    docsFrame.Transparency = 1
     docsFrame.BackgroundColor3 = cBackgroundColorDark
     docsFrame.BorderSizePixel = 1
     docsFrame.AnchorPoint = Vector2.new(0.5, 0.5)
-    docsFrame.Size = UDim2.fromOffset(cDocsWidth, cDocsHeight)
+    docsFrame.Size = UDim2.fromScale(cDocsWidth, cDocsHeight)
     docsFrame.Position = cDocsPosClosed
 
     local docsClose = Instance.new("TextLabel")
@@ -716,8 +716,10 @@ do  -- knowledgebase UI
         
         if open then
             goal.Position = cDocsPosOpen
+            goal.Transparency = 0.1
         else
             goal.Position = cDocsPosClosed
+            goal.Transparency = 1
         end
         
         local tween = TWEEN:Create(docsFrame, tweenInfo, goal)
@@ -725,6 +727,12 @@ do  -- knowledgebase UI
         tween:Play()
         
         docsOpen = open
+        
+        tween.Completed:Wait()
+        if open then
+            docsFrame.Transparency = 0
+            docsFrame.BackgroundTransparency = 0.1
+        end
     end
 
     docsClose.InputBegan:Connect(function(input)
@@ -743,10 +751,10 @@ do  -- knowledgebase UI
 
     function addDoc(info)
         local docLabel = createLabelButton(info.Label, function()
-            setDocsOpen(true)
-            
             docsTitle.Text = info.Label
             docsContent.Text = info.Content
+
+            setDocsOpen(true)
         end)
 
         docLabel.Parent = docsScroll
@@ -779,6 +787,10 @@ do  -- docs content
     addDoc(cAboutInfo)
     
     local cChangelogContent = ""
+    cChangelogContent = cChangelogContent.."<b>1.3.2</b><br />"
+    cChangelogContent = cChangelogContent.."- Add some UI scaling for better usability at lower resolution<br />"
+    cChangelogContent = cChangelogContent.."- Remove mention of Doremy's hat's ball<br /><br />"
+
     cChangelogContent = cChangelogContent.."<b>1.3.1</b><br />"
     cChangelogContent = cChangelogContent.."- Minor fixes<br /><br />"
 
@@ -864,7 +876,7 @@ do  -- docs content
 
     local cWeldsContent =          "<i>Discovery & disclosure: gandalf872 and LordOfCatgirls</i><br />"
     cWeldsContent = cWeldsContent.."<i>Scripting refined by: me</i><br /><br />"
-    cWeldsContent = cWeldsContent.."The 'Remove Welds' tab serves as a successor to the 'Replace Humanoid' functionality. However, it cannot remove any parts that are not held on with welds (such as Doremy's hat's ball). For those parts, continue to use 'Replace Humanoid.'<br /><br />"
+    cWeldsContent = cWeldsContent.."The 'Remove Welds' tab serves as a successor to the 'Replace Humanoid' functionality. However, it cannot remove any parts that are not held on with welds. For those parts, continue to use 'Replace Humanoid.'<br /><br />"
     cWeldsContent = cWeldsContent.."Many parts are held onto the fumo's head, torso, or limbs through welds. Deleting the welds will cause the parts to effectively be removed from your body. "
     cWeldsContent = cWeldsContent.."This script automates the process of removing welds.<br />"
     cWeldsContent = cWeldsContent.."Unlike 'Replace Humanoid,' removing welds through this script does not require the use of DEX or any other scripts.<br /><br />"
