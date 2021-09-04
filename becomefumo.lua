@@ -7,7 +7,7 @@ local function log(msg)
     print("[fumo] "..msg)
 end
 
-version = "1.3.6"
+version = "1.3.7"
 
 do  -- double load prevention
     if BF_LOADED then
@@ -787,6 +787,9 @@ do  -- docs content
     addDoc(cAboutInfo)
     
     local cChangelogContent = ""
+    cChangelogContent = cChangelogContent.."<b>1.3.7</b><br />"
+    cChangelogContent = cChangelogContent.."- Give the ability to sit in any seat by middle clicking its approximate location<br /><br />"
+
     cChangelogContent = cChangelogContent.."<b>1.3.6</b><br />"
     cChangelogContent = cChangelogContent.."- Attempt to fix some deaths on laggy systems<br />"
     cChangelogContent = cChangelogContent.."- Fix early teleport back when removing multiple welds at once<br /><br />"
@@ -1533,6 +1536,33 @@ lInput = INPUT.InputBegan:Connect(function(input)
         
         if input.KeyCode == Enum.KeyCode.Zero then
             exit()
+        end
+    elseif input.UserInputType == Enum.UserInputType.MouseButton3 then
+        local unitRay = WORKSPACE.CurrentCamera:ScreenPointToRay(input.Position.X, input.Position.Y)
+        
+        local filter = {}
+        for k, v in pairs(WORKSPACE:GetDescendants()) do
+            if v:IsA("Seat") then
+                filter[#filter+1] = v.Parent
+            end
+        end
+
+        local params = RaycastParams.new()
+        params.FilterDescendantsInstances = filter
+        params.FilterType = Enum.RaycastFilterType.Whitelist
+
+        local result = WORKSPACE:Raycast(unitRay.Origin, unitRay.Direction * 1000, params)
+        if not result then return end
+        
+        if result.Instance:IsA("Seat") then
+            local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+            
+            if hum.SeatPart then
+                hum.Sit = false
+                wait()
+            end
+
+            result.Instance:Sit(hum)
         end
     end
 end)
