@@ -7,7 +7,7 @@ local function log(msg)
     print("[fumo] "..msg)
 end
 
-version = "1.4.2"
+version = "1.4.3"
 
 do  -- double load prevention
     if BF_LOADED then
@@ -844,6 +844,10 @@ do  -- docs content
     addDoc(cAboutInfo)
     
     local cChangelogContent = ""
+    cChangelogContent = cChangelogContent.."<b>1.4.3</b><br />"
+    cChangelogContent = cChangelogContent.."- Fix accessory teleport target not resetting when character reset<br />"
+    cChangelogContent = cChangelogContent.."- Fix middle click moving accessories while in menu<br /><br />"
+
     cChangelogContent = cChangelogContent.."<b>1.4.2</b><br />"
     cChangelogContent = cChangelogContent.."- Fix some situations where part rotation is wrong (i.e. Nazrin's inner ear parts)<br /><br />"
 
@@ -1427,7 +1431,7 @@ do  -- hats come alive
     local mousePos
     local draggedAway
 
-    function iteratePart(p, del)
+    local function iteratePart(p, del)
         if p:IsA("BasePart") then
             del(p)
         end
@@ -1461,8 +1465,6 @@ do  -- hats come alive
             antiG.Force = Vector3.new(0, p:GetMass() * workspace.Gravity, 0)
         end)
 
-        weld:Destroy()
-
         local partInfo = {}
         partInfo.Weld = weld
         partInfo.TargetName = targetName
@@ -1470,6 +1472,8 @@ do  -- hats come alive
         partInfo.PosList = bodyPositions
 
         parts[#parts+1] = partInfo
+
+        weld:Destroy()
 
         local lTouch = part.Touched:Connect(function(otherPart)
             local hum = otherPart.Parent:FindFirstChildOfClass("Humanoid")
@@ -1534,22 +1538,22 @@ do  -- hats come alive
         end
     end
 
-    lInputB = INPUT.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton3 then
+    lInputB = INPUT.InputBegan:Connect(function(input, handled)
+        if not handled and input.UserInputType == Enum.UserInputType.MouseButton3 then
             draggedAway = tpTarget
             tpTarget = nil
             mousePos = input.Position
         end
     end)
     
-    lInputC = INPUT.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement and mousePos then
+    lInputC = INPUT.InputChanged:Connect(function(input, handled)
+        if not handled and input.UserInputType == Enum.UserInputType.MouseMovement and mousePos then
             mousePos = input.Position
         end
     end)
     
-    lInputE = INPUT.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton3 then
+    lInputE = INPUT.InputEnded:Connect(function(input, handled)
+        if not handled and input.UserInputType == Enum.UserInputType.MouseButton3 then
             mousePos = nil
             draggedAway = nil
         end
@@ -1587,6 +1591,7 @@ do  -- hats come alive
 
     lCharacter2 = LocalPlayer.CharacterAdded:Connect(function(char)
         parts = {}
+        tpTarget = nil
     end)
 end -- hats come alive -- globals exposed: iteratePart, makeAlive, lHeartbeat, lStepped, lInputB, lInputC, lInputE, lCharacter2
 
