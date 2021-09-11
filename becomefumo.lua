@@ -7,7 +7,7 @@ local function log(msg)
     print("[fumo] "..msg)
 end
 
-version = "1.3.7"
+version = "1.4.0"
 
 do  -- double load prevention
     if BF_LOADED then
@@ -31,6 +31,7 @@ TWEEN = game:GetService("TweenService")
 INPUT = game:GetService("UserInputService")
 REPLICATED = game:GetService("ReplicatedStorage")
 PLAYERS = game:GetService("Players")
+RUN = game:GetService("RunService")
 WORKSPACE = game.Workspace
 
 LocalPlayer = PLAYERS.LocalPlayer
@@ -413,11 +414,10 @@ function createLabelButtonLarge(labelText, cb)
     end
 
     label.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.MouseButton2 then
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.MouseButton2 or input.UserInputType == Enum.UserInputType.MouseButton3 then
             cb(labelInfo.SetActive, input.UserInputType)
         end
     end)
-    
     
     return labelInfo
 end
@@ -775,6 +775,7 @@ do  -- docs content
     cAboutContent = cAboutContent.."As an alternative to clicking the tabs, you can navigate to any tab except the info tab through the number keys.<br />"
     cAboutContent = cAboutContent.."At any time, you can press [0] to close the script and reset everything back to normal.<br /><br />"
     cAboutContent = cAboutContent.."<b>Credits:</b><br />"
+    cAboutContent = cAboutContent.."- xowada - Detaching and controlling accessories<br />"
     cAboutContent = cAboutContent.."- AyaShameimaruCamera - Replace Humanoid & Inspiration<br />"
     cAboutContent = cAboutContent.."- FutoLurkingAround - Emotional Support<br />"
     cAboutContent = cAboutContent.."- LordOfCatgirls - Early user & Welds research<br />"
@@ -787,6 +788,10 @@ do  -- docs content
     addDoc(cAboutInfo)
     
     local cChangelogContent = ""
+    cChangelogContent = cChangelogContent.."<b>1.4.0 - Hats Come Alive</b><br />"
+    cChangelogContent = cChangelogContent.."- Add the ability to detach and control accessories by middle clicking welds in the 6W menu and dragging while middle clicking<br />"
+    cChangelogContent = cChangelogContent.."- Add article on detached accessories<br /><br />"
+
     cChangelogContent = cChangelogContent.."<b>1.3.7</b><br />"
     cChangelogContent = cChangelogContent.."- Give the ability to sit in any seat by middle clicking its approximate location<br /><br />"
 
@@ -914,6 +919,22 @@ do  -- docs content
     cWeldsInfo.Content = cWeldsContent
     
     addDoc(cWeldsInfo)
+
+    local cDetachContent =             "<i>Disclosure: xowada</i><br />"
+    cDetachContent = cDetachContent .. "<i>Code basis: Infinite Yield</i><br />"
+    cDetachContent = cDetachContent .. "<i>Scripting refined by: me</i><br />"
+    cDetachContent = cDetachContent .. "The weld strategy to 'removing' parts from the character's body can also be used to detach and control them.<br />"
+    cDetachContent = cDetachContent .. "The BodyPosition class is used to control the parts after they have been detached, and a constant velocity is applied to them for (relative) stability (i.e. less death).<br />"
+    cDetachContent = cDetachContent .. "The Stepped event in RunService is used to control the parts, and set their position and rotation every frame. Paths for the objects can be made through functions of position offset to time.<br /><br />"
+    cDetachContent = cDetachContent .. "This script has the parts orbit the player by default. If middle click is held, the parts will follow the mouse, and if the parts touch a player then they will attach to them as close to the correct position as possible.<br />"
+    cDetachContent = cDetachContent .. "Some parts welded to non-standard body parts (i.e. not the Torso, Head, or limbs) will be attached to the torso by default.<br /><br />"
+    cDetachContent = cDetachContent .. "The script still suffers from relative instability and death may occur frequently. Report these instances to me with as much detail as possible."
+
+    local cDetachInfo = {}
+    cDetachInfo.Label = "Detaching Accessories"
+    cDetachInfo.Content = cDetachContent
+    
+    addDoc(cDetachInfo)
 end -- docs content
 
 do  -- animation UI
@@ -1337,6 +1358,175 @@ do  -- waypoints
     createWaypointButton(cUfo)
 end -- waypoints
 
+do  -- hats come alive
+    local parts = {}
+
+    local tpTarget
+    local mousePos
+    local draggedAway
+
+    function iteratePart(p, del)
+        if p:IsA("BasePart") then
+            del(p)
+        end
+    
+        for k, v in pairs(p:GetDescendants()) do
+            if v:IsA("BasePart") then
+                del(v)
+            end
+        end
+    end
+
+    function makeAlive(weld)
+        local targetName = weld.Part0.Name
+
+        local part = weld.Part1
+        part.CanTouch = true
+
+        local bodyPositions = {}
+
+        iteratePart(part, function(p)
+            local pos = Instance.new("BodyPosition")
+            pos.Parent = p
+            pos.P = 30000
+            pos.D = 1000
+            pos.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+
+            bodyPositions[#bodyPositions+1] = pos
+
+            local antiG = Instance.new("BodyForce")
+            antiG.Parent = p
+            antiG.Force = Vector3.new(0, p:GetMass() * workspace.Gravity, 0)
+        end)
+
+        weld:Destroy()
+
+        local partInfo = {}
+        partInfo.Weld = weld
+        partInfo.TargetName = targetName
+        partInfo.Part = part
+        partInfo.PosList = bodyPositions
+
+        parts[#parts+1] = partInfo
+
+        local lTouch = part.Touched:Connect(function(otherPart)
+            local hum = otherPart.Parent:FindFirstChildOfClass("Humanoid")
+            if hum and mousePos then
+                local newTarget = hum.Parent
+        
+                if draggedAway ~= newTarget then
+                    mousePos = nil
+                    tpTarget = newTarget
+                end
+            end
+        end)
+    end
+
+    local function updatePart(info, t, idx)
+        t += 10 * idx
+
+        local targetPos
+    
+        local ang = (t * 180) % 360
+        local targetRotation = Vector3.new(ang, ang, ang)
+
+        if mousePos then
+            local unitRay = WORKSPACE.CurrentCamera:ScreenPointToRay(mousePos.X, mousePos.Y)
+            local params = RaycastParams.new()
+
+            local result = WORKSPACE:Raycast(unitRay.Origin, unitRay.Direction * 1000, params)
+            if not result or result.Instance == info.Part then return end
+
+            targetPos = result.Position
+        elseif tpTarget then
+            local targetPart = tpTarget:FindFirstChild(info.TargetName)
+            if targetPart then
+                targetPart = targetPart:FindFirstChild(info.TargetName)
+            end
+
+            if not targetPart then
+                if tpTarget == LocalPlayer.Character then
+                    targetPart = info.Weld.Part0
+                else
+                    targetPart = tpTarget.Torso.Torso
+                end
+            end
+
+            targetPos = (targetPart.CFrame * info.Weld.C0 * info.Weld.C1:Inverse()).Position + Vector3.new(0, 0.2, 0) -- counteract the velocity applied in Heartbeat
+            targetRotation = targetPart.Rotation
+        else
+            local theta = t * 3
+            local xOff = math.cos(theta)
+            local yOff = math.sin(theta)
+            local zOff = math.cos(theta * 2) / 2
+            local vOff = Vector3.new(xOff, zOff, yOff) * 2
+
+            targetPos = LocalPlayer.Character.Head.Head.Position + vOff
+        end
+
+        for k, v in pairs(info.PosList) do
+            v.Position = targetPos
+        end
+
+        info.Part.Rotation = targetRotation
+    end
+
+    lInputB = INPUT.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton3 then
+            draggedAway = tpTarget
+            tpTarget = nil
+            mousePos = input.Position
+        end
+    end)
+    
+    lInputC = INPUT.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement and mousePos then
+            mousePos = input.Position
+        end
+    end)
+    
+    lInputE = INPUT.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton3 then
+            mousePos = nil
+            draggedAway = nil
+        end
+    end)
+
+    lStepped = RUN.Stepped:Connect(function(t)
+        local idx = 0
+
+        for k, info in pairs(parts) do
+            if info then
+                updatePart(info, t, idx)
+            end
+
+            idx = idx + 1
+        end
+    end)
+
+    lHeartbeat = RUN.Heartbeat:Connect(function()
+        -- local char = LocalPlayer.Character
+        -- if not char then return end
+
+        -- iteratePart(char, function(p)
+        --     if p.Name == "HumanoidRootPart" then return end
+        --     p.Velocity = Vector3.new(0, 35, 0)
+        -- end)
+
+        for k, info in pairs(parts) do
+            if info then
+                iteratePart(info.Part, function(p)
+                    p.Velocity = Vector3.new(0, 35, 0)
+                end)
+            end
+        end
+    end)
+
+    lCharacter2 = LocalPlayer.CharacterAdded:Connect(function(char)
+        parts = {}
+    end)
+end -- hats come alive -- globals exposed: iteratePart, makeAlive, lHeartbeat, lStepped, lInputB, lInputC, lInputE, lCharacter2
+
 do  -- welds
     cWeldsLabel = "Remove Welds"
     local weldsTab = createTab(cWeldsLabel, "6R")
@@ -1423,7 +1613,7 @@ do  -- welds
 
                 if label then label:Destroy() end
                 updateWeldsLayout()
-            else
+            elseif type == Enum.UserInputType.MouseButton2 then
                 local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, 5, true)
                 local goal = {}
                 goal.Transparency = 1
@@ -1434,6 +1624,16 @@ do  -- welds
                 
                 tween.Completed:Wait()
                 setActive(false)
+            else
+                makeAlive(weld)
+
+                for k, l in pairs(labels) do
+                    if l and l.Weld == weld then
+                        l.Label:Destroy()
+
+                        updateWeldsLayout()
+                    end
+                end
             end
         end)
         
@@ -1511,6 +1711,13 @@ local function exit()
     lCharacter:Disconnect()
     disconnectJump()
     stopAllAnimations()
+
+    lHeartbeat:Disconnect()
+    lStepped:Disconnect()
+    lInputB:Disconnect()
+    lInputC:Disconnect()
+    lInputE:Disconnect()
+    lCharacter2:Disconnect()
 
     getgenv().BF_LOADED = false
 end
