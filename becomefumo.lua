@@ -7,7 +7,7 @@ local function log(msg)
     print("[fumo] "..msg)
 end
 
-version = "1.4.1"
+version = "1.4.2"
 
 do  -- double load prevention
     if BF_LOADED then
@@ -844,6 +844,9 @@ do  -- docs content
     addDoc(cAboutInfo)
     
     local cChangelogContent = ""
+    cChangelogContent = cChangelogContent.."<b>1.4.2</b><br />"
+    cChangelogContent = cChangelogContent.."- Fix some situations where part rotation is wrong (i.e. Nazrin's inner ear parts)<br /><br />"
+
     cChangelogContent = cChangelogContent.."<b>1.4.1</b><br />"
     cChangelogContent = cChangelogContent.."- Refactor the tab system and add an alert when a new version is run. Thanks for reading the changelog!<br /><br />"
 
@@ -1511,8 +1514,10 @@ do  -- hats come alive
                 end
             end
 
-            targetPos = (targetPart.CFrame * info.Weld.C0 * info.Weld.C1:Inverse()).Position + Vector3.new(0, 0.2, 0) -- counteract the velocity applied in Heartbeat
-            targetRotation = targetPart.Rotation
+            local cf = targetPart.CFrame * info.Weld.C0 * info.Weld.C1:Inverse()
+
+            targetPos = cf.Position + Vector3.new(0, 0.2, 0) -- counteract the velocity applied in Heartbeat
+            info.Part.CFrame = cf - cf.Position + info.Part.Position -- proper rotation (JANK!)
         else
             local theta = t * 3
             local xOff = math.cos(theta)
@@ -1521,13 +1526,12 @@ do  -- hats come alive
             local vOff = Vector3.new(xOff, zOff, yOff) * 2
 
             targetPos = LocalPlayer.Character.Head.Head.Position + vOff
+            info.Part.Rotation = Vector3.new(ang, ang, ang)
         end
 
         for k, v in pairs(info.PosList) do
             v.Position = targetPos
         end
-
-        info.Part.Rotation = targetRotation
     end
 
     lInputB = INPUT.InputBegan:Connect(function(input)
