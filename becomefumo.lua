@@ -7,7 +7,7 @@ local function log(msg)
     print("[fumo] "..msg)
 end
 
-version = "1.4.0"
+version = "1.4.1"
 
 do  -- double load prevention
     if BF_LOADED then
@@ -82,9 +82,7 @@ do  -- disable stuff
     settings.Visible = false -- disable the default settings
 end -- disable stuff -- globals exposed: toggleButton & settings
 
-do  -- tabs
-    local tabs = {}
-
+do  -- tabcontrol
     --
     -- constants
     --
@@ -107,82 +105,59 @@ do  -- tabs
     cTabContainerPosClosed = UDim2.fromScale(0, 0.5)
 
     --
-    -- tab container
+    -- class def
     --
 
-    local tabContainer = Instance.new("Frame")
-    tabContainer.Parent = root
-    tabContainer.BackgroundTransparency = 1
-    tabContainer.BorderSizePixel = 0
-    tabContainer.AnchorPoint = Vector2.new(0, 0.5)
-    tabContainer.AutomaticSize = Enum.AutomaticSize.Y
-    tabContainer.Size = UDim2.fromOffset(cTabWidth, 0)
-    tabContainer.Position = cTabContainerPosClosed
+    TabControl = {}
 
-    local function setTabsExpanded(expanded)
-        local tweenInfo = TweenInfo.new(0.15)
+    TabControl.__index = TabControl
 
-        local goal = {}
-        local tabContainerGoal = {}
-        
-        if expanded then
-            goal.Size = cTabSize
-            tabContainerGoal.Size = UDim2.fromOffset(cTabWidth, 0)
-        else
-            goal.Size = cTabSizeSmall
-            tabContainerGoal.Size = UDim2.fromOffset(cTabWidthSmall, 0)
-        end
+    function TabControl:create(parent)
+        local obj = {}
+        setmetatable(obj, TabControl)
 
-        for k, v in pairs(tabs) do
-            if expanded then
-                v.Tab.Text = v.Label
-            else
-                v.Tab.Text = v.Abbrev
-            end
+        obj.Parent = parent
 
-            local tween = TWEEN:Create(v.Tab, tweenInfo, goal)
-            tween:Play()
-        end
-        
-        local tabContainerTween = TWEEN:Create(tabContainer, tweenInfo, tabContainerGoal)
-        tabContainerTween:Play()
+        local tabContainer = Instance.new("Frame")
+        tabContainer.Parent = parent
+        tabContainer.BackgroundTransparency = 1
+        tabContainer.BorderSizePixel = 0
+        tabContainer.AnchorPoint = Vector2.new(0, 0.5)
+        tabContainer.AutomaticSize = Enum.AutomaticSize.Y
+        tabContainer.Size = UDim2.fromOffset(cTabWidth, 0)
+        tabContainer.Position = cTabContainerPosClosed
+
+        tabContainer.MouseEnter:Connect(function()
+            obj:_setTabsExpanded(true)
+        end)
+    
+        tabContainer.MouseLeave:Connect(function()
+            obj:_setTabsExpanded(false)
+        end)
+
+        obj.TabContainer = tabContainer
+
+        obj.TabButtons = {}
+        obj.Tabs = {}
+
+        return obj
     end
 
-    tabContainer.MouseEnter:Connect(function()
-        setTabsExpanded(true)
-    end)
+    function TabControl:_updateLayout()
+        local idx = 0
 
-    tabContainer.MouseLeave:Connect(function()
-        setTabsExpanded(false)
-    end)
-    
-    function setTabOpen(label, open)
-        for k, v in pairs(tabs) do
-            if v.Label == label then
-                if open == nil then
-                    open = not v.GetOpen()
-                end
+        for k, v in pairs(self.TabButtons) do
+            if v then
+                v.Tab.Position = UDim2.new(0, 0, 0.5, idx * cTabHeight)
 
-                v.SetOpen(open, true)
-                break
+                idx = idx + 1
             end
         end
     end
-    
-    function closeAllTabs()
-        for k, v in pairs(tabs) do
-            v.SetOpen(false, true)
-        end
-    end
 
-    --
-    -- function: creates tab with given label and returns the content container
-    --
-
-    function createTab(label, abbrev)
-        -- tab button
+    function TabControl:createTabButton(label, abbrev)
         local tab = Instance.new("TextLabel")
-        tab.Parent = tabContainer
+        tab.Parent = self.TabContainer
         tab.Name = label
         tab.Active = true
         tab.BackgroundTransparency = 0.3
@@ -196,11 +171,25 @@ do  -- tabs
         tab.TextYAlignment = Enum.TextYAlignment.Center
         tab.AnchorPoint = Vector2.new(0, 0.5)
         tab.Size = cTabSizeSmall
-        tab.Position = UDim2.new(0, 0, 0.5, #tabs * cTabHeight)
+
+        local tabButtonData = {}
+        tabButtonData.Label = label
+        tabButtonData.Abbrev = abbrev
+        tabButtonData.Tab = tab
+        
+        self.TabButtons[#self.TabButtons + 1] = tabButtonData
+
+        self:_updateLayout()
+
+        return tabButtonData
+    end
+
+    function TabControl:createTab(label, abbrev)
+        local tabButtonData = self:createTabButton(label, abbrev)
         
         -- tab content
         local content = Instance.new("Frame")
-        content.Parent = root
+        content.Parent = self.Parent
         content.Active = true
         content.Name = "Content"
         content.BackgroundTransparency = 0.1
@@ -222,8 +211,8 @@ do  -- tabs
             -- check if other tabs are open
             local othersOpen = false
             
-            for k, v in pairs(tabs) do
-                if v.Label ~= label and v.GetOpen() then
+            for k, v in pairs(self.Tabs) do
+                if v.Button.Label ~= label and v.GetOpen() then
                     othersOpen = true
                     break
                 end
@@ -240,8 +229,8 @@ do  -- tabs
                 tabContainerGoal.Position = cTabContainerPosOpen
                 tabGoal.BackgroundColor3 = cBackgroundColorLight
 
-                for k, v in pairs(tabs) do
-                    if v.Label ~= label then
+                for k, v in pairs(self.Tabs) do
+                    if v.Button.Label ~= label then
                         v.SetOpen(false, false)
                     end
                 end
@@ -265,34 +254,95 @@ do  -- tabs
                 content.Position = goal.Position
             end
 
-            local tabContainerTween = TWEEN:Create(tabContainer, tweenInfo, tabContainerGoal)
+            local tabContainerTween = TWEEN:Create(self.TabContainer, tweenInfo, tabContainerGoal)
             tabContainerTween:Play()
             
-            local tabTween = TWEEN:Create(tab, tweenInfo, tabGoal)
+            local tabTween = TWEEN:Create(tabButtonData.Tab, tweenInfo, tabGoal)
             tabTween:Play()
             
             isOpen = open
         end
         
-        tab.InputBegan:Connect(function(input)
+        tabButtonData.Tab.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 then
                 setOpen(not isOpen, true)
             end
         end)
-        
-        -- save to table
+
         local tabData = {}
-        tabData.Label = label
-        tabData.Abbrev = abbrev
+        tabData.Button = tabButtonData
         tabData.GetOpen = getOpen
         tabData.SetOpen = setOpen
-        tabData.Tab = tab
-        
-        tabs[#tabs + 1] = tabData
+        tabData.IsButton = false
+
+        self.Tabs[#self.Tabs + 1] = tabData
         
         return content
     end
-end -- tabs -- globals exposed: createTab, setTabOpen, closeAllTabs & all constants
+
+    function TabControl:closeAllTabs()
+        for k, v in pairs(self.Tabs) do
+            v.SetOpen(false, true)
+        end
+    end
+
+    function TabControl:removeTabButton(info)
+        info.Tab:Destroy()
+
+        for k, v in pairs(self.TabButtons) do
+            if v == info then
+                self.TabButtons[k] = nil
+                break
+            end
+        end
+
+        self:_updateLayout()
+    end
+
+    function TabControl:setTabOpen(label, open)
+        for k, v in pairs(self.Tabs) do
+            if v.Button.Label == label then
+                if open == nil then
+                    open = not v.GetOpen()
+                end
+
+                v.SetOpen(open, true)
+                break
+            end
+        end
+    end
+
+    function TabControl:_setTabsExpanded(expanded)
+        local tweenInfo = TweenInfo.new(0.15)
+
+        local goal = {}
+        local tabContainerGoal = {}
+        
+        if expanded then
+            goal.Size = cTabSize
+            tabContainerGoal.Size = UDim2.fromOffset(cTabWidth, 0)
+        else
+            goal.Size = cTabSizeSmall
+            tabContainerGoal.Size = UDim2.fromOffset(cTabWidthSmall, 0)
+        end
+
+        for k, v in pairs(self.TabButtons) do
+            if v then
+                if expanded then
+                    v.Tab.Text = v.Label
+                else
+                    v.Tab.Text = v.Abbrev
+                end
+    
+                local tween = TWEEN:Create(v.Tab, tweenInfo, goal)
+                tween:Play()
+            end
+        end
+        
+        local tabContainerTween = TWEEN:Create(self.TabContainer, tweenInfo, tabContainerGoal)
+        tabContainerTween:Play()
+    end
+end -- tabcontrol -- globals exposed: TabControl
 
 --
 -- random functions
@@ -315,6 +365,8 @@ end
 --
 -- common gui
 --
+
+tabControl = TabControl:create(root)
 
 function createScroll()
     local scroll = Instance.new("ScrollingFrame")
@@ -495,7 +547,7 @@ do  -- characters
     -- interface
 
     cCharactersLabel = "Characters"
-    local charactersTab = createTab(cCharactersLabel, "1C")
+    local charactersTab = tabControl:createTab(cCharactersLabel, "1C")
 
     local characterScroll = createScroll()
     characterScroll.Parent = charactersTab
@@ -588,7 +640,7 @@ do  -- options
     local cOptionSpacing = 5
 
     cOptionsLabel = "Options"
-    local optionsTab = createTab(cOptionsLabel, "2O")
+    local optionsTab = tabControl:createTab(cOptionsLabel, "2O")
 
     local optionsFrame = Instance.new("Frame")
     optionsFrame.Parent = optionsTab
@@ -604,7 +656,7 @@ do  -- options
 
     local function createOptionsButton(labelText, cb)
         local labelInfo = createLabelButtonLarge(labelText, function()
-            closeAllTabs()
+            tabControl:closeAllTabs()
             cb()
         end)
         
@@ -735,6 +787,13 @@ do  -- knowledgebase UI
         end
     end
 
+    function openPage(info)
+        docsTitle.Text = info.Label
+        docsContent.Text = info.Content
+
+        setDocsOpen(true)
+    end
+
     docsClose.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             setDocsOpen(false)
@@ -742,7 +801,7 @@ do  -- knowledgebase UI
     end)
 
     cKnowledgebaseLabel = "Knowledgebase"
-    local docsTab = createTab(cKnowledgebaseLabel, "3K")
+    local docsTab = tabControl:createTab(cKnowledgebaseLabel, "3K")
 
     local docsScroll = createScroll()
     docsScroll.Parent = docsTab
@@ -751,10 +810,7 @@ do  -- knowledgebase UI
 
     function addDoc(info)
         local docLabel = createLabelButton(info.Label, function()
-            docsTitle.Text = info.Label
-            docsContent.Text = info.Content
-
-            setDocsOpen(true)
+            openPage(info)
         end)
 
         docLabel.Parent = docsScroll
@@ -762,7 +818,7 @@ do  -- knowledgebase UI
 
         docCount = docCount + 1
     end
-end -- knowledgebase UI -- globals exposed: addDoc, cKnowledgebaseLabel
+end -- knowledgebase UI -- globals exposed: addDoc, cKnowledgebaseLabel, openPage
 
 do  -- docs content
     local cAboutContent =          "This script is dedicated to Become Fumo, and it has functions specific to it.<br />"
@@ -788,8 +844,11 @@ do  -- docs content
     addDoc(cAboutInfo)
     
     local cChangelogContent = ""
+    cChangelogContent = cChangelogContent.."<b>1.4.1</b><br />"
+    cChangelogContent = cChangelogContent.."- Refactor the tab system and add an alert when a new version is run. Thanks for reading the changelog!<br /><br />"
+
     cChangelogContent = cChangelogContent.."<b>1.4.0 - Hats Come Alive</b><br />"
-    cChangelogContent = cChangelogContent.."- Add the ability to detach and control accessories by middle clicking welds in the 6W menu and dragging while middle clicking<br />"
+    cChangelogContent = cChangelogContent.."- Add the ability to detach and control accessories by middle clicking welds in the 6R menu and dragging while middle clicking<br />"
     cChangelogContent = cChangelogContent.."- Add article on detached accessories<br /><br />"
 
     cChangelogContent = cChangelogContent.."<b>1.3.7</b><br />"
@@ -846,7 +905,7 @@ do  -- docs content
     cChangelogContent = cChangelogContent.."- Added an about page"
     -- cChangelogContent = cChangelogContent..""
     
-    local cChangelogInfo = {}
+    cChangelogInfo = {}
     cChangelogInfo.Label = "Changelog"
     cChangelogInfo.Content = cChangelogContent
     
@@ -935,7 +994,7 @@ do  -- docs content
     cDetachInfo.Content = cDetachContent
     
     addDoc(cDetachInfo)
-end -- docs content
+end -- docs content -- globals exposed: cChangelogInfo
 
 do  -- animation UI
     local cSpeedFieldSize = 25
@@ -957,7 +1016,7 @@ do  -- animation UI
     end
     
     cAnimationsLabel = "Animations"
-    local animationsTab = createTab(cAnimationsLabel, "4A")
+    local animationsTab = tabControl:createTab(cAnimationsLabel, "4A")
     
     local speedField = Instance.new("TextBox")
     speedField.Parent = animationsTab
@@ -1108,7 +1167,7 @@ end -- animations
 
 do  -- waypoints UI
     cWaypointsLabel = "Waypoints"
-    local waypointsTab = createTab(cWaypointsLabel, "5W")
+    local waypointsTab = tabControl:createTab(cWaypointsLabel, "5W")
     
     local waypointsScroll = createScroll()
     waypointsScroll.Parent = waypointsTab
@@ -1529,7 +1588,7 @@ end -- hats come alive -- globals exposed: iteratePart, makeAlive, lHeartbeat, l
 
 do  -- welds
     cWeldsLabel = "Remove Welds"
-    local weldsTab = createTab(cWeldsLabel, "6R")
+    local weldsTab = tabControl:createTab(cWeldsLabel, "6R")
     
     local weldsScroll = createScroll()
     weldsScroll.Parent = weldsTab
@@ -1683,7 +1742,7 @@ do  -- info
     cInfoText = cInfoText.."Thank you, "..LocalPlayer.Name.."!"
 
     cInfoLabel = "Info"
-    local infoTab = createTab(cInfoLabel, "I")
+    local infoTab = tabControl:createTab(cInfoLabel, "I")
 
     local infoText = Instance.new("TextLabel")
     infoText.Parent = infoTab
@@ -1702,6 +1761,34 @@ do  -- info
 
     infoText.Text = cInfoText
 end -- info
+
+do  -- update info
+    local cFileName = "fumofumo.txt"
+
+    if writefile then
+        if not pcall(function() readfile(cFileName) end) or readfile(cFileName) ~= version then
+            local tabButtonInfo = tabControl:createTabButton("Update Info", "!")
+
+            tabButtonInfo.Tab.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    openPage(cChangelogInfo)
+
+                    tabControl:removeTabButton(tabButtonInfo)
+                end
+            end)
+
+            local tweenInfo = TweenInfo.new(2, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1, true)
+
+            local goal = {}
+            goal.BackgroundColor3 = Color3.fromRGB(255, 165, 0)
+
+            local tween = TWEEN:Create(tabButtonInfo.Tab, tweenInfo, goal)
+            tween:Play()
+
+            writefile(cFileName, version)
+        end
+    end
+end -- update info
 
 local function exit()
     root:Destroy()
@@ -1736,7 +1823,7 @@ lInput = INPUT.InputBegan:Connect(function(input)
         
         for k, v in pairs(cHotkeys) do
             if input.KeyCode == v then
-                setTabOpen(k, nil)
+                tabControl:setTabOpen(k, nil)
                 return
             end
         end
