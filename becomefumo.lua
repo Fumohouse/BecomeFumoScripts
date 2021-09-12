@@ -7,7 +7,7 @@ local function log(msg)
     print("[fumo] "..msg)
 end
 
-version = "1.4.3"
+version = "1.4.4"
 
 do  -- double load prevention
     if BF_LOADED then
@@ -844,6 +844,9 @@ do  -- docs content
     addDoc(cAboutInfo)
     
     local cChangelogContent = ""
+    cChangelogContent = cChangelogContent.."<b>1.4.4</b><br />"
+    cChangelogContent = cChangelogContent.."- Better ensure constant motion of detached accessories<br /><br />"
+
     cChangelogContent = cChangelogContent.."<b>1.4.3</b><br />"
     cChangelogContent = cChangelogContent.."- Fix accessory teleport target not resetting when character reset<br />"
     cChangelogContent = cChangelogContent.."- Fix middle click moving accessories while in menu<br /><br />"
@@ -1428,6 +1431,8 @@ do  -- hats come alive
     local parts = {}
 
     local tpTarget
+    local tpTargetLastPos = {}
+    local tpTargetLastMove = {}
     local mousePos
     local draggedAway
 
@@ -1448,13 +1453,14 @@ do  -- hats come alive
 
         local part = weld.Part1
         part.CanTouch = true
+        part.Anchored = true
 
         local bodyPositions = {}
 
         iteratePart(part, function(p)
             local pos = Instance.new("BodyPosition")
             pos.Parent = p
-            pos.P = 30000
+            pos.P = 500000
             pos.D = 1000
             pos.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
 
@@ -1473,6 +1479,7 @@ do  -- hats come alive
 
         parts[#parts+1] = partInfo
 
+        RUN.Stepped:Wait()
         weld:Destroy()
 
         local lTouch = part.Touched:Connect(function(otherPart)
@@ -1483,18 +1490,17 @@ do  -- hats come alive
                 if draggedAway ~= newTarget then
                     mousePos = nil
                     tpTarget = newTarget
+                    tpTargetLastPos = {}
+                    tpTargetLastMove = {}
                 end
             end
         end)
     end
 
     local function updatePart(info, t, idx)
-        t += 10 * idx
-
         local targetPos
     
-        local ang = (t * 180) % 360
-        local targetRotation = Vector3.new(ang, ang, ang)
+        local ang = ((t + 10 * idx) * 180) % 360
 
         if mousePos then
             local unitRay = WORKSPACE.CurrentCamera:ScreenPointToRay(mousePos.X, mousePos.Y)
@@ -1504,6 +1510,7 @@ do  -- hats come alive
             if not result or result.Instance == info.Part then return end
 
             targetPos = result.Position
+            info.Part.Rotation = Vector3.new(ang, ang, ang)
         elseif tpTarget then
             local targetPart = tpTarget:FindFirstChild(info.TargetName)
             if targetPart then
@@ -1518,12 +1525,32 @@ do  -- hats come alive
                 end
             end
 
+            local vOff = Vector3.new(0, 0, 0)
+            local lastPos = tpTargetLastPos[info.TargetName]
+
+            if lastPos then
+                local pos2 = targetPart.Position
+                local pos1 = lastPos
+                local dist = math.sqrt((pos2.X - pos1.X)^2 + (pos2.Y - pos1.Y)^2 + (pos2.Z - pos1.Z)^2)
+
+                if dist ~= 0 then
+                    tpTargetLastMove[info.TargetName] = t
+                end
+
+                if not tpTargetLastMove[info.TargetName] or t - tpTargetLastMove[info.TargetName] > 0.5 then
+                    local shake = math.sin(t) * 0.25
+                    vOff = Vector3.new(0, shake, 0)
+                end
+            end
+
+            tpTargetLastPos[info.TargetName] = targetPart.Position
+
             local cf = targetPart.CFrame * info.Weld.C0 * info.Weld.C1:Inverse()
 
-            targetPos = cf.Position + Vector3.new(0, 0.2, 0) -- counteract the velocity applied in Heartbeat
+            targetPos = cf.Position + Vector3.new(0, 0.2, 0) + vOff -- counteract the velocity applied in Heartbeat
             info.Part.CFrame = cf - cf.Position + info.Part.Position -- proper rotation (JANK!)
         else
-            local theta = t * 3
+            local theta = (t + 10 * idx) * 3
             local xOff = math.cos(theta)
             local yOff = math.sin(theta)
             local zOff = math.cos(theta * 2) / 2
@@ -1564,6 +1591,7 @@ do  -- hats come alive
 
         for k, info in pairs(parts) do
             if info then
+                info.Part.Anchored = false
                 updatePart(info, t, idx)
             end
 
@@ -1592,6 +1620,8 @@ do  -- hats come alive
     lCharacter2 = LocalPlayer.CharacterAdded:Connect(function(char)
         parts = {}
         tpTarget = nil
+        tpTargetLastPos = {}
+        tpTargetLastMove = {}
     end)
 end -- hats come alive -- globals exposed: iteratePart, makeAlive, lHeartbeat, lStepped, lInputB, lInputC, lInputE, lCharacter2
 
