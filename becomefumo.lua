@@ -7,7 +7,7 @@ local function log(msg)
     print("[fumo] "..msg)
 end
 
-version = "1.4.4"
+version = "1.4.5"
 
 do  -- double load prevention
     if BF_LOADED then
@@ -844,6 +844,15 @@ do  -- docs content
     addDoc(cAboutInfo)
     
     local cChangelogContent = ""
+    cChangelogContent = cChangelogContent.."<b>1.4.5</b><br />"
+    cChangelogContent = cChangelogContent.."- Holding down middle click while dragging multiple parts no longer causes them to get closer to the camera<br />"
+    cChangelogContent = cChangelogContent.."- Parts no longer appear too high when attached to players<br />"
+    cChangelogContent = cChangelogContent.."- Parts welded to non-standard parts (such as Doremy's dress' balls) can now be attached to proper positions on other characters<br />"
+    cChangelogContent = cChangelogContent.."- Stationary target check has been made a bit more strict<br />"
+    cChangelogContent = cChangelogContent.."- Attempt to improve stability of initially detaching welds<br />"
+    cChangelogContent = cChangelogContent.."- The middle click raycast for sitting no longer runs in guis<br />"
+    cChangelogContent = cChangelogContent.."* Stability issues likely persist. Continue to report them to me.<br /><br />"
+
     cChangelogContent = cChangelogContent.."<b>1.4.4</b><br />"
     cChangelogContent = cChangelogContent.."- Better ensure constant motion of detached accessories<br /><br />"
 
@@ -995,8 +1004,7 @@ do  -- docs content
     cDetachContent = cDetachContent .. "The weld strategy to 'removing' parts from the character's body can also be used to detach and control them.<br />"
     cDetachContent = cDetachContent .. "The BodyPosition class is used to control the parts after they have been detached, and a constant velocity is applied to them for (relative) stability (i.e. less death).<br />"
     cDetachContent = cDetachContent .. "The Stepped event in RunService is used to control the parts, and set their position and rotation every frame. Paths for the objects can be made through functions of position offset to time.<br /><br />"
-    cDetachContent = cDetachContent .. "This script has the parts orbit the player by default. If middle click is held, the parts will follow the mouse, and if the parts touch a player then they will attach to them as close to the correct position as possible.<br />"
-    cDetachContent = cDetachContent .. "Some parts welded to non-standard body parts (i.e. not the Torso, Head, or limbs) will be attached to the torso by default.<br /><br />"
+    cDetachContent = cDetachContent .. "This script has the parts orbit the player by default. If middle click is held, the parts will follow the mouse, and if the parts touch a player then they will attach to them as close to the correct position as possible.<br /><br />"
     cDetachContent = cDetachContent .. "The script still suffers from relative instability and death may occur frequently. Report these instances to me with as much detail as possible."
 
     local cDetachInfo = {}
@@ -1428,6 +1436,7 @@ do  -- waypoints
 end -- waypoints
 
 do  -- hats come alive
+    local commonWelds = {"Head", "Torso", "LArm", "RArm", "LLeg", "RLeg"}
     local parts = {}
 
     local tpTarget
@@ -1448,12 +1457,24 @@ do  -- hats come alive
         end
     end
 
-    function makeAlive(weld)
-        local targetName = weld.Part0.Name
+    local function checkCommonWeld(partName)
+        for k, v in pairs(commonWelds) do
+            if v == partName then
+                return true
+            end
+        end
 
+        return false
+    end
+
+    function makeAlive(weld)
         local part = weld.Part1
         part.CanTouch = true
+
+        part.Velocity = Vector3.new(0, 100, 0)
+        RUN.Stepped:Wait()
         part.Anchored = true
+        RUN.Stepped:Wait()
 
         local bodyPositions = {}
 
@@ -1471,16 +1492,33 @@ do  -- hats come alive
             antiG.Force = Vector3.new(0, p:GetMass() * workspace.Gravity, 0)
         end)
 
+        -- add offsets of welds until a common part is reached
+        local checkWeld = weld
+        local totalOffset = weld.C0 * weld.C1:Inverse()
+
+        while not checkCommonWeld(checkWeld.Part0.Name) do
+            for k, desc in pairs(LocalPlayer.Character:GetDescendants()) do
+                if desc:IsA("Weld") and desc.Part1 == checkWeld.Part0 then
+                    totalOffset = desc.C0 * desc.C1:Inverse() * totalOffset
+                    checkWeld = desc
+                end
+            end
+
+            break
+        end
+
         local partInfo = {}
         partInfo.Weld = weld
-        partInfo.TargetName = targetName
+        partInfo.TargetName = checkWeld.Part0.Name
         partInfo.Part = part
         partInfo.PosList = bodyPositions
+        partInfo.TotalOffset = totalOffset
 
         parts[#parts+1] = partInfo
 
-        RUN.Stepped:Wait()
         weld:Destroy()
+        -- RUN.Stepped:Wait()
+        -- part.Anchored = true
 
         local lTouch = part.Touched:Connect(function(otherPart)
             local hum = otherPart.Parent:FindFirstChildOfClass("Humanoid")
@@ -1505,6 +1543,8 @@ do  -- hats come alive
         if mousePos then
             local unitRay = WORKSPACE.CurrentCamera:ScreenPointToRay(mousePos.X, mousePos.Y)
             local params = RaycastParams.new()
+            params.FilterDescendantsInstances = { LocalPlayer.Character }
+            params.FilterType = Enum.RaycastFilterType.Blacklist
 
             local result = WORKSPACE:Raycast(unitRay.Origin, unitRay.Direction * 1000, params)
             if not result or result.Instance == info.Part then return end
@@ -1533,11 +1573,11 @@ do  -- hats come alive
                 local pos1 = lastPos
                 local dist = math.sqrt((pos2.X - pos1.X)^2 + (pos2.Y - pos1.Y)^2 + (pos2.Z - pos1.Z)^2)
 
-                if dist ~= 0 then
+                if dist > 1/1e9 then
                     tpTargetLastMove[info.TargetName] = t
                 end
 
-                if not tpTargetLastMove[info.TargetName] or t - tpTargetLastMove[info.TargetName] > 0.5 then
+                if not tpTargetLastMove[info.TargetName] or t - tpTargetLastMove[info.TargetName] > 0.1 then
                     local shake = math.sin(t) * 0.25
                     vOff = Vector3.new(0, shake, 0)
                 end
@@ -1545,9 +1585,10 @@ do  -- hats come alive
 
             tpTargetLastPos[info.TargetName] = targetPart.Position
 
-            local cf = targetPart.CFrame * info.Weld.C0 * info.Weld.C1:Inverse()
+            -- local cf = targetPart.CFrame * info.Weld.C0 * info.Weld.C1:Inverse()
+            local cf = targetPart.CFrame * info.TotalOffset
 
-            targetPos = cf.Position + Vector3.new(0, 0.2, 0) + vOff -- counteract the velocity applied in Heartbeat
+            targetPos = cf.Position + vOff
             info.Part.CFrame = cf - cf.Position + info.Part.Position -- proper rotation (JANK!)
         else
             local theta = (t + 10 * idx) * 3
@@ -1856,7 +1897,7 @@ cHotkeys[cAnimationsLabel] = Enum.KeyCode.Four
 cHotkeys[cWaypointsLabel] = Enum.KeyCode.Five
 cHotkeys[cWeldsLabel] = Enum.KeyCode.Six
 
-lInput = INPUT.InputBegan:Connect(function(input)
+lInput = INPUT.InputBegan:Connect(function(input, handled)
     if input.UserInputType == Enum.UserInputType.Keyboard and not
         INPUT:GetFocusedTextBox() then
         
@@ -1870,7 +1911,7 @@ lInput = INPUT.InputBegan:Connect(function(input)
         if input.KeyCode == Enum.KeyCode.Zero then
             exit()
         end
-    elseif input.UserInputType == Enum.UserInputType.MouseButton3 then
+    elseif not handled and input.UserInputType == Enum.UserInputType.MouseButton3 then
         local unitRay = WORKSPACE.CurrentCamera:ScreenPointToRay(input.Position.X, input.Position.Y)
         
         local filter = {}
