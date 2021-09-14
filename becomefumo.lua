@@ -1842,6 +1842,273 @@ do  -- info
     infoText.Text = cInfoText
 end -- info
 
+do  -- minimap
+    -- local Minimap = {}
+    Minimap = {} -- TODO
+
+    Minimap.__index = Minimap
+
+    function Minimap:create(parent)
+        local obj = {}
+        setmetatable(obj, Minimap)
+
+        obj.Parent = parent
+        
+        local mainWalls = workspace.PlayArea["invis walls"]
+        local mwCf, mwSize = mainWalls:GetBoundingBox()
+
+        obj.RealSize = mwSize
+        obj.RealOffset = mwCf.Position - mwSize / 2
+        obj.RealSize2 = Vector2.new(mwSize.X, mwSize.Z)
+        obj.RealOffset2 = Vector2.new(obj.RealOffset.X, obj.RealOffset.Z)
+
+        obj.ScaleFactor = 1.2
+
+        local cMapSize = 300
+        self.cMapSize = cMapSize
+        
+        local mapFrameO = Instance.new("Frame")
+        mapFrameO.Parent = parent
+        mapFrameO.AnchorPoint = Vector2.new(0, 1)
+        mapFrameO.Position = UDim2.fromScale(0, 1)
+        mapFrameO.Size = UDim2.fromScale(0, 0)
+        mapFrameO.BackgroundColor3 = cBackgroundColor
+        mapFrameO.BackgroundTransparency = 0.5
+        mapFrameO.BorderSizePixel = 3
+        mapFrameO.BorderColor3 = cForegroundColor
+        mapFrameO.ClipsDescendants = true
+        
+        obj.FrameOuter = mapFrameO
+        
+        local mapFrameI = Instance.new("Frame")
+        mapFrameI.Parent = mapFrameO
+        mapFrameI.BackgroundTransparency = 0.5
+        mapFrameI.BorderSizePixel = 5
+        mapFrameI.Position = UDim2.fromScale(0, 0)
+        mapFrameI.BorderColor3 = Color3.fromRGB(255, 0, 0)
+
+        obj.FrameInner = mapFrameI
+
+        obj.Terrain = {}
+        obj:_plotTerrain()
+
+        obj._lDisconnect = PLAYERS.PlayerRemoving:Connect(function(player)
+            obj:_playerDisconnect(player)
+        end)
+
+        obj._lHeartbeat = RUN.Heartbeat:Connect(function()
+            obj:_heartbeat()
+        end)
+
+        obj.Players = {}
+        obj.PlayerPositions = {}
+
+        obj.FriendsCache = nil
+        obj.FriendsCacheTime = 0
+
+        obj:updateSize()
+
+        obj._expandTween = nil
+        obj.Expanded = nil
+        obj:setExpanded(false)
+        
+        obj._dragStart = nil
+        obj._dragPosOrig = nil
+
+        mapFrameO.InputBegan:Connect(function(input)
+            obj:_inputB(input)
+        end)
+
+        mapFrameO.InputChanged:Connect(function(input)
+            obj:_inputC(input)
+        end)
+
+        mapFrameO.InputEnded:Connect(function(input)
+            obj:_inputE(input)
+        end)
+
+        return obj
+    end
+    
+    function Minimap:TargetSize()
+        return self.RealSize2 * self.ScaleFactor -- TODO
+    end
+    
+    function Minimap:setExpanded(expanded)
+        if expanded == self.Expanded then return end
+        self.Expanded = expanded
+
+        local tweenInfo = TweenInfo.new(0.5)
+        local goal = {}
+        
+        if expanded then
+            goal.Size = UDim2.fromScale(1, 1)
+            goal.Position = UDim2.fromScale(0, 1)
+            self.ScaleFactor = 5
+        else
+            goal.Size = UDim2.fromOffset(self.cMapSize, self.cMapSize)
+            goal.Position = UDim2.new(0, 100, 1, -100)
+            self.ScaleFactor = 1.2
+        end
+        
+        for k, v in pairs(self.Terrain) do
+            v.UpdateSize()
+        end
+        
+        self:updateSize()
+        
+        local tween = TWEEN:Create(self.FrameOuter, tweenInfo, goal)
+        self._expandTween = tween
+        tween:Play()
+
+        self.FrameOuter.Active = expanded
+    end
+    
+    function Minimap:_plotTerrain()
+        local spawns = workspace.Spawns:GetChildren()
+        local cColorSpawn = Color3.fromRGB(255, 166, 193)
+        local cColorSpawnB = Color3.fromRGB(247, 0, 74)
+
+        for k, v in pairs(spawns) do
+            self:plotPartQuad(v, cColorSpawn, cColorSpawnB)
+        end
+        
+        local cTree = Color3.fromRGB(89, 149, 111)
+        local cTreeB = Color3.fromRGB(5, 145, 56)
+        
+        for k, v in pairs(workspace.PlayArea:GetDescendants()) do
+            if v:IsA("Model") and v.Name == "stupid tree1" then
+                self:plotPartQuad(v:FindFirstChild("Part"), cTree, cTreeB)
+            end
+        end
+    end
+
+    function Minimap:updateSize()
+        self.FrameInner.Size = UDim2.fromOffset(self:TargetSize().X, self:TargetSize().Y)
+    end
+
+    function Minimap:mapPosition(pos)
+        return (pos - self.RealOffset2) / self.RealSize2 * self:TargetSize()
+    end
+
+    function Minimap:_updatePlayerDot(player, dot)
+        if player.UserId == LocalPlayer.UserId then
+            dot.BackgroundColor3 = Color3.fromRGB(255, 255, 0)
+            dot.ZIndex = 3
+            return
+        end
+
+        if not self.FriendsCache or DateTime.now().UnixTimestamp - self.FriendsCacheTime > 10 then
+            self.FriendsCache = LocalPlayer:GetFriendsOnline()
+            self.FriendsCacheTime = DateTime.now().UnixTimestamp
+        end
+        
+        for k, v in pairs(self.FriendsCache) do
+            if v.VisitorId == player.UserId then
+                dot.BackgroundColor3 = Color3.fromRGB(19, 165, 214)
+                dot.ZIndex = 2
+                return
+            end
+        end
+        
+        dot.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    end
+
+    function Minimap:plotPlayer(player)
+        if not self.Players[player.UserId] then
+            local pDot = Instance.new("Frame")
+            pDot.Parent = self.FrameInner
+            pDot.AnchorPoint = Vector2.new(0.5, 0.5)
+            pDot.Size = UDim2.fromOffset(5, 5)
+            pDot.BorderSizePixel = 0
+            
+            self:_updatePlayerDot(player, pDot)
+
+            self.Players[player.UserId] = pDot
+        end
+        
+        if not player.Character then return end
+        
+        local humanRoot = player.Character:FindFirstChild("HumanoidRootPart")
+        if not humanRoot then return end
+
+        local pos3D = humanRoot.Position
+        local mapped = self:mapPosition(Vector2.new(pos3D.X, pos3D.Z))
+        self.PlayerPositions[player.UserId] = mapped
+        self.Players[player.UserId].Position = UDim2.fromOffset(mapped.X, mapped.Y)
+    end
+    
+    function Minimap:plotPartQuad(part, color, colorB)
+        local quad = Instance.new("Frame")
+        quad.Parent = self.FrameInner
+        quad.AnchorPoint = Vector2.new(0.5, 0.5)
+        quad.BackgroundTransparency = 0.25
+        quad.BackgroundColor3 = color
+        quad.BorderSizePixel = 3
+        quad.BorderColor3 = colorB
+        
+        local info = {}
+        info.UpdateSize = function()
+            local scaled = part.Size * self.ScaleFactor
+            quad.Size = UDim2.fromOffset(scaled.X, scaled.Z)
+            
+            local pos2 = self:mapPosition(Vector2.new(part.Position.X, part.Position.Z))
+            quad.Position = UDim2.fromOffset(pos2.X, pos2.Y)
+        end
+        
+        info.UpdateSize()
+        
+        self.Terrain[#self.Terrain + 1] = info
+    end
+
+    function Minimap:_playerDisconnect(player)
+        if self.Players[player.UserId] then
+            self.Players[player.UserId]:Destroy()
+        end
+
+        self.Players[player.UserId] = nil
+        self.PlayerPositions[player.UserId] = nil
+    end
+
+    function Minimap:_heartbeat()
+        for k, v in pairs(PLAYERS:GetPlayers()) do
+            self:plotPlayer(v)
+        end
+
+        local pos = self.PlayerPositions[LocalPlayer.UserId]
+        
+        if not self.Expanded or (self._expandTween and self._expandTween.PlaybackState ~= Enum.PlaybackState.Completed) then
+            self.FrameInner.Position = UDim2.new(0.5, -pos.X, 0.5, -pos.Y)
+        end
+    end
+    
+    function Minimap:_inputB(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 and self.Expanded then
+            self._dragStart = input.Position
+            self._dragPosOrig = self.FrameInner.Position
+        end
+    end
+    
+    function Minimap:_inputC(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement and self._dragStart then
+            local offset = input.Position - self._dragStart
+            self.FrameInner.Position = self._dragPosOrig + UDim2.fromOffset(offset.X, offset.Y)
+        end
+    end
+    
+    function Minimap:_inputE(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            self._dragStart = nil
+        end
+    end
+
+    function Minimap:destroy()
+        self.FrameOuter:Destroy()
+        self._lDisconnect:Disconnect()
+        self._lHeartbeat:Disconnect()
+    end
+end -- minimap
+
 do  -- update info
     local cFileName = "fumofumo.txt"
 
@@ -1870,8 +2137,6 @@ do  -- update info
     end
 end -- update info
 
-local lStepped2 -- TODO
-
 local function exit()
     root:Destroy()
     toggleButton.Visible = true -- reenable the default character selector
@@ -1888,10 +2153,12 @@ local function exit()
     lInputE:Disconnect()
     lCharacter2:Disconnect()
 
-    if lStepped2 then lStepped2:Disconnect() end
+    map:destroy()
 
     getgenv().BF_LOADED = false
 end
+
+map = Minimap:create(root)
 
 cHotkeys = {}
 cHotkeys[cCharactersLabel] = Enum.KeyCode.One
@@ -1904,6 +2171,10 @@ cHotkeys[cWeldsLabel] = Enum.KeyCode.Six
 lInput = INPUT.InputBegan:Connect(function(input, handled)
     if input.UserInputType == Enum.UserInputType.Keyboard and not
         INPUT:GetFocusedTextBox() then
+        
+        if input.KeyCode == Enum.KeyCode.Nine then
+            map:setExpanded(not map.Expanded)
+        end
         
         for k, v in pairs(cHotkeys) do
             if input.KeyCode == v then
@@ -1944,46 +2215,3 @@ lInput = INPUT.InputBegan:Connect(function(input, handled)
         end
     end
 end)
-
-do  -- minimap
-    local function mapTo(offO, sizeO, sizeT, pos)
-        local x = (pos.X - offO.X) / sizeO.X * sizeT.X
-        local y = (pos.Y - offO.Y) / sizeO.Y * sizeT.Y
-
-        return UDim2.fromOffset(x, y)
-    end
-
-    local function vec3ToVec2(v)
-        return Vector2.new(v.Z, v.X)
-    end
-
-    local mainWalls = WORKSPACE.PlayArea["invis walls"]
-    local mwCf, mwSize = mainWalls:GetBoundingBox()
-    local mwRot = mwCf - mwCf.Position
-
-    local mwSizeRot = vec3ToVec2(mwRot:Inverse() * mwSize)
-    local mwSizeRotScaled = mwSizeRot * 0.8
-    
-    local mapFrame = Instance.new("Frame")
-    mapFrame.Parent = root
-    mapFrame.AnchorPoint = Vector2.new(0, 1)
-    mapFrame.Size = UDim2.fromOffset(mwSizeRotScaled.X, mwSizeRotScaled.Y)
-    mapFrame.Position = UDim2.new(0, 100, 1, -100)
-    mapFrame.BackgroundColor3 = cBackgroundColor
-    mapFrame.BackgroundTransparency = 0.5
-    mapFrame.BorderSizePixel = 3
-    mapFrame.BorderColor3 = cForegroundColor
-
-    local pDot = Instance.new("Frame")
-    pDot.Parent = mapFrame
-    pDot.AnchorPoint = Vector2.new(0.5, 0.5)
-    pDot.Size = UDim2.fromOffset(5, 5)
-    pDot.BackgroundColor3 = Color3.fromRGB(255, 255, 0)
-    pDot.BorderSizePixel = 0
-
-    lStepped2 = RUN.Heartbeat:Connect(function()
-        local offO = vec3ToVec2(mwCf.Position) - mwSizeRot / 2
-        local pos3D = mwRot:Inverse() * LocalPlayer.Character:FindFirstChild("HumanoidRootPart").Position
-        pDot.Position = mapTo(offO, mwSizeRot, mwSizeRotScaled, vec3ToVec2(pos3D))
-    end)
-end -- minimap
