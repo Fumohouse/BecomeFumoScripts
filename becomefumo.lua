@@ -1870,6 +1870,8 @@ do  -- update info
     end
 end -- update info
 
+local lStepped2 -- TODO
+
 local function exit()
     root:Destroy()
     toggleButton.Visible = true -- reenable the default character selector
@@ -1885,6 +1887,8 @@ local function exit()
     lInputC:Disconnect()
     lInputE:Disconnect()
     lCharacter2:Disconnect()
+
+    if lStepped2 then lStepped2:Disconnect() end
 
     getgenv().BF_LOADED = false
 end
@@ -1940,3 +1944,46 @@ lInput = INPUT.InputBegan:Connect(function(input, handled)
         end
     end
 end)
+
+do  -- minimap
+    local function mapTo(offO, sizeO, sizeT, pos)
+        local x = (pos.X - offO.X) / sizeO.X * sizeT.X
+        local y = (pos.Y - offO.Y) / sizeO.Y * sizeT.Y
+
+        return UDim2.fromOffset(x, y)
+    end
+
+    local function vec3ToVec2(v)
+        return Vector2.new(v.Z, v.X)
+    end
+
+    local mainWalls = WORKSPACE.PlayArea["invis walls"]
+    local mwCf, mwSize = mainWalls:GetBoundingBox()
+    local mwRot = mwCf - mwCf.Position
+
+    local mwSizeRot = vec3ToVec2(mwRot:Inverse() * mwSize)
+    local mwSizeRotScaled = mwSizeRot * 0.8
+    
+    local mapFrame = Instance.new("Frame")
+    mapFrame.Parent = root
+    mapFrame.AnchorPoint = Vector2.new(0, 1)
+    mapFrame.Size = UDim2.fromOffset(mwSizeRotScaled.X, mwSizeRotScaled.Y)
+    mapFrame.Position = UDim2.new(0, 100, 1, -100)
+    mapFrame.BackgroundColor3 = cBackgroundColor
+    mapFrame.BackgroundTransparency = 0.5
+    mapFrame.BorderSizePixel = 3
+    mapFrame.BorderColor3 = cForegroundColor
+
+    local pDot = Instance.new("Frame")
+    pDot.Parent = mapFrame
+    pDot.AnchorPoint = Vector2.new(0.5, 0.5)
+    pDot.Size = UDim2.fromOffset(5, 5)
+    pDot.BackgroundColor3 = Color3.fromRGB(255, 255, 0)
+    pDot.BorderSizePixel = 0
+
+    lStepped2 = RUN.Heartbeat:Connect(function()
+        local offO = vec3ToVec2(mwCf.Position) - mwSizeRot / 2
+        local pos3D = mwRot:Inverse() * LocalPlayer.Character:FindFirstChild("HumanoidRootPart").Position
+        pDot.Position = mapTo(offO, mwSizeRot, mwSizeRotScaled, vec3ToVec2(pos3D))
+    end)
+end -- minimap
