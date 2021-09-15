@@ -1941,6 +1941,17 @@ do  -- minimap
 
         obj.Terrain = {}
         obj:_plotTerrain()
+        
+        obj.Players = {}
+        obj.PlayerPositions = {}
+
+        for k, v in pairs(PLAYERS:GetPlayers()) do
+            obj:_playerConnect(v)
+        end
+
+        obj._lConnect = PLAYERS.PlayerAdded:Connect(function(player)
+            obj:_playerConnect(player)
+        end)
 
         obj._lDisconnect = PLAYERS.PlayerRemoving:Connect(function(player)
             obj:_playerDisconnect(player)
@@ -1949,9 +1960,6 @@ do  -- minimap
         obj._lHeartbeat = RUN.Heartbeat:Connect(function()
             obj:_heartbeat()
         end)
-
-        obj.Players = {}
-        obj.PlayerPositions = {}
 
         obj.FriendsCache = nil
         obj.FriendsCacheTime = 0
@@ -2032,9 +2040,14 @@ do  -- minimap
         local cTree = Color3.fromRGB(89, 149, 111)
         local cTreeB = Color3.fromRGB(5, 145, 56)
         
+        local cRock = Color3.fromRGB(89, 105, 108)
+        local cRockB = Color3.fromRGB(89, 89, 89)
+        
         for k, v in pairs(features) do
             if v:IsA("Model") and v.Name == "stupid tree1" then
                 self:plotPartQuad(v:FindFirstChild("Part"), cTree, cTreeB)
+            elseif v:IsA("Part") and v.Color == cRock then
+                self:plotPartQuad(v, cRock, cRockB)
             end
         end
         
@@ -2085,15 +2098,6 @@ do  -- minimap
 
     function Minimap:plotPlayer(player)
         local cIconSize = 20
-
-        if not self.Players[player.UserId] then
-            local dot = PlayerDot:create(self.FrameInner)
-            dot:UpdateSize(self.ScaleFactor)
-            
-            self:_updatePlayerDot(player, dot)
-
-            self.Players[player.UserId] = dot
-        end
         
         if not player.Character then return end
         
@@ -2103,6 +2107,8 @@ do  -- minimap
         local pos3D = humanRoot.Position
         local mapped = self:mapPosition(Vector2.new(pos3D.X, pos3D.Z))
         self.PlayerPositions[player.UserId] = mapped
+
+        if not self.Players[player.UserId] then return end
         self.Players[player.UserId].Frame.Position = UDim2.fromOffset(mapped.X, mapped.Y)
         self.Players[player.UserId].Icon.Rotation = -humanRoot.Orientation.Y - 45
     end
@@ -2119,13 +2125,19 @@ do  -- minimap
         local info = {}
         info.UpdateSize = function()
             local scaled = size * self.ScaleFactor
+
+            local x, y, z = cf:ToOrientation()
+            
+            if y % (math.pi / 2) > 1e-3 then
+                quad.Rotation = -y * 180 / math.pi
+            else
+                scaled = (cf - cf.Position):Inverse() * scaled -- if its a multiple of 90deg then just rotate the size instead of rotating the component
+            end
+
             quad.Size = UDim2.fromOffset(scaled.X, scaled.Z)
             
             local pos2 = self:mapPosition(Vector2.new(cf.Position.X, cf.Position.Z))
             quad.Position = UDim2.fromOffset(pos2.X, pos2.Y)
-
-            local x, y, z = cf:ToOrientation()
-            quad.Rotation = -y * 180 / math.pi
         end
         
         info.UpdateSize()
@@ -2135,6 +2147,17 @@ do  -- minimap
     
     function Minimap:plotPartQuad(part, color, colorB)
         self:plotBBox(part.CFrame, part.Size, color, colorB)
+    end
+    
+    function Minimap:_playerConnect(player)
+        if not self.Players[player.UserId] then
+            local dot = PlayerDot:create(self.FrameInner)
+            dot:UpdateSize(self.ScaleFactor)
+            
+            self:_updatePlayerDot(player, dot)
+
+            self.Players[player.UserId] = dot
+        end
     end
 
     function Minimap:_playerDisconnect(player)
@@ -2180,6 +2203,7 @@ do  -- minimap
 
     function Minimap:destroy()
         self.FrameOuter:Destroy()
+        self._lConnect:Disconnect()
         self._lDisconnect:Disconnect()
         self._lHeartbeat:Disconnect()
     end
