@@ -2042,6 +2042,14 @@ do  -- minimap
         for k, v in pairs(spawns) do
             self:plotPartQuad(v, cColorSpawn, cColorSpawnB)
         end
+
+        local cWater = Color3.fromRGB(70, 92, 86)
+        local cWaterB = Color3.fromRGB(2, 135, 99)
+
+        local cPoolCf = CFrame.new(51.980999, -16.854372, -63.6765823, 1, 0, 0, 0, 1, 0, 0, 0, 1) -- cframe and size of the pool floor
+        local cPoolSize = Vector3.new(45.3603, 5.33651, 32.0191)
+        
+        self:plotBBox(cPoolCf, cPoolSize, cWater, cWaterB)
         
         local cTree = Color3.fromRGB(89, 149, 111)
         local cTreeB = Color3.fromRGB(5, 145, 56)
@@ -2067,9 +2075,6 @@ do  -- minimap
                 end
             end
         end
-        
-        -- local cWater = Color3.fromRGB(70, 92, 86)
-        -- local cWaterB = Color3.fromRGB(2, 135, 99)
         
         local cBench = Color3.fromRGB(173, 125, 110)
         local cBenchB = Color3.fromRGB(173, 88, 62)
