@@ -1843,9 +1843,58 @@ do  -- info
 end -- info
 
 do  -- minimap
-    -- local Minimap = {}
-    Minimap = {} -- TODO
+    local PlayerDot = {}
+    PlayerDot.__index = PlayerDot
 
+    function PlayerDot:create(parent)
+        local obj = {}
+        setmetatable(obj, PlayerDot)
+        
+        local cIconSize = 20
+        
+        local frame = Instance.new("Frame")
+        frame.Parent = parent
+        frame.BackgroundTransparency = 1
+        frame.BorderSizePixel = 0
+        frame.Size = UDim2.fromOffset(cIconSize, cIconSize)
+
+        local dot = Instance.new("Frame")
+        dot.Parent = frame
+        dot.AnchorPoint = Vector2.new(0.5, 0.5)
+        dot.Size = UDim2.fromOffset(5, 5)
+        dot.Position = UDim2.fromScale(0.5, 0.5)
+        dot.BorderSizePixel = 0
+        
+        local icon = Instance.new("ImageLabel")
+        icon.Parent = frame
+        icon.Image = "rbxassetid://7480141029"
+        icon.BackgroundTransparency = 1
+        icon.Size = UDim2.fromOffset(cIconSize, cIconSize)
+        icon.BorderSizePixel = 0
+        
+        obj.Frame = frame
+        obj.Dot = dot
+        obj.Icon = icon
+
+        return obj
+    end
+    
+    function PlayerDot:UpdateSize(scale)
+        if scale > 2 then
+            self.Dot.BackgroundTransparency = 1
+            self.Icon.ImageTransparency = 0
+        else
+            self.Dot.BackgroundTransparency = 0
+            self.Icon.ImageTransparency = 1
+        end
+    end
+    
+    function PlayerDot:setColor(color)
+        self.Dot.BackgroundColor3 = color
+        self.Icon.ImageColor3 = color
+    end
+
+    Minimap = {} -- TODO
     Minimap.__index = Minimap
 
     function Minimap:create(parent)
@@ -1955,6 +2004,10 @@ do  -- minimap
             v.UpdateSize()
         end
         
+        for k, v in pairs(self.Players) do
+            if v then v:UpdateSize(self.ScaleFactor) end
+        end
+        
         self:updateSize()
         
         local tween = TWEEN:Create(self.FrameOuter, tweenInfo, goal)
@@ -1993,7 +2046,7 @@ do  -- minimap
 
     function Minimap:_updatePlayerDot(player, dot)
         if player.UserId == LocalPlayer.UserId then
-            dot.BackgroundColor3 = Color3.fromRGB(255, 255, 0)
+            dot:setColor(Color3.fromRGB(255, 255, 0))
             dot.ZIndex = 3
             return
         end
@@ -2005,26 +2058,25 @@ do  -- minimap
         
         for k, v in pairs(self.FriendsCache) do
             if v.VisitorId == player.UserId then
-                dot.BackgroundColor3 = Color3.fromRGB(19, 165, 214)
+                dot:setColor(Color3.fromRGB(19, 165, 214))
                 dot.ZIndex = 2
                 return
             end
         end
         
-        dot.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        dot:setColor(Color3.fromRGB(255, 255, 255))
     end
 
     function Minimap:plotPlayer(player)
-        if not self.Players[player.UserId] then
-            local pDot = Instance.new("Frame")
-            pDot.Parent = self.FrameInner
-            pDot.AnchorPoint = Vector2.new(0.5, 0.5)
-            pDot.Size = UDim2.fromOffset(5, 5)
-            pDot.BorderSizePixel = 0
-            
-            self:_updatePlayerDot(player, pDot)
+        local cIconSize = 20
 
-            self.Players[player.UserId] = pDot
+        if not self.Players[player.UserId] then
+            local dot = PlayerDot:create(self.FrameInner)
+            dot:UpdateSize(self.ScaleFactor)
+            
+            self:_updatePlayerDot(player, dot)
+
+            self.Players[player.UserId] = dot
         end
         
         if not player.Character then return end
@@ -2035,7 +2087,8 @@ do  -- minimap
         local pos3D = humanRoot.Position
         local mapped = self:mapPosition(Vector2.new(pos3D.X, pos3D.Z))
         self.PlayerPositions[player.UserId] = mapped
-        self.Players[player.UserId].Position = UDim2.fromOffset(mapped.X, mapped.Y)
+        self.Players[player.UserId].Frame.Position = UDim2.fromOffset(mapped.X, mapped.Y)
+        self.Players[player.UserId].Icon.Rotation = -humanRoot.Orientation.Y - 45
     end
     
     function Minimap:plotPartQuad(part, color, colorB)
@@ -2063,7 +2116,7 @@ do  -- minimap
 
     function Minimap:_playerDisconnect(player)
         if self.Players[player.UserId] then
-            self.Players[player.UserId]:Destroy()
+            self.Players[player.UserId].Frame:Destroy()
         end
 
         self.Players[player.UserId] = nil
