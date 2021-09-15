@@ -1854,6 +1854,7 @@ do  -- minimap
         
         local frame = Instance.new("Frame")
         frame.Parent = parent
+        frame.AnchorPoint = Vector2.new(0.5, 0.5)
         frame.BackgroundTransparency = 1
         frame.BorderSizePixel = 0
         frame.Size = UDim2.fromOffset(cIconSize, cIconSize)
@@ -1932,7 +1933,7 @@ do  -- minimap
         local mapFrameI = Instance.new("Frame")
         mapFrameI.Parent = mapFrameO
         mapFrameI.BackgroundTransparency = 0.5
-        mapFrameI.BorderSizePixel = 5
+        mapFrameI.BorderSizePixel = 1
         mapFrameI.Position = UDim2.fromScale(0, 0)
         mapFrameI.BorderColor3 = Color3.fromRGB(255, 0, 0)
 
@@ -2021,6 +2022,8 @@ do  -- minimap
         local spawns = workspace.Spawns:GetChildren()
         local cColorSpawn = Color3.fromRGB(255, 166, 193)
         local cColorSpawnB = Color3.fromRGB(247, 0, 74)
+        
+        local features = workspace.PlayArea:GetDescendants()
 
         for k, v in pairs(spawns) do
             self:plotPartQuad(v, cColorSpawn, cColorSpawnB)
@@ -2029,9 +2032,22 @@ do  -- minimap
         local cTree = Color3.fromRGB(89, 149, 111)
         local cTreeB = Color3.fromRGB(5, 145, 56)
         
-        for k, v in pairs(workspace.PlayArea:GetDescendants()) do
+        for k, v in pairs(features) do
             if v:IsA("Model") and v.Name == "stupid tree1" then
                 self:plotPartQuad(v:FindFirstChild("Part"), cTree, cTreeB)
+            end
+        end
+        
+        -- local cWater = Color3.fromRGB(70, 92, 86)
+        -- local cWaterB = Color3.fromRGB(2, 135, 99)
+        
+        local cBench = Color3.fromRGB(173, 125, 110)
+        local cBenchB = Color3.fromRGB(173, 88, 62)
+        
+        for k, v in pairs(features) do
+            if v:IsA("Model") and (v.Name == "Bench" or v.Name == "log") then
+                local cf, size = v:GetBoundingBox()
+                self:plotBBox(cf, size, cBench, cBenchB)
             end
         end
     end
@@ -2041,7 +2057,7 @@ do  -- minimap
     end
 
     function Minimap:mapPosition(pos)
-        return (pos - self.RealOffset2) / self.RealSize2 * self:TargetSize()
+        return (pos - self.RealOffset2) * self.ScaleFactor
     end
 
     function Minimap:_updatePlayerDot(player, dot)
@@ -2091,27 +2107,34 @@ do  -- minimap
         self.Players[player.UserId].Icon.Rotation = -humanRoot.Orientation.Y - 45
     end
     
-    function Minimap:plotPartQuad(part, color, colorB)
+    function Minimap:plotBBox(cf, size, color, colorB)
         local quad = Instance.new("Frame")
         quad.Parent = self.FrameInner
         quad.AnchorPoint = Vector2.new(0.5, 0.5)
         quad.BackgroundTransparency = 0.25
         quad.BackgroundColor3 = color
-        quad.BorderSizePixel = 3
+        quad.BorderSizePixel = 1
         quad.BorderColor3 = colorB
         
         local info = {}
         info.UpdateSize = function()
-            local scaled = part.Size * self.ScaleFactor
+            local scaled = size * self.ScaleFactor
             quad.Size = UDim2.fromOffset(scaled.X, scaled.Z)
             
-            local pos2 = self:mapPosition(Vector2.new(part.Position.X, part.Position.Z))
+            local pos2 = self:mapPosition(Vector2.new(cf.Position.X, cf.Position.Z))
             quad.Position = UDim2.fromOffset(pos2.X, pos2.Y)
+
+            local x, y, z = cf:ToOrientation()
+            quad.Rotation = -y * 180 / math.pi
         end
         
         info.UpdateSize()
         
         self.Terrain[#self.Terrain + 1] = info
+    end
+    
+    function Minimap:plotPartQuad(part, color, colorB)
+        self:plotBBox(part.CFrame, part.Size, color, colorB)
     end
 
     function Minimap:_playerDisconnect(player)
@@ -2211,8 +2234,6 @@ local function exit()
     getgenv().BF_LOADED = false
 end
 
-map = Minimap:create(root)
-
 cHotkeys = {}
 cHotkeys[cCharactersLabel] = Enum.KeyCode.One
 cHotkeys[cOptionsLabel] = Enum.KeyCode.Two
@@ -2268,3 +2289,5 @@ lInput = INPUT.InputBegan:Connect(function(input, handled)
         end
     end
 end)
+
+map = Minimap:create(root)
