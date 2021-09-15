@@ -1894,6 +1894,12 @@ do  -- minimap
         self.Dot.BackgroundColor3 = color
         self.Icon.ImageColor3 = color
     end
+    
+    local cEpsilon = 1e-7
+    local function almostEqual(v1, v2, epsilon)
+        if not epsilon then epsilon = cEpsilon end
+        return math.abs(v1 - v2) < epsilon
+    end
 
     Minimap = {} -- TODO
     Minimap.__index = Minimap
@@ -2043,11 +2049,22 @@ do  -- minimap
         local cRock = Color3.fromRGB(89, 105, 108)
         local cRockB = Color3.fromRGB(89, 89, 89)
         
-        for k, v in pairs(features) do
-            if v:IsA("Model") and v.Name == "stupid tree1" then
+        local cParkourSize = 4.0023837089539
+        local cParkourEpsilon = 1e-2
+        
+        for k, v in pairs(features) do -- not so important stuff
+            if v:IsA("Model") and v.Name == "stupid tree1" then -- single square trees
                 self:plotPartQuad(v:FindFirstChild("Part"), cTree, cTreeB)
-            elseif v:IsA("Part") and v.Color == cRock then
-                self:plotPartQuad(v, cRock, cRockB)
+            elseif v:IsA("Part") then
+                local children = v:GetChildren()
+                
+                if v.Color == cRock then -- any rocks
+                    self:plotPartQuad(v, cRock, cRockB)
+                elseif almostEqual(v.Size.X, cParkourSize, cParkourEpsilon) and -- parkour
+                    almostEqual(v.Size.Z, cParkourSize, cParkourEpsilon) and
+                    #children >= 6 and children[1]:IsA("Texture") and children[1].Texture == "http://www.roblox.com/asset/?id=6022009301" then
+                    self:plotPartQuad(v, v.Color, cRockB)
+                end
             end
         end
         
@@ -2057,7 +2074,7 @@ do  -- minimap
         local cBench = Color3.fromRGB(173, 125, 110)
         local cBenchB = Color3.fromRGB(173, 88, 62)
         
-        for k, v in pairs(features) do
+        for k, v in pairs(features) do -- bench
             if v:IsA("Model") and (v.Name == "Bench" or v.Name == "log") then
                 local cf, size = v:GetBoundingBox()
                 self:plotBBox(cf, size, cBench, cBenchB)
