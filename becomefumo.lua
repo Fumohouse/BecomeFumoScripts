@@ -1843,10 +1843,107 @@ do  -- info
 end -- info
 
 do  -- minimap
+    local TooltipProvider = {}
+    TooltipProvider.__index = TooltipProvider
+    
+    TooltipProvider.createText = function(size)
+        local text = Instance.new("TextLabel")
+        text.AutomaticSize = Enum.AutomaticSize.XY
+        text.TextWrapped = false
+        text.TextColor3 = cForegroundColor
+        text.BackgroundTransparency = 1
+        text.BorderSizePixel = 0
+        text.Font = cFont
+        text.TextSize = size
+        text.RichText = true
+        
+        return text
+    end
+
+    function TooltipProvider:create(parent)
+        local obj = {}
+        setmetatable(obj, TooltipProvider)
+        
+        obj.Parent = parent
+        
+        local tooltipFrame = Instance.new("Frame")
+        tooltipFrame.Parent = parent
+        tooltipFrame.AnchorPoint = Vector2.new(0, 0)
+        tooltipFrame.AutomaticSize = Enum.AutomaticSize.XY
+        tooltipFrame.BackgroundTransparency = 0.25
+        tooltipFrame.BackgroundColor3 = cBackgroundColor
+        tooltipFrame.BorderSizePixel = 0
+        
+        obj.Frame = tooltipFrame
+        
+        obj.Instances = {}
+        obj.Scale = 1
+
+        return obj
+    end
+    
+    function TooltipProvider:_mouseEnter(obj)
+        if obj.ShowTooltip and not obj:ShowTooltip() then return end
+        
+        local pos = INPUT:GetMouseLocation()
+
+        self.Frame:ClearAllChildren()
+        obj:CreateTooltip(self.Frame)
+        self.Frame.Position = UDim2.fromOffset(pos.X, pos.Y)
+        
+        self.Frame.Visible = true
+    end
+    
+    function TooltipProvider:_mouseLeave(obj)
+        self.Frame:ClearAllChildren()
+        self.Frame.Visible = false
+    end
+    
+    function TooltipProvider:register(obj)
+        if not obj.TooltipObject or not obj.CreateTooltip then return end
+        
+        local info = {}
+        info.Object = obj
+
+        info.lEnter = obj.TooltipObject.MouseEnter:Connect(function()
+            self:_mouseEnter(obj)
+        end)
+        
+        info.lLeave = obj.TooltipObject.MouseLeave:Connect(function()
+            self:_mouseLeave(obj)
+        end)
+        
+        if obj.Clicked then
+            info.lClicked = obj.TooltipObject.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    obj:Clicked(input)
+                end
+            end)
+        end
+        
+        self.Instances[#self.Instances + 1] = info
+    end
+    
+    function TooltipProvider:deregister(obj)
+        for k, v in pairs(self.Instances) do
+            if v.Object == obj then
+                v.lEnter:Disconnect()
+                v.lLeave:Disconnect()
+                if v.lClicked then
+                    v.lClicked:Disconnect()
+                end
+
+                self.Instances[k] = nil
+
+                break
+            end
+        end
+    end
+
     local PlayerDot = {}
     PlayerDot.__index = PlayerDot
 
-    function PlayerDot:create(parent)
+    function PlayerDot:create(parent, player)
         local obj = {}
         setmetatable(obj, PlayerDot)
         
@@ -1873,14 +1970,22 @@ do  -- minimap
         icon.Size = UDim2.fromOffset(cIconSize, cIconSize)
         icon.BorderSizePixel = 0
         
+        obj.TooltipObject = frame
         obj.Frame = frame
         obj.Dot = dot
         obj.Icon = icon
+        
+        obj.Player = player
+        obj.IsLocal = player == LocalPlayer
+        
+        obj.InfoText = nil
 
         return obj
     end
     
     function PlayerDot:UpdateSize(scale)
+        self.Scale = scale
+
         if scale > 2 then
             self.Dot.BackgroundTransparency = 1
             self.Icon.ImageTransparency = 0
@@ -1893,6 +1998,54 @@ do  -- minimap
     function PlayerDot:setColor(color)
         self.Dot.BackgroundColor3 = color
         self.Icon.ImageColor3 = color
+    end
+    
+    function PlayerDot:ShowTooltip()
+        return self.Scale > 2
+    end
+    
+    function PlayerDot:CreateTooltip(frame)
+        local y = 0
+        local cUsernameHeight = 24
+        local cInfoHeight = 15
+
+        local usernameText = TooltipProvider.createText(cUsernameHeight)
+        usernameText.Parent = frame
+        usernameText.Text = "<b>"..self.Player.Name.."</b>"
+        
+        y = y + cUsernameHeight
+        
+        local infoText = TooltipProvider.createText(cInfoHeight)
+        infoText.Parent = frame
+        infoText.Position = UDim2.fromOffset(0, y)
+        if self.InfoText then
+            infoText.Text = self.InfoText
+        elseif self.IsLocal then
+            infoText.Text = "This is you."
+        else
+            infoText.Text = "Random"
+        end
+        
+        y = y + cInfoHeight
+        
+        if not self.IsLocal then
+            local tpText = TooltipProvider.createText(cInfoHeight)
+            tpText.Parent = frame
+            tpText.Position = UDim2.fromOffset(0, y)
+            tpText.Text = "<i>Click to teleport</i>"
+            
+            y = y + cInfoHeight
+        end
+    end
+    
+    function PlayerDot:Clicked(input)
+        if self.IsLocal then return end
+
+        local root = self.Player.Character:FindFirstChild("HumanoidRootPart")
+        
+        if root then
+            teleport(root.CFrame)
+        end
     end
     
     local cEpsilon = 1e-7
@@ -1944,6 +2097,8 @@ do  -- minimap
         mapFrameI.BorderColor3 = Color3.fromRGB(255, 0, 0)
 
         obj.FrameInner = mapFrameI
+        
+        obj.Tooltips = TooltipProvider:create(parent)
 
         obj.Terrain = {}
         obj:_plotTerrain()
@@ -2033,15 +2188,7 @@ do  -- minimap
     end
     
     function Minimap:_plotTerrain()
-        local spawns = workspace.Spawns:GetChildren()
-        local cColorSpawn = Color3.fromRGB(255, 166, 193)
-        local cColorSpawnB = Color3.fromRGB(247, 0, 74)
-        
         local features = workspace.PlayArea:GetDescendants()
-
-        for k, v in pairs(spawns) do
-            self:plotPartQuad(v, cColorSpawn, cColorSpawnB)
-        end
 
         local cWater = Color3.fromRGB(70, 92, 86)
         local cWaterB = Color3.fromRGB(2, 135, 99)
@@ -2085,6 +2232,14 @@ do  -- minimap
                 self:plotBBox(cf, size, cBench, cBenchB)
             end
         end
+
+        local spawns = workspace.Spawns:GetChildren()
+        local cColorSpawn = Color3.fromRGB(255, 166, 193)
+        local cColorSpawnB = Color3.fromRGB(247, 0, 74)
+
+        for k, v in pairs(spawns) do
+            self:plotPartQuad(v, cColorSpawn, cColorSpawnB)
+        end
     end
 
     function Minimap:updateSize()
@@ -2109,6 +2264,7 @@ do  -- minimap
         
         for k, v in pairs(self.FriendsCache) do
             if v.VisitorId == player.UserId then
+                dot.InfoText = "Friend"
                 dot:setColor(Color3.fromRGB(19, 165, 214))
                 dot.ZIndex = 2
                 return
@@ -2173,8 +2329,10 @@ do  -- minimap
     
     function Minimap:_playerConnect(player)
         if not self.Players[player.UserId] then
-            local dot = PlayerDot:create(self.FrameInner)
+            local dot = PlayerDot:create(self.FrameInner, player)
             dot:UpdateSize(self.ScaleFactor)
+            
+            self.Tooltips:register(dot)
             
             self:_updatePlayerDot(player, dot)
 
@@ -2184,6 +2342,7 @@ do  -- minimap
 
     function Minimap:_playerDisconnect(player)
         if self.Players[player.UserId] then
+            self.Tooltips:deregister(self.Players[player.UserId])
             self.Players[player.UserId].Frame:Destroy()
         end
 
@@ -2225,6 +2384,7 @@ do  -- minimap
 
     function Minimap:destroy()
         self.FrameOuter:Destroy()
+        self.Tooltips.Frame:Destroy()
         self._lConnect:Disconnect()
         self._lDisconnect:Disconnect()
         self._lHeartbeat:Disconnect()
@@ -2336,4 +2496,6 @@ lInput = INPUT.InputBegan:Connect(function(input, handled)
     end
 end)
 
-map = Minimap:create(root)
+pcall(function()
+    map = Minimap:create(root)
+end)
