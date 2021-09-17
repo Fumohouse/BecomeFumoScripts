@@ -1995,6 +1995,10 @@ do  -- minimap
         end
     end
     
+    function PlayerDot:setParent(parent)
+        self.Frame.Parent = parent
+    end
+    
     function PlayerDot:setColor(color)
         self.Dot.BackgroundColor3 = color
         self.Icon.ImageColor3 = color
@@ -2063,18 +2067,14 @@ do  -- minimap
 
         obj.Parent = parent
         
-        local mainWalls = workspace.PlayArea["invis walls"]
-        local mwCf, mwSize = mainWalls:GetBoundingBox()
-
-        obj.RealSize = mwSize
-        obj.RealOffset = mwCf.Position - mwSize / 2
-        obj.RealSize2 = Vector2.new(mwSize.X, mwSize.Z)
-        obj.RealOffset2 = Vector2.new(obj.RealOffset.X, obj.RealOffset.Z)
+        local origin, maxPos = obj:_findWorldBounds()
+        obj.WorldOrigin = origin
+        obj.RealSize2 = maxPos - origin
 
         obj.ScaleFactor = 1.2
 
         local cMapSize = 300
-        self.cMapSize = cMapSize
+        obj.cMapSize = cMapSize
         
         local mapFrameO = Instance.new("Frame")
         mapFrameO.Parent = parent
@@ -2091,16 +2091,22 @@ do  -- minimap
         
         local mapFrameI = Instance.new("Frame")
         mapFrameI.Parent = mapFrameO
-        mapFrameI.BackgroundTransparency = 0.5
-        mapFrameI.BorderSizePixel = 1
+        mapFrameI.BackgroundTransparency = 1
+        mapFrameI.BorderSizePixel = 0
         mapFrameI.Position = UDim2.fromScale(0, 0)
-        mapFrameI.BorderColor3 = Color3.fromRGB(255, 0, 0)
 
         obj.FrameInner = mapFrameI
         
         obj.Tooltips = TooltipProvider:create(parent)
+        
+        obj.AreaLayer = obj:createLayer()
+        obj.TerrainLayer = obj:createLayer()
+        obj.PlayerLayerRandom = obj:createLayer()
+        obj.PlayerLayerSpecial = obj:createLayer()
+        obj.PlayerLayerSelf = obj:createLayer()
 
         obj.Terrain = {}
+        obj:_plotAreas()
         obj:_plotTerrain()
         
         obj.Players = {}
@@ -2149,8 +2155,73 @@ do  -- minimap
         return obj
     end
     
+    function Minimap:createLayer()
+        local layer = Instance.new("Frame")
+        layer.Parent = self.FrameInner
+        layer.Size = UDim2.fromScale(1, 1)
+        layer.BorderSizePixel = 0
+        layer.BackgroundTransparency = 1
+        
+        return layer
+    end
+    
     function Minimap:TargetSize()
         return self.RealSize2 * self.ScaleFactor -- TODO
+    end
+    
+    function Minimap:_findBounds(insts, check)
+        local xMin = math.huge
+        local yMin = math.huge
+        local zMin = math.huge
+        
+        local xMax = -math.huge
+        local yMax = -math.huge
+        local zMax = -math.huge
+
+        local function scan(inst)
+            if not (inst:IsA("Part") or inst:IsA("MeshPart")) or (check and not check(inst)) then return end
+
+            local posMin = inst.Position - inst.Size / 2 -- top left
+            local posMax = inst.Position + inst.Size / 2 -- bottom right
+
+            if posMin.X < xMin then
+                xMin = posMin.X
+            end
+
+            if posMax.X > xMax then
+                xMax = posMax.X
+            end
+            
+            if posMin.Y < yMin then
+                yMin = posMin.Y
+            end
+
+            if posMax.Y > yMax then
+                yMax = posMax.Y
+            end
+
+            if posMin.Z < zMin then
+                zMin = posMin.Z
+            end
+
+            if posMax.Z > zMax then
+                zMax = posMax.Z
+            end
+        end
+
+        for k, v in pairs(insts) do
+            for _, part in pairs(v:GetDescendants()) do
+                scan(part)
+            end
+        end
+
+        return Vector3.new(xMin, yMin, zMin), Vector3.new(xMax, yMax, zMax)
+    end
+    
+    function Minimap:_findWorldBounds()
+        local posMin, posMax = self:_findBounds({ workspace.PlayArea, REPLICATED.Zones, workspace.ActiveZone })
+        -- must scan ActiveZone for zones player is currently inside
+        return Vector2.new(posMin.X, posMin.Z), Vector2.new(posMax.X, posMax.Z)
     end
     
     function Minimap:setExpanded(expanded)
@@ -2187,6 +2258,36 @@ do  -- minimap
         self.FrameOuter.Active = expanded
     end
     
+    function Minimap:_findZone(name)
+        local rep = REPLICATED.Zones:FindFirstChild(name)
+        if rep then return rep end
+        
+        local active = workspace.ActiveZone:FindFirstChild(name)
+        if active then return active end
+        
+        log("WARNING: Did you delete any zones? Failed to find "..name.."!")
+    end
+    
+    function Minimap:_plotAreas()
+        local cArea = Color3.fromRGB(86, 94, 81)
+        local cAreaB = Color3.fromRGB(89, 149, 111)
+
+        local mwCf, mwSize = workspace.PlayArea["invis walls"]:GetBoundingBox()
+        self:plotBBox(mwCf, mwSize, cArea, cAreaB, self.AreaLayer)
+        
+        local cBeachCf = CFrame.new(-978.322266, 134.538483, 8961.99805, 1, 0, 0, 0, 1, 0, 0, 0, 1) -- the roof barrier
+        local cBeachSize = Vector3.new(273.79, 29.45, 239.5)
+        self:plotBBox(cBeachCf, cBeachSize, cArea, cAreaB, self.AreaLayer)
+        
+        local ruinsMin, ruinsMax = self:_findBounds({ self:_findZone("Ruins") }, function(inst) return inst.Name ~= "bal" end)
+        local ruinsCenter = CFrame.new((ruinsMin + ruinsMax) / 2)
+        self:plotBBox(ruinsCenter, ruinsMax - ruinsMin, cArea, cAreaB, self.AreaLayer)
+        
+        local velvetMin, velvetMax = self:_findBounds({ self:_findZone("VelvetRoom") })
+        local velvetCenter = CFrame.new((velvetMin + velvetMax) / 2)
+        self:plotBBox(velvetCenter, velvetMax - velvetMin, cArea, cAreaB, self.AreaLayer)
+    end
+
     function Minimap:_plotTerrain()
         local features = workspace.PlayArea:GetDescendants()
 
@@ -2247,13 +2348,13 @@ do  -- minimap
     end
 
     function Minimap:mapPosition(pos)
-        return (pos - self.RealOffset2) * self.ScaleFactor
+        return (pos - self.WorldOrigin) * self.ScaleFactor
     end
 
     function Minimap:_updatePlayerDot(player, dot)
         if player.UserId == LocalPlayer.UserId then
+            dot:setParent(self.PlayerLayerSelf)
             dot:setColor(Color3.fromRGB(255, 255, 0))
-            dot.ZIndex = 3
             return
         end
 
@@ -2264,9 +2365,9 @@ do  -- minimap
         
         for k, v in pairs(self.FriendsCache) do
             if v.VisitorId == player.UserId then
+                dot:setParent(self.PlayerLayerSpecial)
                 dot.InfoText = "Friend"
                 dot:setColor(Color3.fromRGB(19, 165, 214))
-                dot.ZIndex = 2
                 return
             end
         end
@@ -2291,9 +2392,11 @@ do  -- minimap
         self.Players[player.UserId].Icon.Rotation = -humanRoot.Orientation.Y - 45
     end
     
-    function Minimap:plotBBox(cf, size, color, colorB)
+    function Minimap:plotBBox(cf, size, color, colorB, parent)
+        if not parent then parent = self.TerrainLayer end
+
         local quad = Instance.new("Frame")
-        quad.Parent = self.FrameInner
+        quad.Parent = parent
         quad.AnchorPoint = Vector2.new(0.5, 0.5)
         quad.BackgroundTransparency = 0.25
         quad.BackgroundColor3 = color
@@ -2323,13 +2426,13 @@ do  -- minimap
         self.Terrain[#self.Terrain + 1] = info
     end
     
-    function Minimap:plotPartQuad(part, color, colorB)
-        self:plotBBox(part.CFrame, part.Size, color, colorB)
+    function Minimap:plotPartQuad(part, color, colorB, parent)
+        self:plotBBox(part.CFrame, part.Size, color, colorB, parent)
     end
     
     function Minimap:_playerConnect(player)
         if not self.Players[player.UserId] then
-            local dot = PlayerDot:create(self.FrameInner, player)
+            local dot = PlayerDot:create(self.PlayerLayerRandom, player)
             dot:UpdateSize(self.ScaleFactor)
             
             self.Tooltips:register(dot)
@@ -2435,7 +2538,9 @@ local function exit()
     lInputE:Disconnect()
     lCharacter2:Disconnect()
 
-    map:destroy()
+    pcall(function()
+        map:destroy()
+    end)
 
     getgenv().BF_LOADED = false
 end
@@ -2496,6 +2601,4 @@ lInput = INPUT.InputBegan:Connect(function(input, handled)
     end
 end)
 
-pcall(function()
-    map = Minimap:create(root)
-end)
+map = Minimap:create(root)
