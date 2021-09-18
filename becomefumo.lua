@@ -112,7 +112,7 @@ do  -- tabcontrol
 
     TabControl.__index = TabControl
 
-    function TabControl:create(parent)
+    function TabControl.new(parent)
         local obj = {}
         setmetatable(obj, TabControl)
 
@@ -366,7 +366,7 @@ end
 -- common gui
 --
 
-tabControl = TabControl:create(root)
+tabControl = TabControl.new(root)
 
 function createScroll()
     local scroll = Instance.new("ScrollingFrame")
@@ -1860,7 +1860,7 @@ do  -- minimap
         return text
     end
 
-    function TooltipProvider:create(parent)
+    function TooltipProvider.new(parent)
         local obj = {}
         setmetatable(obj, TooltipProvider)
         
@@ -1943,7 +1943,7 @@ do  -- minimap
     local PlayerDot = {}
     PlayerDot.__index = PlayerDot
 
-    function PlayerDot:create(parent, player)
+    function PlayerDot.new(parent, player)
         local obj = {}
         setmetatable(obj, PlayerDot)
         
@@ -2061,7 +2061,7 @@ do  -- minimap
     Minimap = {} -- TODO
     Minimap.__index = Minimap
 
-    function Minimap:create(parent)
+    function Minimap.new(parent)
         local obj = {}
         setmetatable(obj, Minimap)
 
@@ -2097,7 +2097,7 @@ do  -- minimap
 
         obj.FrameInner = mapFrameI
         
-        obj.Tooltips = TooltipProvider:create(parent)
+        obj.Tooltips = TooltipProvider.new(parent)
         
         obj.AreaLayer = obj:createLayer()
         obj.TerrainLayer = obj:createLayer()
@@ -2432,7 +2432,7 @@ do  -- minimap
     
     function Minimap:_playerConnect(player)
         if not self.Players[player.UserId] then
-            local dot = PlayerDot:create(self.PlayerLayerRandom, player)
+            local dot = PlayerDot.new(self.PlayerLayerRandom, player)
             dot:UpdateSize(self.ScaleFactor)
             
             self.Tooltips:register(dot)
@@ -2601,4 +2601,4 @@ lInput = INPUT.InputBegan:Connect(function(input, handled)
     end
 end)
 
-map = Minimap:create(root)
+map = Minimap.new(root)
