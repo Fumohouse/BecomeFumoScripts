@@ -1007,6 +1007,7 @@ do  -- docs content
     local cChangelogContent = ""
     cChangelogContent = cChangelogContent.."<b>1.5.1</b><br />"
     cChangelogContent = cChangelogContent.."- Added lerps back to mouse movement and orbit of weld parts + additional tweaking<br />"
+    cChangelogContent = cChangelogContent.."- Blacklist music region bounding boxes and the main invis walls from weld raycast<br />"
     cChangelogContent = cChangelogContent.."- ???<br /><br />"
 
     cChangelogContent = cChangelogContent.."<b>1.5.0 - Minimap</b><br />"
@@ -1715,7 +1716,7 @@ do  -- hats come alive
         if mousePos then
             local unitRay = WORKSPACE.CurrentCamera:ScreenPointToRay(mousePos.X, mousePos.Y)
             local params = RaycastParams.new()
-            params.FilterDescendantsInstances = { LocalPlayer.Character }
+            params.FilterDescendantsInstances = { LocalPlayer.Character, workspace.MusicPlayer.SoundRegions, workspace.PlayArea["invis walls"] }
             params.FilterType = Enum.RaycastFilterType.Blacklist
 
             local result = WORKSPACE:Raycast(unitRay.Origin, unitRay.Direction * 1000, params)
@@ -1818,14 +1819,6 @@ do  -- hats come alive
     end)
 
     lHeartbeat = RUN.Heartbeat:Connect(function()
-        -- local char = LocalPlayer.Character
-        -- if not char then return end
-
-        -- iteratePart(char, function(p)
-        --     if p.Name == "HumanoidRootPart" then return end
-        --     p.Velocity = Vector3.new(0, 35, 0)
-        -- end)
-
         for k, info in pairs(parts) do
             if info then
                 iteratePart(info.Part, function(p)
