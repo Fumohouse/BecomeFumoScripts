@@ -1006,7 +1006,7 @@ do  -- docs content
     
     local cChangelogContent = ""
     cChangelogContent = cChangelogContent.."<b>1.5.1</b><br />"
-    cChangelogContent = cChangelogContent.."- Added lerps back to mouse movement and orbit of weld parts<br />"
+    cChangelogContent = cChangelogContent.."- Added lerps back to mouse movement and orbit of weld parts + additional tweaking<br />"
     cChangelogContent = cChangelogContent.."- ???<br /><br />"
 
     cChangelogContent = cChangelogContent.."<b>1.5.0 - Minimap</b><br />"
@@ -1688,9 +1688,8 @@ do  -- hats come alive
 
         weld:Destroy()
         part.Velocity = Vector3.new(0, 100, 0)
-        RUN.Stepped:Wait()
+        RUN.Heartbeat:Wait()
         part.Anchored = true
-        RUN.Stepped:Wait()
 
         local lTouch = part.Touched:Connect(function(otherPart)
             local hum = otherPart.Parent:FindFirstChildOfClass("Humanoid")
