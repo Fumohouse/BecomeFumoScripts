@@ -7,7 +7,7 @@ local function log(msg)
     print("[fumo] "..msg)
 end
 
-version = "1.5.0"
+version = "1.5.1"
 
 do  -- double load prevention
     if BF_LOADED then
@@ -1005,6 +1005,10 @@ do  -- docs content
     addDoc(cAboutInfo)
     
     local cChangelogContent = ""
+    cChangelogContent = cChangelogContent.."<b>1.5.1</b><br />"
+    cChangelogContent = cChangelogContent.."- Added lerps back to mouse movement and orbit of weld parts<br />"
+    cChangelogContent = cChangelogContent.."- ???<br /><br />"
+
     cChangelogContent = cChangelogContent.."<b>1.5.0 - Minimap</b><br />"
     cChangelogContent = cChangelogContent.."- Added a minimap. Due to performance overhead and incompleteness, the map is unloaded by default. Press N (by default) to toggle map visiblity and M to toggle zoomed view.<br />"
     cChangelogContent = cChangelogContent.."- Fixed animations still being highlighted after character is reset<br />"
@@ -1642,11 +1646,6 @@ do  -- hats come alive
         local part = weld.Part1
         part.CanTouch = true
 
-        part.Velocity = Vector3.new(0, 100, 0)
-        RUN.Stepped:Wait()
-        part.Anchored = true
-        RUN.Stepped:Wait()
-
         local bodyPositions = {}
 
         iteratePart(part, function(p)
@@ -1688,8 +1687,10 @@ do  -- hats come alive
         parts[#parts+1] = partInfo
 
         weld:Destroy()
-        -- RUN.Stepped:Wait()
-        -- part.Anchored = true
+        part.Velocity = Vector3.new(0, 100, 0)
+        RUN.Stepped:Wait()
+        part.Anchored = true
+        RUN.Stepped:Wait()
 
         local lTouch = part.Touched:Connect(function(otherPart)
             local hum = otherPart.Parent:FindFirstChildOfClass("Humanoid")
@@ -1706,8 +1707,9 @@ do  -- hats come alive
         end)
     end
 
-    local function updatePart(info, t, idx)
+    local function updatePart(info, t, dT, idx)
         local targetPos
+        local alpha = 1
     
         local ang = ((t + 10 * idx) * 180) % 360
 
@@ -1721,7 +1723,8 @@ do  -- hats come alive
             if not result or result.Instance == info.Part then return end
 
             targetPos = result.Position
-            info.Part.Rotation = Vector3.new(ang, ang, ang)
+            alpha = 0.3
+            info.Part.Rotation = Vector3.new(0, ang, 0)
         elseif tpTarget then
             local targetPart = tpTarget:FindFirstChild(info.TargetName)
             if targetPart then
@@ -1756,7 +1759,6 @@ do  -- hats come alive
 
             tpTargetLastPos[info.TargetName] = targetPart.Position
 
-            -- local cf = targetPart.CFrame * info.Weld.C0 * info.Weld.C1:Inverse()
             local cf = targetPart.CFrame * info.TotalOffset
 
             targetPos = cf.Position + vOff
@@ -1769,11 +1771,16 @@ do  -- hats come alive
             local vOff = Vector3.new(xOff, zOff, yOff) * 2
 
             targetPos = LocalPlayer.Character.Head.Head.Position + vOff
+            alpha = 0.2
             info.Part.Rotation = Vector3.new(ang, ang, ang)
         end
 
         for k, v in pairs(info.PosList) do
-            v.Position = targetPos
+            if alpha ~= 1 then
+                v.Position = v.Position:Lerp(targetPos, alpha * 60 * dT)
+            else
+                v.Position = targetPos
+            end
         end
     end
 
@@ -1798,13 +1805,13 @@ do  -- hats come alive
         end
     end)
 
-    lStepped = RUN.Stepped:Connect(function(t)
+    lStepped = RUN.Stepped:Connect(function(t, dT)
         local idx = 0
 
         for k, info in pairs(parts) do
             if info then
                 info.Part.Anchored = false
-                updatePart(info, t, idx)
+                updatePart(info, t, dT, idx)
             end
 
             idx = idx + 1
