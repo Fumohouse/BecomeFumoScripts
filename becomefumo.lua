@@ -7,7 +7,7 @@ local function log(msg)
     print("[fumo] "..msg)
 end
 
-version = "1.4.5"
+version = "1.5.0"
 
 do  -- double load prevention
     if BF_LOADED then
@@ -32,6 +32,7 @@ INPUT = game:GetService("UserInputService")
 REPLICATED = game:GetService("ReplicatedStorage")
 PLAYERS = game:GetService("Players")
 RUN = game:GetService("RunService")
+HTTP = game:GetService("HttpService")
 WORKSPACE = game.Workspace
 
 LocalPlayer = PLAYERS.LocalPlayer
@@ -73,6 +74,160 @@ cAccentColor = Color3.fromRGB(10, 162, 175)
 
 cFont = Enum.Font.Ubuntu
 
+do  -- config & bindings
+    local ConfigManager = {}
+    ConfigManager.__index = ConfigManager
+
+    function ConfigManager.new()
+        local obj = {}
+        setmetatable(obj, ConfigManager)
+        
+        obj.Filename = "fumo.json"
+        obj.Value = nil
+        obj.Default = {
+            ["version"] = nil, -- for version check
+            ["keybinds"] = {
+                ["TabCharacters"] = Enum.KeyCode.One.Name,
+                ["TabOptions"] = Enum.KeyCode.Two.Name,
+                ["TabDocs"] = Enum.KeyCode.Three.Name,
+                ["TabAnims"] = Enum.KeyCode.Four.Name,
+                ["TabWaypoints"] = Enum.KeyCode.Five.Name,
+                ["TabWelds"] = Enum.KeyCode.Six.Name,
+                ["TabSettings"] = Enum.KeyCode.Seven.Name,
+                ["MapVis"] = Enum.KeyCode.N.Name,
+                ["MapView"] = Enum.KeyCode.M.Name,
+                ["RaySit"] = Enum.KeyCode.E.Name,
+                ["Exit"] = Enum.KeyCode.Zero.Name
+            }
+        }
+        
+        obj.UseFs = true
+        
+        if not writefile then
+            log("WARNING: No file write access. Config will not save or load.")
+            obj.UseFs = false
+        end
+        
+        obj:load()
+        obj:checkMissingKeys()
+
+        return obj
+    end
+    
+    function ConfigManager:checkMissingKeys()
+        local shouldSave = false
+        
+        -- recursively check if anything is missing.
+        local function checkTable(t, default)
+            for k, v in pairs(default) do
+                if not t[k] then
+                    t[k] = v
+                    shouldSave = true
+                elseif type(v) == "table" then
+                    checkTable(t[k], v)
+                end
+            end
+        end
+
+        checkTable(self.Value, self.Default)
+        
+        if shouldSave then self:save() end
+    end
+    
+    function ConfigManager:setDefault()
+        self.Value = self.Default
+        self:save()
+    end
+    
+    function ConfigManager:save()
+        if not self.UseFs then return end
+        
+        local str = HTTP:JSONEncode(self.Value)
+        writefile(self.Filename, str)
+    end
+    
+    function ConfigManager:load()
+        if not self.UseFs then self.Value = self.Default return end
+        
+        if not pcall(function() readfile(self.Filename) end) then
+            log("Creating new config file.")
+            self:setDefault()
+        else
+            local success = pcall(function()
+                self.Value = HTTP:JSONDecode(readfile(self.Filename))
+            end)
+            
+            if not success then
+                log("WARNING: Config data is invalid. Restoring defaults...")
+                self:setDefault()
+            end
+        end
+    end
+    
+    config = ConfigManager.new()
+    
+    local KeybindManager = {}
+    KeybindManager.__index = KeybindManager
+
+    function KeybindManager.new(configManager)
+        local obj = {}
+        setmetatable(obj, KeybindManager)
+
+        obj.Config = configManager
+        obj.Keybinds = configManager.Value.keybinds
+        
+        obj._lKeyPress = INPUT.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.Keyboard and not
+                INPUT:GetFocusedTextBox() then
+                obj:_keyPress(input.KeyCode)
+            end
+        end)
+        
+        obj.Bindings = {}
+        
+        obj.Disabled = false
+
+        return obj
+    end
+    
+    function KeybindManager:rebind(name, key)
+        self.Keybinds[name] = key.Name
+        self.Config:save()
+    end
+    
+    function KeybindManager:unbind(name)
+        self.Keybinds[name] = -1
+        self.Config:save()
+    end
+    
+    function KeybindManager:bind(name, del)
+        if self.Bindings[name] then
+            log("WARNING: Binding the same action twice is unsupported!")
+        end
+        
+        self.Bindings[name] = del
+    end
+    
+    function KeybindManager:_keyPress(code)
+        if self.Disabled then return end
+
+        for k, v in pairs(self.Keybinds) do
+            if v == code.Name then
+                local del = self.Bindings[k]
+                if del then del() end
+
+                return
+            end
+        end
+    end
+    
+    function KeybindManager:destroy()
+        self._lKeyPress:Disconnect()
+    end
+    
+    binds = KeybindManager.new(config)
+end -- config & bindings -- globals exposed: config, binds
+
 do  -- disable stuff
     local mainGui = LocalPlayer:FindFirstChild("PlayerGui"):FindFirstChild("MainGui")
     toggleButton = mainGui:FindFirstChild("MainFrame"):FindFirstChild("ToggleButton")
@@ -112,11 +267,12 @@ do  -- tabcontrol
 
     TabControl.__index = TabControl
 
-    function TabControl.new(parent)
+    function TabControl.new(parent, binds)
         local obj = {}
         setmetatable(obj, TabControl)
 
         obj.Parent = parent
+        obj.Binds = binds
 
         local tabContainer = Instance.new("Frame")
         tabContainer.Parent = parent
@@ -184,7 +340,7 @@ do  -- tabcontrol
         return tabButtonData
     end
 
-    function TabControl:createTab(label, abbrev)
+    function TabControl:createTab(label, abbrev, bindName)
         local tabButtonData = self:createTabButton(label, abbrev)
         
         -- tab content
@@ -277,6 +433,12 @@ do  -- tabcontrol
 
         self.Tabs[#self.Tabs + 1] = tabData
         
+        if bindName then
+            self.Binds:bind(bindName, function()
+                setOpen(not isOpen, true)
+            end)
+        end
+        
         return content
     end
 
@@ -366,7 +528,7 @@ end
 -- common gui
 --
 
-tabControl = TabControl.new(root)
+tabControl = TabControl.new(root, binds)
 
 function createScroll()
     local scroll = Instance.new("ScrollingFrame")
@@ -538,16 +700,17 @@ do  -- characters
 
     local cCharacters = {}
 
-    for k, v in pairs(REPLICATED.CharacterList:GetChildren()) do
-        cCharacters[#cCharacters + 1] = v.Name
+    for k, v in pairs(LocalPlayer.PlayerGui.MainGui.MainFrame.ScrollingFrame:GetChildren()) do -- steal from the gui instead of the replicated list, which does not include badge chars
+        if v:IsA("TextButton") then
+            cCharacters[#cCharacters + 1] = v.Name
+        end
     end
 
     table.sort(cCharacters)
 
     -- interface
 
-    cCharactersLabel = "Characters"
-    local charactersTab = tabControl:createTab(cCharactersLabel, "1C")
+    local charactersTab = tabControl:createTab("Characters", "1C", "TabCharacters")
 
     local characterScroll = createScroll()
     characterScroll.Parent = charactersTab
@@ -634,13 +797,12 @@ do  -- characters
     for k, v in pairs(cCharacters) do
         addCharacter(v)
     end
-end -- characters -- globals exposed: disconnectJump, cCharactersLabel
+end -- characters -- globals exposed: disconnectJump
 
 do  -- options
     local cOptionSpacing = 5
 
-    cOptionsLabel = "Options"
-    local optionsTab = tabControl:createTab(cOptionsLabel, "2O")
+    local optionsTab = tabControl:createTab("Options", "2O", "TabOptions")
 
     local optionsFrame = Instance.new("Frame")
     optionsFrame.Parent = optionsTab
@@ -800,8 +962,7 @@ do  -- knowledgebase UI
         end
     end)
 
-    cKnowledgebaseLabel = "Knowledgebase"
-    local docsTab = tabControl:createTab(cKnowledgebaseLabel, "3K")
+    local docsTab = tabControl:createTab("Knowledgebase", "3K", "TabDocs")
 
     local docsScroll = createScroll()
     docsScroll.Parent = docsTab
@@ -818,7 +979,7 @@ do  -- knowledgebase UI
 
         docCount = docCount + 1
     end
-end -- knowledgebase UI -- globals exposed: addDoc, cKnowledgebaseLabel, openPage
+end -- knowledgebase UI -- globals exposed: addDoc, openPage
 
 do  -- docs content
     local cAboutContent =          "This script is dedicated to Become Fumo, and it has functions specific to it.<br />"
@@ -844,6 +1005,14 @@ do  -- docs content
     addDoc(cAboutInfo)
     
     local cChangelogContent = ""
+    cChangelogContent = cChangelogContent.."<b>1.5.0 - Minimap</b><br />"
+    cChangelogContent = cChangelogContent.."- Added a minimap. Due to performance overhead and incompleteness, the map is unloaded by default. Press N (by default) to toggle map visiblity and M to toggle zoomed view.<br />"
+    cChangelogContent = cChangelogContent.."- Fixed animations still being highlighted after character is reset<br />"
+    cChangelogContent = cChangelogContent.."- Fixed badged characters not appearing in the character list when they are unlocked<br />"
+    cChangelogContent = cChangelogContent.."- Switched to a JSON config system. In your workspace folder, you can now delete the file named 'fumofumo.txt'.<br />"
+    cChangelogContent = cChangelogContent.."- You can now rebind keybinds to other keys if you wish, by using the 7S tab. Tab numbers will not change with keybind changes. To set a keybind to blank, right click it.<br />"
+    cChangelogContent = cChangelogContent.."- Since sitting is fixed, the raycast sit feature has been moved to a keybind (E by default) and is now extra janky for some reason.<br /><br />"
+
     cChangelogContent = cChangelogContent.."<b>1.4.5</b><br />"
     cChangelogContent = cChangelogContent.."- Holding down middle click while dragging multiple parts no longer causes them to get closer to the camera<br />"
     cChangelogContent = cChangelogContent.."- Parts no longer appear too high when attached to players<br />"
@@ -1033,8 +1202,7 @@ do  -- animation UI
         speed = target
     end
     
-    cAnimationsLabel = "Animations"
-    local animationsTab = tabControl:createTab(cAnimationsLabel, "4A")
+    local animationsTab = tabControl:createTab("Animations", "4A", "TabAnims")
     
     local speedField = Instance.new("TextBox")
     speedField.Parent = animationsTab
@@ -1139,7 +1307,11 @@ do  -- animation UI
         
         animScrollY = animScrollY + cButtonHeightLarge
     end
-end -- animation UI -- globals exposed: createAnimationButton, createAnimationCategory, stopAllAnimations, cAnimationsLabel
+    
+    lCharacter3 = LocalPlayer.CharacterAdded:Connect(function(char)
+        stopAllAnimations()
+    end)
+end -- animation UI -- globals exposed: createAnimationButton, createAnimationCategory, stopAllAnimations, lCharacter3
 
 do  -- animations
     local function addAnimation(name, id)
@@ -1184,8 +1356,7 @@ do  -- animations
 end -- animations
 
 do  -- waypoints UI
-    cWaypointsLabel = "Waypoints"
-    local waypointsTab = tabControl:createTab(cWaypointsLabel, "5W")
+    local waypointsTab = tabControl:createTab("Waypoints", "5W", "TabWaypoints")
     
     local waypointsScroll = createScroll()
     waypointsScroll.Parent = waypointsTab
@@ -1211,7 +1382,7 @@ do  -- waypoints UI
         
         waypointsScrollY = waypointsScrollY + cButtonHeightLarge
     end
-end -- waypoints UI -- globals exposed: createWaypointButton, createWaypointCategory, cWaypointsLabel
+end -- waypoints UI -- globals exposed: createWaypointButton, createWaypointCategory
 
 do  -- waypoints
     createWaypointCategory("Spawns")
@@ -1667,8 +1838,7 @@ do  -- hats come alive
 end -- hats come alive -- globals exposed: iteratePart, makeAlive, lHeartbeat, lStepped, lInputB, lInputC, lInputE, lCharacter2
 
 do  -- welds
-    cWeldsLabel = "Remove Welds"
-    local weldsTab = tabControl:createTab(cWeldsLabel, "6R")
+    local weldsTab = tabControl:createTab("Remove Welds", "6R", "TabWelds")
     
     local weldsScroll = createScroll()
     weldsScroll.Parent = weldsTab
@@ -1812,7 +1982,87 @@ do  -- welds
         updateChar(char)
     end)
     if LocalPlayer.Character then updateChar(LocalPlayer.Character) end
-end -- welds -- globals exposed: lCharacter, cWeldsLabel
+end -- welds -- globals exposed: lCharacter
+
+do  -- settings
+    local settingsTab = tabControl:createTab("Settings", "7S", "TabSettings")
+    
+    local settingsScroll = createScroll()
+    settingsScroll.Parent = settingsTab
+    
+    local settingsScrollY = 0
+
+    local currentlyBinding = nil
+    local listener = nil
+    
+    local function addBind(name)
+
+        local labelInfo = nil
+        local label = nil
+        
+        local function getName()
+            local bindText = binds.Keybinds[name]
+            if bindText == -1 then bindText = "NONE" end
+
+            return name.." ("..bindText..")"
+        end
+
+        local function stopBinding()
+            listener:Disconnect()
+            listener = nil
+
+            label.Text = getName()
+            labelInfo.SetActive(false)
+            
+            wait(0.2)
+            binds.Disabled = false
+            currentlyBinding = nil
+        end
+
+        labelInfo = createLabelButtonLarge(getName(), function(setActive, type)
+            if type == Enum.UserInputType.MouseButton1 then
+                if currentlyBinding then
+                    if currentlyBinding == name then
+                        stopBinding()
+                    else
+                        return
+                    end
+                else
+                    listener = INPUT.InputBegan:Connect(function(input)
+                        if input.UserInputType == Enum.UserInputType.Keyboard and
+                            not INPUT:GetFocusedTextBox() then
+                            binds:rebind(name, input.KeyCode)
+
+                            stopBinding()
+                            setActive(false)
+                        end
+                    end)
+
+                    setActive(true)
+
+                    label.Text = "press a key..."
+                    binds.Disabled = true
+                    currentlyBinding = name
+                end
+            elseif type == Enum.UserInputType.MouseButton2 then
+                binds:unbind(name)
+                label.Text = getName()
+            end
+        end)
+        
+        label = labelInfo.Label
+        label.Parent = settingsScroll
+        label.Position = UDim2.new(0.5, 0, 0, settingsScrollY)
+
+        settingsScrollY = settingsScrollY + cButtonHeightLarge
+    end
+    
+    local cBinds = { "TabCharacters", "TabOptions", "TabDocs", "TabAnims", "TabWaypoints", "TabWelds", "TabSettings", "MapVis", "MapView", "RaySit", "Exit" }
+    
+    for k, v in pairs(cBinds) do
+        addBind(v)
+    end
+end -- settings
 
 do  -- info
     local cInfoText =            "<b>Become Fumo Scripts</b><br />"
@@ -1915,7 +2165,7 @@ do  -- minimap
         
         if obj.Clicked then
             info.lClicked = obj.TooltipObject.InputBegan:Connect(function(input)
-                if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                if (not obj.ShowTooltip or obj:ShowTooltip()) and input.UserInputType == Enum.UserInputType.MouseButton1 then
                     obj:Clicked(input)
                 end
             end)
@@ -2492,44 +2742,88 @@ do  -- minimap
         self._lDisconnect:Disconnect()
         self._lHeartbeat:Disconnect()
     end
-end -- minimap
+end -- minimap -- globals exposed: Minimap
 
 do  -- update info
-    local cFileName = "fumofumo.txt"
+    if config.Value.version ~= version then
+        local tabButtonInfo = tabControl:createTabButton("Update Info", "!")
 
-    if writefile then
-        if not pcall(function() readfile(cFileName) end) or readfile(cFileName) ~= version then
-            local tabButtonInfo = tabControl:createTabButton("Update Info", "!")
+        tabButtonInfo.Tab.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                openPage(cChangelogInfo)
 
-            tabButtonInfo.Tab.InputBegan:Connect(function(input)
-                if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                    openPage(cChangelogInfo)
+                tabControl:removeTabButton(tabButtonInfo)
+            end
+        end)
 
-                    tabControl:removeTabButton(tabButtonInfo)
-                end
-            end)
+        local tweenInfo = TweenInfo.new(2, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1, true)
 
-            local tweenInfo = TweenInfo.new(2, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1, true)
+        local goal = {}
+        goal.BackgroundColor3 = Color3.fromRGB(255, 165, 0)
 
-            local goal = {}
-            goal.BackgroundColor3 = Color3.fromRGB(255, 165, 0)
+        local tween = TWEEN:Create(tabButtonInfo.Tab, tweenInfo, goal)
+        tween:Play()
 
-            local tween = TWEEN:Create(tabButtonInfo.Tab, tweenInfo, goal)
-            tween:Play()
-
-            writefile(cFileName, version)
-        end
+        config.Value.version = version
+        config:save()
     end
 end -- update info
 
-local function exit()
+local map = nil
+
+binds:bind("MapVis", function()
+    if not map then
+        map = Minimap.new(root)
+    else
+        map.FrameOuter.Visible = not map.FrameOuter.Visible
+    end
+end)
+
+binds:bind("MapView", function()
+    if map then
+        map:setExpanded(not map.Expanded)
+    end
+end)
+
+binds:bind("RaySit", function()
+    local pos = INPUT:GetMouseLocation()
+    local unitRay = WORKSPACE.CurrentCamera:ScreenPointToRay(pos.X, pos.Y)
+    
+    local filter = {}
+    for k, v in pairs(WORKSPACE:GetDescendants()) do
+        if v:IsA("Seat") then
+            filter[#filter+1] = v.Parent
+        end
+    end
+
+    local params = RaycastParams.new()
+    params.FilterDescendantsInstances = filter
+    params.FilterType = Enum.RaycastFilterType.Whitelist
+
+    local result = WORKSPACE:Raycast(unitRay.Origin, unitRay.Direction * 1000, params)
+    if not result then return end
+    
+    if result.Instance:IsA("Seat") then
+        local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        
+        if hum.SeatPart then
+            hum.Sit = false
+            wait()
+        end
+
+        result.Instance:Sit(hum)
+    end
+end)
+
+binds:bind("Exit", function()
     root:Destroy()
     toggleButton.Visible = true -- reenable the default character selector
     settings.Visible = true -- reenable the default settings
-    if lInput then lInput:Disconnect() end
     lCharacter:Disconnect()
     disconnectJump()
     stopAllAnimations()
+    
+    binds:destroy()
 
     lHeartbeat:Disconnect()
     lStepped:Disconnect()
@@ -2537,68 +2831,12 @@ local function exit()
     lInputC:Disconnect()
     lInputE:Disconnect()
     lCharacter2:Disconnect()
+    
+    lCharacter3:Disconnect()
 
     pcall(function()
         map:destroy()
     end)
 
     getgenv().BF_LOADED = false
-end
-
-cHotkeys = {}
-cHotkeys[cCharactersLabel] = Enum.KeyCode.One
-cHotkeys[cOptionsLabel] = Enum.KeyCode.Two
-cHotkeys[cKnowledgebaseLabel] = Enum.KeyCode.Three
-cHotkeys[cAnimationsLabel] = Enum.KeyCode.Four
-cHotkeys[cWaypointsLabel] = Enum.KeyCode.Five
-cHotkeys[cWeldsLabel] = Enum.KeyCode.Six
-
-lInput = INPUT.InputBegan:Connect(function(input, handled)
-    if input.UserInputType == Enum.UserInputType.Keyboard and not
-        INPUT:GetFocusedTextBox() then
-        
-        if input.KeyCode == Enum.KeyCode.Nine then
-            map:setExpanded(not map.Expanded)
-        end
-        
-        for k, v in pairs(cHotkeys) do
-            if input.KeyCode == v then
-                tabControl:setTabOpen(k, nil)
-                return
-            end
-        end
-        
-        if input.KeyCode == Enum.KeyCode.Zero then
-            exit()
-        end
-    elseif not handled and input.UserInputType == Enum.UserInputType.MouseButton3 then
-        local unitRay = WORKSPACE.CurrentCamera:ScreenPointToRay(input.Position.X, input.Position.Y)
-        
-        local filter = {}
-        for k, v in pairs(WORKSPACE:GetDescendants()) do
-            if v:IsA("Seat") then
-                filter[#filter+1] = v.Parent
-            end
-        end
-
-        local params = RaycastParams.new()
-        params.FilterDescendantsInstances = filter
-        params.FilterType = Enum.RaycastFilterType.Whitelist
-
-        local result = WORKSPACE:Raycast(unitRay.Origin, unitRay.Direction * 1000, params)
-        if not result then return end
-        
-        if result.Instance:IsA("Seat") then
-            local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-            
-            if hum.SeatPart then
-                hum.Sit = false
-                wait()
-            end
-
-            result.Instance:Sit(hum)
-        end
-    end
 end)
-
-map = Minimap.new(root)
