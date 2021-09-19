@@ -1653,6 +1653,13 @@ do  -- hats come alive
         coroutine.wrap(function()
             inProgress = inProgress + 1
             awaitingStart = awaitingStart + 1
+
+            local humanRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if not savedLocation then savedLocation = humanRoot.CFrame end
+
+            teleport(CFrame.new(10000, 0, 10000))
+            humanRoot.Anchored = true
+
             wait(2)
             awaitingStart = awaitingStart - 1
 
@@ -1660,13 +1667,8 @@ do  -- hats come alive
                 RUN.Stepped:Wait()
             end
 
-            local humanRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            if not savedLocation then savedLocation = humanRoot.CFrame end
-
-            teleport(CFrame.new(10000, 0, 10000))
-            humanRoot.Anchored = true
             LocalPlayer.CameraMode = Enum.CameraMode.LockFirstPerson
-            wait(2)
+            wait(1)
 
             local part = weld.Part1
             part.CanTouch = true
