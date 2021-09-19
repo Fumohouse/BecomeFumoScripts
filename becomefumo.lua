@@ -98,7 +98,8 @@ do  -- config & bindings
                 ["MapView"] = Enum.KeyCode.M.Name,
                 ["RaySit"] = Enum.KeyCode.E.Name,
                 ["Exit"] = Enum.KeyCode.Zero.Name
-            }
+            },
+            ["orbitTp"] = false
         }
 
         obj.UseFs = true
@@ -120,7 +121,7 @@ do  -- config & bindings
         -- recursively check if anything is missing.
         local function checkTable(t, default)
             for k, v in pairs(default) do
-                if not t[k] then
+                if t[k] == nil then
                     t[k] = v
                     shouldSave = true
                 elseif type(v) == "table" then
@@ -641,7 +642,7 @@ cCheckboxSpace = 5
 
 -- function: creates a checkbox frame given label, calls the cb with the checkbox value when it changes, and returns the frame
 
-function createCheckbox(labelText, cb)
+function createCheckbox(labelText, cb, initial)
     local checkbox = Instance.new("Frame")
     checkbox.BorderSizePixel = 0
     checkbox.BackgroundTransparency = 1
@@ -669,13 +670,9 @@ function createCheckbox(labelText, cb)
     label.Size = UDim2.new(1, -(cCheckboxSize + cCheckboxSpace), 0, cCheckboxSize)
     label.Position = UDim2.fromOffset(cCheckboxSize + cCheckboxSpace, 0)
 
-    local checked = false
+    local checked = initial
 
-    checkbox.InputBegan:Connect(function(input)
-        if input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
-
-        checked = not checked
-
+    local function updateColor()
         local tweenInfo = TweenInfo.new(0.15)
         local goal = {}
 
@@ -688,6 +685,16 @@ function createCheckbox(labelText, cb)
         local tween = TWEEN:Create(indicator, tweenInfo, goal)
 
         tween:Play()
+    end
+
+    updateColor()
+
+    checkbox.InputBegan:Connect(function(input)
+        if input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
+
+        checked = not checked
+
+        updateColor()
 
         cb(checked)
     end)
@@ -1009,7 +1016,8 @@ do  -- docs content
     cChangelogContent = cChangelogContent.."- Added lerps back to mouse movement and orbit of weld parts + additional tweaking<br />"
     cChangelogContent = cChangelogContent.."- Blacklist music region bounding boxes and the main invis walls from weld raycast<br />"
     cChangelogContent = cChangelogContent.."- Make bobbing movements be the correct direction instead of always up/down<br />"
-    cChangelogContent = cChangelogContent.."- Try to maximize fps during removal of welds by teleporting to a remote location<br />"
+    cChangelogContent = cChangelogContent.."- Try to maximize fps during removal of welds by teleporting to a remote location (disabled by default)<br />"
+    cChangelogContent = cChangelogContent.."* Please try enabling it in the 7S tab ('Orbit Teleport') and report if it improves rate of death on removal.<br />"
     cChangelogContent = cChangelogContent.."- Remove unnecessary code and use BodyGyro for all rotations<br />"
     cChangelogContent = cChangelogContent.."- ???<br /><br />"
 
@@ -1640,24 +1648,28 @@ do  -- hats come alive
 
     function makeAlive(weld)
         coroutine.wrap(function()
-            inProgress = inProgress + 1
-            awaitingStart = awaitingStart + 1
-
             local humanRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            if not savedLocation then savedLocation = humanRoot.CFrame end
+            local shouldTp = config.Value.orbitTp
 
-            teleport(CFrame.new(10000, 0, 10000))
-            humanRoot.Anchored = true
+            if shouldTp then
+                inProgress = inProgress + 1
+                awaitingStart = awaitingStart + 1
 
-            wait(2)
-            awaitingStart = awaitingStart - 1
+                if not savedLocation then savedLocation = humanRoot.CFrame end
 
-            while awaitingStart > 1 do
-                RUN.Stepped:Wait()
+                teleport(CFrame.new(10000, 0, 10000))
+                humanRoot.Anchored = true
+
+                wait(2)
+                awaitingStart = awaitingStart - 1
+
+                while awaitingStart > 1 do
+                    RUN.Stepped:Wait()
+                end
+
+                LocalPlayer.CameraMode = Enum.CameraMode.LockFirstPerson
+                wait(1)
             end
-
-            LocalPlayer.CameraMode = Enum.CameraMode.LockFirstPerson
-            wait(1)
 
             local part = weld.Part1
             part.CanTouch = true
@@ -1722,14 +1734,16 @@ do  -- hats come alive
             part.Velocity = Vector3.new(0, 100, 0)
             part.Anchored = true
 
-            wait(2)
-            inProgress = inProgress - 1
+            if shouldTp then
+                wait(2)
+                inProgress = inProgress - 1
 
-            if inProgress == 0 then
-                teleport(savedLocation)
-                savedLocation = nil
-                humanRoot.Anchored = false
-                LocalPlayer.CameraMode = Enum.CameraMode.Classic
+                if inProgress == 0 then
+                    teleport(savedLocation)
+                    savedLocation = nil
+                    humanRoot.Anchored = false
+                    LocalPlayer.CameraMode = Enum.CameraMode.Classic
+                end
             end
         end)()
     end
@@ -2020,7 +2034,6 @@ do  -- settings
     local listener = nil
 
     local function addBind(name)
-
         local labelInfo = nil
         local label = nil
 
@@ -2086,6 +2099,15 @@ do  -- settings
     for k, v in pairs(cBinds) do
         addBind(v)
     end
+
+    local orbitTpCheckbox = createCheckbox("Orbit Teleport", function(checked)
+        config.Value.orbitTp = checked
+        config:save()
+    end, config.Value.orbitTp)
+
+    orbitTpCheckbox.Parent = settingsScroll
+    orbitTpCheckbox.Position = UDim2.fromOffset(0, settingsScrollY)
+    settingsScrollY = settingsScrollY + cCheckboxSize
 end -- settings
 
 do  -- info
