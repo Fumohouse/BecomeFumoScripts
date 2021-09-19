@@ -1009,6 +1009,7 @@ do  -- docs content
     cChangelogContent = cChangelogContent.."- Added lerps back to mouse movement and orbit of weld parts + additional tweaking<br />"
     cChangelogContent = cChangelogContent.."- Blacklist music region bounding boxes and the main invis walls from weld raycast<br />"
     cChangelogContent = cChangelogContent.."- Make bobbing movements be the correct direction instead of always up/down<br />"
+    cChangelogContent = cChangelogContent.."- Try to maximize fps during removal of welds by teleporting and setting camera to first person<br />"
     cChangelogContent = cChangelogContent.."- ???<br /><br />"
 
     cChangelogContent = cChangelogContent.."<b>1.5.0 - Minimap</b><br />"
@@ -1643,69 +1644,87 @@ do  -- hats come alive
 
         return false
     end
+    
+    local savedLocation = nil
 
     function makeAlive(weld)
-        local part = weld.Part1
-        part.CanTouch = true
+        coroutine.wrap(function()
+            local humanRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if not savedLocation then savedLocation = humanRoot.CFrame end
+            
+            teleport(CFrame.new(10000, 0, 10000))
+            humanRoot.Anchored = true
+            LocalPlayer.CameraMode = Enum.CameraMode.LockFirstPerson
+            wait(1)
 
-        local bodyPositions = {}
+            local part = weld.Part1
+            part.CanTouch = true
 
-        iteratePart(part, function(p)
-            local pos = Instance.new("BodyPosition")
-            pos.Parent = p
-            pos.P = 500000
-            pos.D = 1000
-            pos.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-            pos.Position = part.Position
+            local bodyPositions = {}
 
-            bodyPositions[#bodyPositions+1] = pos
+            iteratePart(part, function(p)
+                local pos = Instance.new("BodyPosition")
+                pos.Parent = p
+                pos.P = 500000
+                pos.D = 1000
+                pos.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+                pos.Position = part.Position
 
-            local antiG = Instance.new("BodyForce")
-            antiG.Parent = p
-            antiG.Force = Vector3.new(0, p:GetMass() * workspace.Gravity, 0)
-        end)
+                bodyPositions[#bodyPositions+1] = pos
 
-        -- add offsets of welds until a common part is reached
-        local checkWeld = weld
-        local totalOffset = weld.C0 * weld.C1:Inverse()
+                local antiG = Instance.new("BodyForce")
+                antiG.Parent = p
+                antiG.Force = Vector3.new(0, p:GetMass() * workspace.Gravity, 0)
+            end)
 
-        while not checkCommonWeld(checkWeld.Part0.Name) do
-            for k, desc in pairs(LocalPlayer.Character:GetDescendants()) do
-                if desc:IsA("Weld") and desc.Part1 == checkWeld.Part0 then
-                    totalOffset = desc.C0 * desc.C1:Inverse() * totalOffset
-                    checkWeld = desc
+            -- add offsets of welds until a common part is reached
+            local checkWeld = weld
+            local totalOffset = weld.C0 * weld.C1:Inverse()
+
+            while not checkCommonWeld(checkWeld.Part0.Name) do
+                for k, desc in pairs(LocalPlayer.Character:GetDescendants()) do
+                    if desc:IsA("Weld") and desc.Part1 == checkWeld.Part0 then
+                        totalOffset = desc.C0 * desc.C1:Inverse() * totalOffset
+                        checkWeld = desc
+                    end
                 end
+
+                break
             end
 
-            break
-        end
+            local partInfo = {}
+            partInfo.Weld = weld
+            partInfo.TargetName = checkWeld.Part0.Name
+            partInfo.Part = part
+            partInfo.PosList = bodyPositions
+            partInfo.TotalOffset = totalOffset
 
-        local partInfo = {}
-        partInfo.Weld = weld
-        partInfo.TargetName = checkWeld.Part0.Name
-        partInfo.Part = part
-        partInfo.PosList = bodyPositions
-        partInfo.TotalOffset = totalOffset
+            parts[#parts+1] = partInfo
 
-        parts[#parts+1] = partInfo
-
-        weld:Destroy()
-        part.Velocity = Vector3.new(0, 100, 0)
-        part.Anchored = true
-
-        local lTouch = part.Touched:Connect(function(otherPart)
-            local hum = otherPart.Parent:FindFirstChildOfClass("Humanoid")
-            if hum and mousePos then
-                local newTarget = hum.Parent
-        
-                if draggedAway ~= newTarget then
-                    mousePos = nil
-                    tpTarget = newTarget
-                    tpTargetLastPos = {}
-                    tpTargetLastMove = {}
+            local lTouch = part.Touched:Connect(function(otherPart)
+                local hum = otherPart.Parent:FindFirstChildOfClass("Humanoid")
+                if hum and mousePos then
+                    local newTarget = hum.Parent
+            
+                    if draggedAway ~= newTarget then
+                        mousePos = nil
+                        tpTarget = newTarget
+                        tpTargetLastPos = {}
+                        tpTargetLastMove = {}
+                    end
                 end
-            end
-        end)
+            end)
+
+            weld:Destroy()
+            part.Velocity = Vector3.new(0, 100, 0)
+            part.Anchored = true
+
+            wait(2)
+            teleport(savedLocation)
+            savedLocation = nil
+            humanRoot.Anchored = false
+            LocalPlayer.CameraMode = Enum.CameraMode.Classic
+        end)()
     end
 
     local function updatePart(info, t, dT, idx)
