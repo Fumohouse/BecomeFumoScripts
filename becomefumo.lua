@@ -1019,6 +1019,7 @@ do  -- docs content
     cChangelogContent = cChangelogContent.."- Try to maximize fps during removal of welds by teleporting to a remote location (disabled by default)<br />"
     cChangelogContent = cChangelogContent.."* Please try enabling it in the 7S tab ('Orbit Teleport') and report if it improves rate of death on removal.<br />"
     cChangelogContent = cChangelogContent.."- Remove unnecessary code and use BodyGyro for all rotations<br />"
+    cChangelogContent = cChangelogContent.."- Limit raycasting to once per frame instead of once per part per frame<br />"
     cChangelogContent = cChangelogContent.."- ???<br /><br />"
 
     cChangelogContent = cChangelogContent.."<b>1.5.0 - Minimap</b><br />"
@@ -1748,22 +1749,14 @@ do  -- hats come alive
         end)()
     end
 
-    local function updatePart(info, t, dT, idx)
+    local function updatePart(info, raycastPos, t, dT, idx)
         local targetPos
         local alpha = 1
 
         local ang = ((t + 10 * idx) * math.pi) % (2 * math.pi)
 
-        if mousePos then
-            local unitRay = WORKSPACE.CurrentCamera:ScreenPointToRay(mousePos.X, mousePos.Y)
-            local params = RaycastParams.new()
-            params.FilterDescendantsInstances = { LocalPlayer.Character, workspace.MusicPlayer.SoundRegions, workspace.PlayArea["invis walls"] }
-            params.FilterType = Enum.RaycastFilterType.Blacklist
-
-            local result = WORKSPACE:Raycast(unitRay.Origin, unitRay.Direction * 1000, params)
-            if not result or result.Instance == info.Part then return end
-
-            targetPos = result.Position
+        if raycastPos then
+            targetPos = raycastPos
             alpha = 0.3
             info.Gyro.CFrame = CFrame.Angles(0, ang, 0)
         elseif tpTarget then
@@ -1848,11 +1841,24 @@ do  -- hats come alive
 
     lStepped = RUN.Stepped:Connect(function(t, dT)
         local idx = 0
+        local raycastPos
+
+        if mousePos then
+            local unitRay = workspace.CurrentCamera:ScreenPointToRay(mousePos.X, mousePos.Y)
+            local params = RaycastParams.new()
+            params.FilterDescendantsInstances = { LocalPlayer.Character, workspace.MusicPlayer.SoundRegions, workspace.PlayArea["invis walls"] }
+            params.FilterType = Enum.RaycastFilterType.Blacklist
+
+            local result = workspace:Raycast(unitRay.Origin, unitRay.Direction * 1000, params)
+            if result then
+                raycastPos = result.Position
+            end
+        end
 
         for k, info in pairs(parts) do
             if info then
                 info.Part.Anchored = false
-                updatePart(info, t, dT, idx)
+                updatePart(info, raycastPos, t, dT, idx)
             end
 
             idx = idx + 1
