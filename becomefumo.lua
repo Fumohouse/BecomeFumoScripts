@@ -1646,16 +1646,19 @@ do  -- hats come alive
     end
 
     local savedLocation = nil
+    local inProgress = 0
 
     function makeAlive(weld)
         coroutine.wrap(function()
+            wait(2)
+            inProgress = inProgress + 1
             local humanRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
             if not savedLocation then savedLocation = humanRoot.CFrame end
 
             teleport(CFrame.new(10000, 0, 10000))
             humanRoot.Anchored = true
             LocalPlayer.CameraMode = Enum.CameraMode.LockFirstPerson
-            wait(1)
+            wait(0.2)
 
             local part = weld.Part1
             part.CanTouch = true
@@ -1719,11 +1722,15 @@ do  -- hats come alive
             part.Velocity = Vector3.new(0, 100, 0)
             part.Anchored = true
 
-            wait(2)
-            teleport(savedLocation)
-            savedLocation = nil
-            humanRoot.Anchored = false
-            LocalPlayer.CameraMode = Enum.CameraMode.Classic
+            wait(1)
+            inProgress = inProgress - 1
+
+            if inProgress == 0 then
+                teleport(savedLocation)
+                savedLocation = nil
+                humanRoot.Anchored = false
+                LocalPlayer.CameraMode = Enum.CameraMode.Classic
+            end
         end)()
     end
 
