@@ -44,7 +44,7 @@ do  -- base gui
         for i = 1, math.random(10, 20) do
             str = str..string.char(math.random(32, 126))
         end
-        
+
         return str
     end
 
@@ -81,7 +81,7 @@ do  -- config & bindings
     function ConfigManager.new()
         local obj = {}
         setmetatable(obj, ConfigManager)
-        
+
         obj.Filename = "fumo.json"
         obj.Value = nil
         obj.Default = {
@@ -100,23 +100,23 @@ do  -- config & bindings
                 ["Exit"] = Enum.KeyCode.Zero.Name
             }
         }
-        
+
         obj.UseFs = true
-        
+
         if not writefile then
             log("WARNING: No file write access. Config will not save or load.")
             obj.UseFs = false
         end
-        
+
         obj:load()
         obj:checkMissingKeys()
 
         return obj
     end
-    
+
     function ConfigManager:checkMissingKeys()
         local shouldSave = false
-        
+
         -- recursively check if anything is missing.
         local function checkTable(t, default)
             for k, v in pairs(default) do
@@ -130,25 +130,25 @@ do  -- config & bindings
         end
 
         checkTable(self.Value, self.Default)
-        
+
         if shouldSave then self:save() end
     end
-    
+
     function ConfigManager:setDefault()
         self.Value = self.Default
         self:save()
     end
-    
+
     function ConfigManager:save()
         if not self.UseFs then return end
-        
+
         local str = HTTP:JSONEncode(self.Value)
         writefile(self.Filename, str)
     end
-    
+
     function ConfigManager:load()
         if not self.UseFs then self.Value = self.Default return end
-        
+
         if not pcall(function() readfile(self.Filename) end) then
             log("Creating new config file.")
             self:setDefault()
@@ -156,16 +156,16 @@ do  -- config & bindings
             local success = pcall(function()
                 self.Value = HTTP:JSONDecode(readfile(self.Filename))
             end)
-            
+
             if not success then
                 log("WARNING: Config data is invalid. Restoring defaults...")
                 self:setDefault()
             end
         end
     end
-    
+
     config = ConfigManager.new()
-    
+
     local KeybindManager = {}
     KeybindManager.__index = KeybindManager
 
@@ -175,39 +175,39 @@ do  -- config & bindings
 
         obj.Config = configManager
         obj.Keybinds = configManager.Value.keybinds
-        
+
         obj._lKeyPress = INPUT.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.Keyboard and not
                 INPUT:GetFocusedTextBox() then
                 obj:_keyPress(input.KeyCode)
             end
         end)
-        
+
         obj.Bindings = {}
-        
+
         obj.Disabled = false
 
         return obj
     end
-    
+
     function KeybindManager:rebind(name, key)
         self.Keybinds[name] = key.Name
         self.Config:save()
     end
-    
+
     function KeybindManager:unbind(name)
         self.Keybinds[name] = -1
         self.Config:save()
     end
-    
+
     function KeybindManager:bind(name, del)
         if self.Bindings[name] then
             log("WARNING: Binding the same action twice is unsupported!")
         end
-        
+
         self.Bindings[name] = del
     end
-    
+
     function KeybindManager:_keyPress(code)
         if self.Disabled then return end
 
@@ -220,11 +220,11 @@ do  -- config & bindings
             end
         end
     end
-    
+
     function KeybindManager:destroy()
         self._lKeyPress:Disconnect()
     end
-    
+
     binds = KeybindManager.new(config)
 end -- config & bindings -- globals exposed: config, binds
 
@@ -286,7 +286,7 @@ do  -- tabcontrol
         tabContainer.MouseEnter:Connect(function()
             obj:_setTabsExpanded(true)
         end)
-    
+
         tabContainer.MouseLeave:Connect(function()
             obj:_setTabsExpanded(false)
         end)
@@ -332,7 +332,7 @@ do  -- tabcontrol
         tabButtonData.Label = label
         tabButtonData.Abbrev = abbrev
         tabButtonData.Tab = tab
-        
+
         self.TabButtons[#self.TabButtons + 1] = tabButtonData
 
         self:_updateLayout()
@@ -342,7 +342,7 @@ do  -- tabcontrol
 
     function TabControl:createTab(label, abbrev, bindName)
         local tabButtonData = self:createTabButton(label, abbrev)
-        
+
         -- tab content
         local content = Instance.new("Frame")
         content.Parent = self.Parent
@@ -358,15 +358,15 @@ do  -- tabcontrol
         -- functions (open/close)
         local isOpen = false
         local tween = nil
-        
+
         local function getOpen() return isOpen end
-        
+
         local function setOpen(open, shouldTween)
             if isOpen == open then return end
-            
+
             -- check if other tabs are open
             local othersOpen = false
-            
+
             for k, v in pairs(self.Tabs) do
                 if v.Button.Label ~= label and v.GetOpen() then
                     othersOpen = true
@@ -379,7 +379,7 @@ do  -- tabcontrol
             local goal = {}
             local tabGoal = {}
             local tabContainerGoal = {}
-            
+
             if open then
                 goal.Position = cTabPosOpen
                 tabContainerGoal.Position = cTabContainerPosOpen
@@ -402,7 +402,7 @@ do  -- tabcontrol
             if shouldTween and not othersOpen then
                 tween = TWEEN:Create(content, tweenInfo, goal)
                 tween:Play()
-                
+
                 tween.Completed:Connect(function()
                     tween = nil
                 end)
@@ -412,13 +412,13 @@ do  -- tabcontrol
 
             local tabContainerTween = TWEEN:Create(self.TabContainer, tweenInfo, tabContainerGoal)
             tabContainerTween:Play()
-            
+
             local tabTween = TWEEN:Create(tabButtonData.Tab, tweenInfo, tabGoal)
             tabTween:Play()
-            
+
             isOpen = open
         end
-        
+
         tabButtonData.Tab.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 then
                 setOpen(not isOpen, true)
@@ -432,13 +432,13 @@ do  -- tabcontrol
         tabData.IsButton = false
 
         self.Tabs[#self.Tabs + 1] = tabData
-        
+
         if bindName then
             self.Binds:bind(bindName, function()
                 setOpen(not isOpen, true)
             end)
         end
-        
+
         return content
     end
 
@@ -479,7 +479,7 @@ do  -- tabcontrol
 
         local goal = {}
         local tabContainerGoal = {}
-        
+
         if expanded then
             goal.Size = cTabSize
             tabContainerGoal.Size = UDim2.fromOffset(cTabWidth, 0)
@@ -495,12 +495,12 @@ do  -- tabcontrol
                 else
                     v.Tab.Text = v.Abbrev
                 end
-    
+
                 local tween = TWEEN:Create(v.Tab, tweenInfo, goal)
                 tween:Play()
             end
         end
-        
+
         local tabContainerTween = TWEEN:Create(self.TabContainer, tweenInfo, tabContainerGoal)
         tabContainerTween:Play()
     end
@@ -520,7 +520,7 @@ function teleport(pos)
     local root = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     local origPos = root.CFrame
     root.CFrame = pos
-    
+
     return origPos
 end
 
@@ -559,7 +559,7 @@ function createLabelButton(labelText, cb)
     label.TextXAlignment = Enum.TextXAlignment.Center
     label.TextYAlignment = Enum.TextYAlignment.Center
     label.Size = UDim2.new(1, 0, 0, cLabelButtonHeight)
-    
+
     label.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             cb()
@@ -586,7 +586,7 @@ function createCategoryLabel(labelText)
     label.TextColor3 = cForegroundColor
     label.RichText = true
     label.Text = "<b>"..labelText.."</b>"
-    
+
     return label
 end
 
@@ -615,15 +615,15 @@ function createLabelButtonLarge(labelText, cb)
     labelInfo.SetActive = function(active)
         local tweenInfo = TweenInfo.new(0.15)
         local goal = {}
-        
+
         if active then
             goal.BackgroundColor3 = cButtonOn
         else
             goal.BackgroundColor3 = cButtonOff
         end
-        
+
         local tween = TWEEN:Create(label, tweenInfo, goal)
-        
+
         tween:Play()
     end
 
@@ -632,7 +632,7 @@ function createLabelButtonLarge(labelText, cb)
             cb(labelInfo.SetActive, input.UserInputType)
         end
     end)
-    
+
     return labelInfo
 end
 
@@ -646,14 +646,14 @@ function createCheckbox(labelText, cb)
     checkbox.BorderSizePixel = 0
     checkbox.BackgroundTransparency = 1
     checkbox.Size = UDim2.new(1, 0, 0, cCheckboxSize)
-    
+
     local indicator = Instance.new("Frame")
     indicator.Parent = checkbox
     indicator.BorderSizePixel = 0
     indicator.BackgroundColor3 = cBackgroundColorLight
     indicator.Size = UDim2.fromOffset(cCheckboxSize, cCheckboxSize)
     indicator.Position = UDim2.fromScale(0, 0)
-    
+
     local label = Instance.new("TextLabel")
     label.Parent = checkbox
     label.Name = labelText
@@ -668,30 +668,30 @@ function createCheckbox(labelText, cb)
     label.TextYAlignment = Enum.TextYAlignment.Center
     label.Size = UDim2.new(1, -(cCheckboxSize + cCheckboxSpace), 0, cCheckboxSize)
     label.Position = UDim2.fromOffset(cCheckboxSize + cCheckboxSpace, 0)
-    
+
     local checked = false
-    
+
     checkbox.InputBegan:Connect(function(input)
         if input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
 
         checked = not checked
-        
+
         local tweenInfo = TweenInfo.new(0.15)
         local goal = {}
-        
+
         if checked then
             goal.BackgroundColor3 = cAccentColor
         else
             goal.BackgroundColor3 = cBackgroundColorLight
         end
-        
+
         local tween = TWEEN:Create(indicator, tweenInfo, goal)
-        
+
         tween:Play()
-        
+
         cb(checked)
     end)
-    
+
     return checkbox
 end
 
@@ -735,10 +735,10 @@ do  -- characters
         local newHum = hum:Clone()
         hum:Destroy()
         newHum.Parent = char
-        
+
         if resetCam then
             WORKSPACE.CurrentCamera.CameraSubject = char
-            
+
             if not jumpListener then
                 log("connecting jump listener")
                 jumpListener = INPUT.InputBegan:Connect(function(input)
@@ -773,7 +773,7 @@ do  -- characters
         disconnectJump()
 
         REPLICATED.ChangeChar:FireServer(name)
-        
+
         if waitingForSwitch or not shouldReplaceHumanoid then return end
         waitingForSwitch = true
 
@@ -787,7 +787,7 @@ do  -- characters
         local characterLabel = createLabelButton(name, function()
             switchCharacter(name)
         end)
-        
+
         characterLabel.Parent = characterScroll
         characterLabel.Position = UDim2.fromOffset(0, characterCount * cLabelButtonHeight)
 
@@ -821,18 +821,18 @@ do  -- options
             tabControl:closeAllTabs()
             cb()
         end)
-        
+
         local label = labelInfo.Label
-        
+
         label.Parent = optionsFrame
         label.Position = UDim2.new(0.5, 0, 0, optionButtonCount * (cButtonHeightLarge + cOptionSpacing))
-        
+
         optionButtonCount = optionButtonCount + 1
     end
 
     createOptionsButton("Toggle Anti-Grief", function()
         if _G.GlobalDebounce then return end
-        
+
         _G.GlobalDebounce = true
         REPLICATED.UIRemotes.SetColl:FireServer()
         wait(1)
@@ -841,7 +841,7 @@ do  -- options
 
     createOptionsButton("Day/Night Settings", function()
         if _G.GlobalDebounce then return end
-        
+
         _G.GlobalDebounce = true
         REPLICATED.ClientUIEvents.OpenClose:Fire("DayNightSetting", true)
         wait(0.6)
@@ -927,7 +927,7 @@ do  -- knowledgebase UI
 
         local tweenInfo = TweenInfo.new(0.15)
         local goal = {}
-        
+
         if open then
             goal.Position = cDocsPosOpen
             goal.Transparency = 0.1
@@ -935,13 +935,13 @@ do  -- knowledgebase UI
             goal.Position = cDocsPosClosed
             goal.Transparency = 1
         end
-        
+
         local tween = TWEEN:Create(docsFrame, tweenInfo, goal)
-        
+
         tween:Play()
-        
+
         docsOpen = open
-        
+
         tween.Completed:Wait()
         if open then
             docsFrame.Transparency = 0
@@ -1003,7 +1003,7 @@ do  -- docs content
     cAboutInfo.Content = cAboutContent
 
     addDoc(cAboutInfo)
-    
+
     local cChangelogContent = ""
     cChangelogContent = cChangelogContent.."<b>1.5.1</b><br />"
     cChangelogContent = cChangelogContent.."- Added lerps back to mouse movement and orbit of weld parts + additional tweaking<br />"
@@ -1077,7 +1077,7 @@ do  -- docs content
     cChangelogContent = cChangelogContent.."<b>1.2.0</b><br />"
     cChangelogContent = cChangelogContent.."- Added a Knowledgebase article on etiquette<br />"
     cChangelogContent = cChangelogContent.."- Add waypoints tab (5W) and add waypoints to most major locations outside of Memento Mori<br /><br />"
-    
+
     cChangelogContent = cChangelogContent.."<b>1.1.3</b><br />"
     cChangelogContent = cChangelogContent.."- Increase maintainability by reusing the animation button style elsewhere<br />"
     cChangelogContent = cChangelogContent.."- Add category labels to the animations list<br /><br />"
@@ -1099,11 +1099,11 @@ do  -- docs content
     cChangelogContent = cChangelogContent.."- Added knowledgebase articles for the script and the replace humanoid option<br />"
     cChangelogContent = cChangelogContent.."- Added an about page"
     -- cChangelogContent = cChangelogContent..""
-    
+
     cChangelogInfo = {}
     cChangelogInfo.Label = "Changelog"
     cChangelogInfo.Content = cChangelogContent
-    
+
     addDoc(cChangelogInfo)
 
     local cEtiquetteContent = "Please try to be polite when using exploits on Become Fumo. This means, please:<br />"
@@ -1119,11 +1119,11 @@ do  -- docs content
     cEtiquetteContent = cEtiquetteContent.."<b><i>DO NOT HAVE SEX</i></b><br />"
     cEtiquetteContent = cEtiquetteContent.."<b><i>DO NOT HAVE SEX</i></b><br />"
     cEtiquetteContent = cEtiquetteContent.."<b><i>DO NOT HAVE SEX</i></b><br />"
-    
+
     local cEtiquetteInfo = {}
     cEtiquetteInfo.Label = "Cheaters' Etiquette"
     cEtiquetteInfo.Content = cEtiquetteContent
-    
+
     addDoc(cEtiquetteInfo)
 
     local cHumanoidContent =             "<i>Disclosed by: AyaShameimaruCamera</i><br />"
@@ -1147,7 +1147,7 @@ do  -- docs content
     local cHumanoidInfo = {}
     cHumanoidInfo.Label = "Replacing Humanoid"
     cHumanoidInfo.Content = cHumanoidContent
-    
+
     addDoc(cHumanoidInfo)
 
     local cWeldsContent =          "<i>Discovery & disclosure: gandalf872 and LordOfCatgirls</i><br />"
@@ -1167,11 +1167,11 @@ do  -- docs content
     cWeldsContent = cWeldsContent.."Support exists for removing multiple welds at once, if you wanted to do that.<br /><br />"
     cWeldsContent = cWeldsContent.."The method used in this script may still be unstable, causing death after minutes or hours. If this occurs, please report to me how long it took, which character, and which part you removed. Include as much detail as possible.<br /><br />"
     cWeldsContent = cWeldsContent.."Please remember that the people who discovered this did not do it for you to take off your clothes. Please do not take off your clothes. Please do not take off your clothes. Ple"
-    
+
     local cWeldsInfo = {}
     cWeldsInfo.Label = "Removing Welds"
     cWeldsInfo.Content = cWeldsContent
-    
+
     addDoc(cWeldsInfo)
 
     local cDetachContent =             "<i>Disclosure: xowada</i><br />"
@@ -1186,7 +1186,7 @@ do  -- docs content
     local cDetachInfo = {}
     cDetachInfo.Label = "Detaching Accessories"
     cDetachInfo.Content = cDetachContent
-    
+
     addDoc(cDetachInfo)
 end -- docs content -- globals exposed: cChangelogInfo
 
@@ -1196,21 +1196,21 @@ do  -- animation UI
 
     local activeAnimations = {}
     local stoppingAnimations = {}
-    
+
     local speed = 1
-    
+
     local function adjustSpeed(target)
         for k, v in pairs(activeAnimations) do
             if v then
                 v:AdjustSpeed(target)
             end
         end
-        
+
         speed = target
     end
-    
+
     local animationsTab = tabControl:createTab("Animations", "4A", "TabAnims")
-    
+
     local speedField = Instance.new("TextBox")
     speedField.Parent = animationsTab
     speedField.ClearTextOnFocus = false
@@ -1226,7 +1226,7 @@ do  -- animation UI
     speedField.TextYAlignment = Enum.TextYAlignment.Center
     speedField.Size = UDim2.new(1, 0, 0, cSpeedFieldSize)
     speedField.Position = UDim2.fromScale(0, 0)
-    
+
     speedField.FocusLost:Connect(function()
         local num = tonumber(speedField.Text)
         if num then
@@ -1249,7 +1249,7 @@ do  -- animation UI
             stoppingAnimations[id] = false
         end
     end
-    
+
     function stopAllAnimations()
         for k, v in pairs(activeAnimations) do
             if v then
@@ -1257,45 +1257,45 @@ do  -- animation UI
             end
         end
     end
-    
+
     local function playAnimation(id, cb)
         stopAnimation(id)
 
         local animator = LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):FindFirstChildOfClass("Animator")
-        
+
         local animation = Instance.new("Animation")
         animation.AnimationId = id
-        
+
         local animationTrack = animator:LoadAnimation(animation)
-        
+
         animationTrack.Priority = Enum.AnimationPriority.Action
         animationTrack:Play()
-        
+
         activeAnimations[id] = animationTrack
         animationTrack:AdjustSpeed(speed)
-        
+
         animationTrack.Stopped:Connect(function()
             stopAnimation(id)
             cb()
         end)
     end
-    
+
     local animScrollY = 0
-    
+
     function createAnimationCategory(name)
         local label = createCategoryLabel(name)
         label.Parent = animationsScroll
         label.Position = UDim2.new(0.5, 0, 0 , animScrollY)
-        
+
         animScrollY = animScrollY + cCategoryHeight
     end
-    
+
     function createAnimationButton(info)
         local active = false
 
         local labelInfo = createLabelButtonLarge(info.Name, function(setActive)
             active = not active
-            
+
             if active then
                 playAnimation(info.Id, function()
                     setActive(false)
@@ -1304,17 +1304,17 @@ do  -- animation UI
             else
                 stopAnimation(info.Id)
             end
-            
+
             setActive(active)
         end)
 
         local label = labelInfo.Label
         label.Parent = animationsScroll
         label.Position = UDim2.new(0.5, 0, 0, animScrollY)
-        
+
         animScrollY = animScrollY + cButtonHeightLarge
     end
-    
+
     lCharacter3 = LocalPlayer.CharacterAdded:Connect(function(char)
         stopAllAnimations()
     end)
@@ -1325,10 +1325,10 @@ do  -- animations
         local info = {}
         info.Name = name
         info.Id = id
-        
+
         createAnimationButton(info)
     end
-    
+
     createAnimationCategory("Emotes")
     addAnimation("Wave", "rbxassetid://6235397232")
     addAnimation("Point", "rbxassetid://6237758978")
@@ -1355,7 +1355,7 @@ do  -- animations
 
     createAnimationCategory("Misc Default")
     addAnimation("Drip", "rbxassetid://6573833053")
-    
+
     addAnimation("Walk", "rbxassetid://6235532038")
     addAnimation("Run", "rbxassetid://6235359704")
     addAnimation("Jump", "rbxassetid://6235182835")
@@ -1364,29 +1364,29 @@ end -- animations
 
 do  -- waypoints UI
     local waypointsTab = tabControl:createTab("Waypoints", "5W", "TabWaypoints")
-    
+
     local waypointsScroll = createScroll()
     waypointsScroll.Parent = waypointsTab
-    
+
     local waypointsScrollY = 0
-    
+
     function createWaypointCategory(name)
         local label = createCategoryLabel(name)
         label.Parent = waypointsScroll
         label.Position = UDim2.new(0.5, 0, 0, waypointsScrollY)
-        
+
         waypointsScrollY = waypointsScrollY + cCategoryHeight
     end
-    
+
     function createWaypointButton(info)
         local labelInfo = createLabelButtonLarge(info.Name, function()
             teleport(info.CFrame)
         end)
-        
+
         local label = labelInfo.Label
         label.Parent = waypointsScroll
         label.Position = UDim2.new(0.5, 0, 0, waypointsScrollY)
-        
+
         waypointsScrollY = waypointsScrollY + cButtonHeightLarge
     end
 end -- waypoints UI -- globals exposed: createWaypointButton, createWaypointCategory
@@ -1399,12 +1399,12 @@ do  -- waypoints
     cSpawn1.Name = "Spawn (Cave)"
     cSpawn1.CFrame = CFrame.new(37.4692039, 19.4567928, 38.4004898, 1, 0, 0, 0, 1, 0, 0, 0, 1) + cSpawnOffset
     createWaypointButton(cSpawn1)
-    
+
     local cSpawn2 = {}
     cSpawn2.Name = "Spawn (Large Hill)"
     cSpawn2.CFrame = CFrame.new(-46.0499954, 14.253479, -43.9750061, 1, 0, 0, 0, 1, 0, 0, 0, 1) + cSpawnOffset
     createWaypointButton(cSpawn2)
-    
+
     local cSpawn3 = {}
     cSpawn3.Name = "Spawn (Ground)"
     cSpawn3.CFrame = CFrame.new(-0.0499948636, -4.746521, -4.97500801, 1, 0, 0, 0, 1, 0, 0, 0, 1) + cSpawnOffset
@@ -1412,22 +1412,22 @@ do  -- waypoints
 
     -----
     createWaypointCategory("Items")
-    
+
     local cBurger = {}
     cBurger.Name = "Burger/Soda"
     cBurger.CFrame = CFrame.new(-12.6373434, -2.39721942, -104.279655, 0.999609232, -9.48658307e-09, -0.0279524103, 9.50391588e-09, 1, 4.87206442e-10, 0.0279524103, -7.5267359e-10, 0.999609232)
     createWaypointButton(cBurger)
-    
+
     local cBun = {}
     cBun.Name = "Japari Bun (Rock)"
     cBun.CFrame = CFrame.new(44.2933311, 2.69040394, -174.404465, -0.926118135, 2.03467754e-09, -0.377233654, -1.18587207e-09, 1, 8.30502511e-09, 0.377233654, 8.13878565e-09, -0.926118135)
     createWaypointButton(cBun)
-    
+
     local cShrimp = {}
     cShrimp.Name = "Shrimp Fry"
     cShrimp.CFrame = CFrame.new(23.7285004, -3.39721847, -38.656456, -0.999925613, 1.10185701e-08, 0.0121939164, 1.07577787e-08, 1, -2.14526548e-08, -0.0121939164, -2.13198827e-08, -0.999925613)
     createWaypointButton(cShrimp)
-    
+
     local cIceCream = {}
     cIceCream.Name = "Ice Cream"
     cIceCream.CFrame = CFrame.new(47.6086464, -2.35769129, 86.1823273, -0.999982059, 1.08832019e-08, 0.00585500291, 1.07577787e-08, 1, -2.14526548e-08, -0.00585500291, -2.13892744e-08, -0.999982059)
@@ -1437,22 +1437,22 @@ do  -- waypoints
     cBike.Name = "Bike"
     cBike.CFrame = CFrame.new(41.1308136, -3.39721847, 70.4393082, 0.999999881, -4.17922266e-08, 0.000145394108, 4.18030872e-08, 1, -7.49089111e-08, -0.000145394108, 7.49150004e-08, 0.999999881)
     createWaypointButton(cBike)
-    
+
     local cFishingRod = {}
     cFishingRod.Name = "Fishing Rod"
     cFishingRod.CFrame = CFrame.new(-50.5187149, 1.6041007, -120.919296, 0.998044968, 5.13549168e-08, -0.0625005439, -5.57155957e-08, 1, -6.80274113e-08, 0.0625005439, 7.13766752e-08, 0.998044968)
     createWaypointButton(cFishingRod)
-    
+
     local cBaseball = {}
     cBaseball.Name = "Baseball Equipment"
     cBaseball.CFrame = CFrame.new(63.9862785, 1.61707997, -113.393738, 0.852416873, -1.00618301e-07, 0.522862673, 9.67299414e-08, 1, 3.47396458e-08, -0.522862673, 2.09638351e-08, 0.852416873)
     createWaypointButton(cBaseball)
-    
+
     local cRifle = {}
     cRifle.Name = "LunarTech Rifle"
     cRifle.CFrame = CFrame.new(-76.0725632, -3.39721847, -122.150734, 0.00984575041, 1.867169e-08, -0.999951541, -1.71646324e-08, 1, 1.85035862e-08, 0.999951541, 1.69816179e-08, 0.00984575041)
     createWaypointButton(cRifle)
-    
+
     local cGauntlet = {}
     cGauntlet.Name = "Buster Gauntlets"
     cGauntlet.CFrame = CFrame.new(3.52978015, 8.10278034, -103.847221, -0.999056339, -9.71976277e-08, 0.0434325524, -9.49071506e-08, 1, 5.47984236e-08, -0.0434325524, 5.06246529e-08, -0.999056339)
@@ -1462,17 +1462,17 @@ do  -- waypoints
     cTrolldier.Name = "Trolldier Set"
     cTrolldier.CFrame = CFrame.new(-57.4301414, 36.6266022, -77.7773438, 0.0280102566, 2.76124923e-09, 0.999607563, -8.18409589e-08, 1, -4.69047745e-10, -0.999607563, -8.17956973e-08, 0.0280102566)
     createWaypointButton(cTrolldier)
-    
+
     local cSoulEdge = {}
     cSoulEdge.Name = "Soul Edge"
     cSoulEdge.CFrame = CFrame.new(62.3707314, 22.2510509, 45.5647964, -0.0124317836, 7.14263138e-08, -0.999922097, 3.7549458e-10, 1, 7.14271877e-08, 0.999922097, 5.12501597e-10, -0.0124317836)
     createWaypointButton(cSoulEdge)
-    
+
     local cChair = {}
     cChair.Name = "Chair"
     cChair.CFrame = CFrame.new(-14.3926878, -3.39721847, -127.052185, -0.998602152, -1.55643036e-08, 0.0528521165, -2.24233379e-08, 1, -1.29184926e-07, -0.0528521165, -1.30189534e-07, -0.998602152)
     createWaypointButton(cChair)
-    
+
     local cGigasword = {}
     cGigasword.Name = "Gigasword"
     cGigasword.CFrame = CFrame.new(-54.6563225, 22.4595356, -172.48053, 0.320373297, 5.91488103e-08, 0.947291434, 1.88988629e-08, 1, -6.88315112e-08, -0.947291434, 3.99545073e-08, 0.320373297)
@@ -1485,62 +1485,62 @@ do  -- waypoints
     cFire1.Name = "Campfire (Cave)"
     cFire1.CFrame = CFrame.new(50.5005188, -3.27936959, 45.8245049, 0.511625528, -1.06045634e-08, 0.859208643, 3.62333026e-08, 1, -9.23321064e-09, -0.859208643, 3.58559191e-08, 0.511625528)
     createWaypointButton(cFire1)
-    
+
     local cFire2 = {}
     cFire2.Name = "Campfire (Ground)"
     cFire2.CFrame = CFrame.new(-35.0969467, -3.39721847, -5.80594683, -0.782029748, 2.27397319e-08, -0.623240769, 3.63110004e-08, 1, -9.07598174e-09, 0.623240769, -2.97281399e-08, -0.782029748)
     createWaypointButton(cFire2)
-    
+
     local cFire3 = {}
     cFire3.Name = "Campfire (Poolside)"
     cFire3.CFrame = CFrame.new(49.8565903, 1.61707997, -102.113022, 0.53096503, -5.22703569e-09, -0.847393513, 5.28910675e-08, 1, 2.69724456e-08, 0.847393513, -5.9140973e-08, 0.53096503)
     createWaypointButton(cFire3)
-    
+
     local cMikoBorgar = {}
     cMikoBorgar.Name = "Miko Borgar (Door)"
     cMikoBorgar.CFrame = CFrame.new(-1.05410039, -3.39721847, -82.1947021, 0.998766482, -2.69013523e-08, -0.0496555455, 3.06295682e-08, 1, 7.43202406e-08, 0.0496555455, -7.57493979e-08, 0.998766482)
     createWaypointButton(cMikoBorgar)
-    
+
     local cPond = {}
     cPond.Name = "Pond"
     cPond.CFrame = CFrame.new(-51.4066544, -2.45410466, -103.242828, -0.937839568, 3.27229159e-08, 0.347069085, 3.4841225e-08, 1, -1.36675046e-10, -0.347069085, 1.19641328e-08, -0.937839568)
     createWaypointButton(cPond)
-    
+
     local cPool1 = {}
     cPool1.Name = "Pool (Steps)"
     cPool1.CFrame = CFrame.new(69.1763077, -3.39721847, -45.1866875, 0.99876368, -2.64645528e-09, -0.0496931486, -1.14304344e-09, 1, -7.62298313e-08, 0.0496931486, 7.61923999e-08, 0.99876368)
     createWaypointButton(cPool1)
-    
+
     local cPool2 = {}
     cPool2.Name = "Pool (Benches)"
     cPool2.CFrame = CFrame.new(30.9888954, -3.39721847, -80.3704605, -0.715499997, -5.40728564e-08, -0.698610604, -1.14304344e-09, 1, -7.62298313e-08, 0.698610604, -5.37439142e-08, -0.715499997)
     createWaypointButton(cPool2)
-    
+
     local cCirno = {}
     cCirno.Name = "Cirno Statues"
     cCirno.CFrame = CFrame.new(49.1739616, -3.39721847, -8.75012016, -0.543244958, -6.46215383e-08, -0.839574218, -1.14304521e-09, 1, -7.62298455e-08, 0.839574218, -4.04518019e-08, -0.543244958)
     createWaypointButton(cCirno)
-    
+
     local cTreehouse = {}
     cTreehouse.Name = "Treehouse"
     cTreehouse.CFrame = CFrame.new(31.4564857, 35.6251411, 50.0041885, 0.715494156, 5.91811222e-08, 0.69861877, 3.8019552e-09, 1, -8.86053471e-08, -0.69861877, 6.60527633e-08, 0.715494156)
     createWaypointButton(cTreehouse)
-    
+
     local cBouncyCastle = {}
     cBouncyCastle.Name = "Bouncy Castle"
     cBouncyCastle.CFrame = CFrame.new(0.475164026, -3.39721847, 23.8564453, -0.99950707, 9.88343851e-10, 0.0313819498, -1.32396899e-10, 1, -3.57108298e-08, -0.0313819498, -3.56973651e-08, -0.99950707)
     createWaypointButton(cBouncyCastle)
-    
+
     local cSlide1 = {}
     cSlide1.Name = "Slide (Small Hill)"
     cSlide1.CFrame = CFrame.new(-50.6221809, 9.94405937, 56.1536865, 0.997613728, 2.3075911e-08, -0.0690322742, -2.23911307e-08, 1, 1.06936717e-08, 0.0690322742, -9.12244946e-09, 0.997613728)
     createWaypointButton(cSlide1)
-    
+
     local cSlide2 = {}
     cSlide2.Name = "Slide (Poolside)"
     cSlide2.CFrame = CFrame.new(40.0324783, 6.6087389, -39.532444, 0.999875724, -1.93160812e-08, -0.0157229118, 1.95169676e-08, 1, 1.26231088e-08, 0.0157229118, -1.29284112e-08, 0.999875724)
     createWaypointButton(cSlide2)
-    
+
     local cFunkyRoom = {}
     cFunkyRoom.Name = "Funky Room"
     cFunkyRoom.CFrame = CFrame.new(-68.484436, -3.39721847, 60.7482109, -2.32830644e-10, -3.11954729e-08, -0.999997795, 5.44967769e-08, 1, -3.11955013e-08, 0.999997795, -5.44967342e-08, -2.32830644e-10)
@@ -1550,63 +1550,63 @@ do  -- waypoints
     cGamerShack.Name = "Gamer Shack"
     cGamerShack.CFrame = CFrame.new(-50.2287025, -3.39721847, -3.56329846, 0.0125501379, -7.96809871e-08, 0.999920964, -4.29299334e-08, 1, 8.02261013e-08, -0.999920964, -4.39333938e-08, 0.0125501379)
     createWaypointButton(cGamerShack)
-    
+
     local cSuwako = {}
     cSuwako.Name = "Suwako Room"
     cSuwako.CFrame = CFrame.new(-61.846508, -3.39721847, -66.5909882, 0.00312713091, -3.28514393e-09, -0.999995053, 7.25480831e-08, 1, -3.05829273e-09, 0.999995053, -7.25381568e-08, 0.00312713091)
     createWaypointButton(cSuwako)
-    
+
     local cLobster = {}
     cLobster.Name = "Lobster"
     cLobster.CFrame = CFrame.new(5.77875519, -12.7361145, -63.4011688, 0.999820292, 1.11183072e-08, -0.0189436078, -9.94847138e-09, 1, 6.18481266e-08, 0.0189436078, -6.16485281e-08, 0.999820292)
     createWaypointButton(cLobster)
-    
+
     local cMMP = {}
     cMMP.Name = "Memento Mori Portal"
     cMMP.CFrame = CFrame.new(2.64911199, -12.7361145, -92.2972336, -0.00299006794, -7.72914319e-08, 0.99999553, 5.85626445e-08, 1, 7.74668862e-08, -0.99999553, 5.8794015e-08, -0.00299006794)
     createWaypointButton(cMMP)
-    
+
     -----
     createWaypointCategory("Other (Expansion 1)")
-    
+
     local cSavanna1 = {}
     cSavanna1.Name = "Savanna"
     cSavanna1.CFrame = CFrame.new(37.7001686, -3.40405059, -137.407516, 0.999959052, 4.18167581e-08, 0.00899411179, -4.13985326e-08, 1, -4.66871946e-08, -0.00899411179, 4.63129659e-08, 0.999959052)
     createWaypointButton(cSavanna1)
-    
+
     local cSavanna2 = {}
     cSavanna2.Name = "Savanna (Treetop)"
     cSavanna2.CFrame = CFrame.new(35.8279114, 26.9120026, -182.731674, 0.701667905, 3.67231046e-08, 0.71250397, -9.58126307e-08, 1, 4.28145697e-08, -0.71250397, -9.83084973e-08, 0.701667905)
     createWaypointButton(cSavanna2)
-    
+
     local cBlueDoor = {}
     cBlueDoor.Name = "Blue Door"
     cBlueDoor.CFrame = CFrame.new(-33.5249329, -3.39721847, -211.964386, -0.999284327, 2.38968401e-08, 0.037821576, 2.54846189e-08, 1, 4.14982999e-08, -0.037821576, 4.24324718e-08, -0.999284327)
     createWaypointButton(cBlueDoor)
-    
+
     local cTrain = {}
     cTrain.Name = "Train Station"
     cTrain.CFrame = CFrame.new(-54.2110176, 6.25, -161.287369, -0.999873161, 7.6191661e-08, 0.0159097109, 7.52258629e-08, 1, -6.13025932e-08, -0.0159097109, -6.0098003e-08, -0.999873161)
     createWaypointButton(cTrain)
-    
+
     -----
     createWaypointCategory("Other (Expansion 2)")
-    
+
     local cFountain = {}
     cFountain.Name = "Fountain"
     cFountain.CFrame = CFrame.new(35.8924446, -2.35769129, 96.6178894, -0.0536103845, -2.98055269e-08, -0.998561919, -6.42211972e-08, 1, -2.64005671e-08, 0.998561919, 6.27135108e-08, -0.0536103845)
     createWaypointButton(cFountain)
-    
+
     local cRatcade = {}
     cRatcade.Name = "Ratcade"
     cRatcade.CFrame = CFrame.new(3.75609636, -3.39721847, 89.8193359, 0.0222254563, 5.80779727e-08, 0.999752939, 3.18127285e-08, 1, -5.87995359e-08, -0.999752939, 3.31117072e-08, 0.0222254563)
     createWaypointButton(cRatcade)
-    
+
     local cPicnic = {}
     cPicnic.Name = "Ratcade (Picnic Tables)"
     cPicnic.CFrame = CFrame.new(-51.8626671, -3.39721847, 101.30365, 0.739765823, 1.6030107e-08, 0.672863305, 3.18127285e-08, 1, -5.87995359e-08, -0.672863305, 6.49035243e-08, 0.739765823)
     createWaypointButton(cPicnic)
-    
+
     local cUfo = {}
     cUfo.Name = "Inside UFO Catcher"
     cUfo.CFrame = CFrame.new(-37.7735367, -0.92603755, 78.7536469, -0.999979138, -6.31962678e-08, 0.00645794719, -6.36200426e-08, 1, -6.5419826e-08, -0.00645794719, -6.5829326e-08, -0.999979138)
@@ -1627,7 +1627,7 @@ do  -- hats come alive
         if p:IsA("BasePart") then
             del(p)
         end
-    
+
         for k, v in pairs(p:GetDescendants()) do
             if v:IsA("BasePart") then
                 del(v)
@@ -1644,14 +1644,14 @@ do  -- hats come alive
 
         return false
     end
-    
+
     local savedLocation = nil
 
     function makeAlive(weld)
         coroutine.wrap(function()
             local humanRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
             if not savedLocation then savedLocation = humanRoot.CFrame end
-            
+
             teleport(CFrame.new(10000, 0, 10000))
             humanRoot.Anchored = true
             LocalPlayer.CameraMode = Enum.CameraMode.LockFirstPerson
@@ -1705,7 +1705,7 @@ do  -- hats come alive
                 local hum = otherPart.Parent:FindFirstChildOfClass("Humanoid")
                 if hum and mousePos then
                     local newTarget = hum.Parent
-            
+
                     if draggedAway ~= newTarget then
                         mousePos = nil
                         tpTarget = newTarget
@@ -1730,7 +1730,7 @@ do  -- hats come alive
     local function updatePart(info, t, dT, idx)
         local targetPos
         local alpha = 1
-    
+
         local ang = ((t + 10 * idx) * 180) % 360
 
         if mousePos then
@@ -1811,13 +1811,13 @@ do  -- hats come alive
             mousePos = input.Position
         end
     end)
-    
+
     lInputC = INPUT.InputChanged:Connect(function(input, handled)
         if not handled and input.UserInputType == Enum.UserInputType.MouseMovement and mousePos then
             mousePos = input.Position
         end
     end)
-    
+
     lInputE = INPUT.InputEnded:Connect(function(input, handled)
         if not handled and input.UserInputType == Enum.UserInputType.MouseButton3 then
             mousePos = nil
@@ -1858,16 +1858,16 @@ end -- hats come alive -- globals exposed: iteratePart, makeAlive, lHeartbeat, l
 
 do  -- welds
     local weldsTab = tabControl:createTab("Remove Welds", "6R", "TabWelds")
-    
+
     local weldsScroll = createScroll()
     weldsScroll.Parent = weldsTab
 
     local weldsScrollY = 0
     local cWeldSpacing = 2
-    
+
     local savedLocation = nil
     local inProgress = 0
-    
+
     local function deleteWeld(weld, cb)
         inProgress = inProgress + 1
 
@@ -1876,7 +1876,7 @@ do  -- welds
             -- mostly so welds that were deleted in this operation are also removed from the list
             cb(v)
         end
-        
+
         weld.Part1:ClearAllChildren()
 
         -- allows for tp-back location to be correct between concurrent calls.
@@ -1888,14 +1888,14 @@ do  -- welds
 
         -- wait for movement (lag?)
         local v0 = weld.Part1.Velocity
-        
+
         while weld.Part1.Velocity == v0 do
             wait(0.1)
         end
 
         wait(1.5)
         weld.Part1.Anchored = true
-        
+
         if savedLocation and inProgress == 1 then
             teleport(savedLocation)
             savedLocation = nil
@@ -1903,9 +1903,9 @@ do  -- welds
 
         inProgress = inProgress - 1
     end
-    
+
     local labels = {}
-    
+
     local function updateWeldsLayout()
         weldsScrollY = 0
 
@@ -1925,7 +1925,7 @@ do  -- welds
         local label = nil
         local labelInfo = createLabelButtonLarge(weld.Name, function(setActive, type)
             if not weld.Parent then return end
-                
+
             if type == Enum.UserInputType.MouseButton1 then
                 setActive(true)
 
@@ -1933,7 +1933,7 @@ do  -- welds
                     for k, l in pairs(labels) do
                         if l and l.Weld == p or l.Weld.Part0 == p or l.Weld.Part1 == p then
                             l.Label:Destroy()
-                            
+
                             updateWeldsLayout()
                         end
                     end
@@ -1946,10 +1946,10 @@ do  -- welds
                 local goal = {}
                 goal.Transparency = 1
                 local tween = TWEEN:Create(weld.Part1, tweenInfo, goal)
-                
+
                 setActive(true)
                 tween:Play()
-                
+
                 tween.Completed:Wait()
                 setActive(false)
             else
@@ -1964,28 +1964,28 @@ do  -- welds
                 end
             end
         end)
-        
+
         label = labelInfo.Label
         label.Parent = weldsScroll
         label.TextTruncate = Enum.TextTruncate.AtEnd
-        
+
         -- I hate Yuyuko.
         if not label.TextFits then
             label.TextScaled = true
         end
-        
+
         local labelInfo = {}
         labelInfo.Label = label
         labelInfo.Weld = weld
-        
+
         labels[#labels + 1] = labelInfo
     end
-    
+
     local function updateChar(char)
         for k, l in pairs(labels) do
             l.Label:Destroy()
         end
-        
+
         labels = {}
 
         for k, v in pairs(char:GetDescendants()) do
@@ -1993,10 +1993,10 @@ do  -- welds
                 addWeld(v)
             end
         end
-        
+
         updateWeldsLayout()
     end
-    
+
     lCharacter = LocalPlayer.CharacterAdded:Connect(function(char)
         updateChar(char)
     end)
@@ -2005,20 +2005,20 @@ end -- welds -- globals exposed: lCharacter
 
 do  -- settings
     local settingsTab = tabControl:createTab("Settings", "7S", "TabSettings")
-    
+
     local settingsScroll = createScroll()
     settingsScroll.Parent = settingsTab
-    
+
     local settingsScrollY = 0
 
     local currentlyBinding = nil
     local listener = nil
-    
+
     local function addBind(name)
 
         local labelInfo = nil
         local label = nil
-        
+
         local function getName()
             local bindText = binds.Keybinds[name]
             if bindText == -1 then bindText = "NONE" end
@@ -2032,7 +2032,7 @@ do  -- settings
 
             label.Text = getName()
             labelInfo.SetActive(false)
-            
+
             wait(0.2)
             binds.Disabled = false
             currentlyBinding = nil
@@ -2068,16 +2068,16 @@ do  -- settings
                 label.Text = getName()
             end
         end)
-        
+
         label = labelInfo.Label
         label.Parent = settingsScroll
         label.Position = UDim2.new(0.5, 0, 0, settingsScrollY)
 
         settingsScrollY = settingsScrollY + cButtonHeightLarge
     end
-    
+
     local cBinds = { "TabCharacters", "TabOptions", "TabDocs", "TabAnims", "TabWaypoints", "TabWelds", "TabSettings", "MapVis", "MapView", "RaySit", "Exit" }
-    
+
     for k, v in pairs(cBinds) do
         addBind(v)
     end
@@ -2114,7 +2114,7 @@ end -- info
 do  -- minimap
     local TooltipProvider = {}
     TooltipProvider.__index = TooltipProvider
-    
+
     TooltipProvider.createText = function(size)
         local text = Instance.new("TextLabel")
         text.AutomaticSize = Enum.AutomaticSize.XY
@@ -2125,16 +2125,16 @@ do  -- minimap
         text.Font = cFont
         text.TextSize = size
         text.RichText = true
-        
+
         return text
     end
 
     function TooltipProvider.new(parent)
         local obj = {}
         setmetatable(obj, TooltipProvider)
-        
+
         obj.Parent = parent
-        
+
         local tooltipFrame = Instance.new("Frame")
         tooltipFrame.Parent = parent
         tooltipFrame.AnchorPoint = Vector2.new(0, 0)
@@ -2142,46 +2142,46 @@ do  -- minimap
         tooltipFrame.BackgroundTransparency = 0.25
         tooltipFrame.BackgroundColor3 = cBackgroundColor
         tooltipFrame.BorderSizePixel = 0
-        
+
         obj.Frame = tooltipFrame
-        
+
         obj.Instances = {}
         obj.Scale = 1
 
         return obj
     end
-    
+
     function TooltipProvider:_mouseEnter(obj)
         if obj.ShowTooltip and not obj:ShowTooltip() then return end
-        
+
         local pos = INPUT:GetMouseLocation()
 
         self.Frame:ClearAllChildren()
         obj:CreateTooltip(self.Frame)
         self.Frame.Position = UDim2.fromOffset(pos.X, pos.Y)
-        
+
         self.Frame.Visible = true
     end
-    
+
     function TooltipProvider:_mouseLeave(obj)
         self.Frame:ClearAllChildren()
         self.Frame.Visible = false
     end
-    
+
     function TooltipProvider:register(obj)
         if not obj.TooltipObject or not obj.CreateTooltip then return end
-        
+
         local info = {}
         info.Object = obj
 
         info.lEnter = obj.TooltipObject.MouseEnter:Connect(function()
             self:_mouseEnter(obj)
         end)
-        
+
         info.lLeave = obj.TooltipObject.MouseLeave:Connect(function()
             self:_mouseLeave(obj)
         end)
-        
+
         if obj.Clicked then
             info.lClicked = obj.TooltipObject.InputBegan:Connect(function(input)
                 if (not obj.ShowTooltip or obj:ShowTooltip()) and input.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -2189,10 +2189,10 @@ do  -- minimap
                 end
             end)
         end
-        
+
         self.Instances[#self.Instances + 1] = info
     end
-    
+
     function TooltipProvider:deregister(obj)
         for k, v in pairs(self.Instances) do
             if v.Object == obj then
@@ -2215,9 +2215,9 @@ do  -- minimap
     function PlayerDot.new(parent, player)
         local obj = {}
         setmetatable(obj, PlayerDot)
-        
+
         local cIconSize = 20
-        
+
         local frame = Instance.new("Frame")
         frame.Parent = parent
         frame.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -2231,27 +2231,27 @@ do  -- minimap
         dot.Size = UDim2.fromOffset(5, 5)
         dot.Position = UDim2.fromScale(0.5, 0.5)
         dot.BorderSizePixel = 0
-        
+
         local icon = Instance.new("ImageLabel")
         icon.Parent = frame
         icon.Image = "rbxassetid://7480141029"
         icon.BackgroundTransparency = 1
         icon.Size = UDim2.fromOffset(cIconSize, cIconSize)
         icon.BorderSizePixel = 0
-        
+
         obj.TooltipObject = frame
         obj.Frame = frame
         obj.Dot = dot
         obj.Icon = icon
-        
+
         obj.Player = player
         obj.IsLocal = player == LocalPlayer
-        
+
         obj.InfoText = nil
 
         return obj
     end
-    
+
     function PlayerDot:UpdateSize(scale)
         self.Scale = scale
 
@@ -2263,20 +2263,20 @@ do  -- minimap
             self.Icon.ImageTransparency = 1
         end
     end
-    
+
     function PlayerDot:setParent(parent)
         self.Frame.Parent = parent
     end
-    
+
     function PlayerDot:setColor(color)
         self.Dot.BackgroundColor3 = color
         self.Icon.ImageColor3 = color
     end
-    
+
     function PlayerDot:ShowTooltip()
         return self.Scale > 2
     end
-    
+
     function PlayerDot:CreateTooltip(frame)
         local y = 0
         local cUsernameHeight = 24
@@ -2285,9 +2285,9 @@ do  -- minimap
         local usernameText = TooltipProvider.createText(cUsernameHeight)
         usernameText.Parent = frame
         usernameText.Text = "<b>"..self.Player.Name.."</b>"
-        
+
         y = y + cUsernameHeight
-        
+
         local infoText = TooltipProvider.createText(cInfoHeight)
         infoText.Parent = frame
         infoText.Position = UDim2.fromOffset(0, y)
@@ -2298,29 +2298,29 @@ do  -- minimap
         else
             infoText.Text = "Random"
         end
-        
+
         y = y + cInfoHeight
-        
+
         if not self.IsLocal then
             local tpText = TooltipProvider.createText(cInfoHeight)
             tpText.Parent = frame
             tpText.Position = UDim2.fromOffset(0, y)
             tpText.Text = "<i>Click to teleport</i>"
-            
+
             y = y + cInfoHeight
         end
     end
-    
+
     function PlayerDot:Clicked(input)
         if self.IsLocal then return end
 
         local root = self.Player.Character:FindFirstChild("HumanoidRootPart")
-        
+
         if root then
             teleport(root.CFrame)
         end
     end
-    
+
     local cEpsilon = 1e-7
     local function almostEqual(v1, v2, epsilon)
         if not epsilon then epsilon = cEpsilon end
@@ -2335,7 +2335,7 @@ do  -- minimap
         setmetatable(obj, Minimap)
 
         obj.Parent = parent
-        
+
         local origin, maxPos = obj:_findWorldBounds()
         obj.WorldOrigin = origin
         obj.RealSize2 = maxPos - origin
@@ -2344,7 +2344,7 @@ do  -- minimap
 
         local cMapSize = 300
         obj.cMapSize = cMapSize
-        
+
         local mapFrameO = Instance.new("Frame")
         mapFrameO.Parent = parent
         mapFrameO.AnchorPoint = Vector2.new(0, 1)
@@ -2355,9 +2355,9 @@ do  -- minimap
         mapFrameO.BorderSizePixel = 3
         mapFrameO.BorderColor3 = cForegroundColor
         mapFrameO.ClipsDescendants = true
-        
+
         obj.FrameOuter = mapFrameO
-        
+
         local mapFrameI = Instance.new("Frame")
         mapFrameI.Parent = mapFrameO
         mapFrameI.BackgroundTransparency = 1
@@ -2365,9 +2365,9 @@ do  -- minimap
         mapFrameI.Position = UDim2.fromScale(0, 0)
 
         obj.FrameInner = mapFrameI
-        
+
         obj.Tooltips = TooltipProvider.new(parent)
-        
+
         obj.AreaLayer = obj:createLayer()
         obj.TerrainLayer = obj:createLayer()
         obj.PlayerLayerRandom = obj:createLayer()
@@ -2377,7 +2377,7 @@ do  -- minimap
         obj.Terrain = {}
         obj:_plotAreas()
         obj:_plotTerrain()
-        
+
         obj.Players = {}
         obj.PlayerPositions = {}
 
@@ -2405,7 +2405,7 @@ do  -- minimap
         obj._expandTween = nil
         obj.Expanded = nil
         obj:setExpanded(false)
-        
+
         obj._dragStart = nil
         obj._dragPosOrig = nil
 
@@ -2423,26 +2423,26 @@ do  -- minimap
 
         return obj
     end
-    
+
     function Minimap:createLayer()
         local layer = Instance.new("Frame")
         layer.Parent = self.FrameInner
         layer.Size = UDim2.fromScale(1, 1)
         layer.BorderSizePixel = 0
         layer.BackgroundTransparency = 1
-        
+
         return layer
     end
-    
+
     function Minimap:TargetSize()
         return self.RealSize2 * self.ScaleFactor -- TODO
     end
-    
+
     function Minimap:_findBounds(insts, check)
         local xMin = math.huge
         local yMin = math.huge
         local zMin = math.huge
-        
+
         local xMax = -math.huge
         local yMax = -math.huge
         local zMax = -math.huge
@@ -2460,7 +2460,7 @@ do  -- minimap
             if posMax.X > xMax then
                 xMax = posMax.X
             end
-            
+
             if posMin.Y < yMin then
                 yMin = posMin.Y
             end
@@ -2486,20 +2486,20 @@ do  -- minimap
 
         return Vector3.new(xMin, yMin, zMin), Vector3.new(xMax, yMax, zMax)
     end
-    
+
     function Minimap:_findWorldBounds()
         local posMin, posMax = self:_findBounds({ workspace.PlayArea, REPLICATED.Zones, workspace.ActiveZone })
         -- must scan ActiveZone for zones player is currently inside
         return Vector2.new(posMin.X, posMin.Z), Vector2.new(posMax.X, posMax.Z)
     end
-    
+
     function Minimap:setExpanded(expanded)
         if expanded == self.Expanded then return end
         self.Expanded = expanded
 
         local tweenInfo = TweenInfo.new(0.5)
         local goal = {}
-        
+
         if expanded then
             goal.Size = UDim2.fromScale(1, 1)
             goal.Position = UDim2.fromScale(0, 1)
@@ -2509,49 +2509,49 @@ do  -- minimap
             goal.Position = UDim2.new(0, 100, 1, -100)
             self.ScaleFactor = 1.2
         end
-        
+
         for k, v in pairs(self.Terrain) do
             v.UpdateSize()
         end
-        
+
         for k, v in pairs(self.Players) do
             if v then v:UpdateSize(self.ScaleFactor) end
         end
-        
+
         self:updateSize()
-        
+
         local tween = TWEEN:Create(self.FrameOuter, tweenInfo, goal)
         self._expandTween = tween
         tween:Play()
 
         self.FrameOuter.Active = expanded
     end
-    
+
     function Minimap:_findZone(name)
         local rep = REPLICATED.Zones:FindFirstChild(name)
         if rep then return rep end
-        
+
         local active = workspace.ActiveZone:FindFirstChild(name)
         if active then return active end
-        
+
         log("WARNING: Did you delete any zones? Failed to find "..name.."!")
     end
-    
+
     function Minimap:_plotAreas()
         local cArea = Color3.fromRGB(86, 94, 81)
         local cAreaB = Color3.fromRGB(89, 149, 111)
 
         local mwCf, mwSize = workspace.PlayArea["invis walls"]:GetBoundingBox()
         self:plotBBox(mwCf, mwSize, cArea, cAreaB, self.AreaLayer)
-        
+
         local cBeachCf = CFrame.new(-978.322266, 134.538483, 8961.99805, 1, 0, 0, 0, 1, 0, 0, 0, 1) -- the roof barrier
         local cBeachSize = Vector3.new(273.79, 29.45, 239.5)
         self:plotBBox(cBeachCf, cBeachSize, cArea, cAreaB, self.AreaLayer)
-        
+
         local ruinsMin, ruinsMax = self:_findBounds({ self:_findZone("Ruins") }, function(inst) return inst.Name ~= "bal" end)
         local ruinsCenter = CFrame.new((ruinsMin + ruinsMax) / 2)
         self:plotBBox(ruinsCenter, ruinsMax - ruinsMin, cArea, cAreaB, self.AreaLayer)
-        
+
         local velvetMin, velvetMax = self:_findBounds({ self:_findZone("VelvetRoom") })
         local velvetCenter = CFrame.new((velvetMin + velvetMax) / 2)
         self:plotBBox(velvetCenter, velvetMax - velvetMin, cArea, cAreaB, self.AreaLayer)
@@ -2565,24 +2565,24 @@ do  -- minimap
 
         local cPoolCf = CFrame.new(51.980999, -16.854372, -63.6765823, 1, 0, 0, 0, 1, 0, 0, 0, 1) -- cframe and size of the pool floor
         local cPoolSize = Vector3.new(45.3603, 5.33651, 32.0191)
-        
+
         self:plotBBox(cPoolCf, cPoolSize, cWater, cWaterB)
-        
+
         local cTree = Color3.fromRGB(89, 149, 111)
         local cTreeB = Color3.fromRGB(5, 145, 56)
-        
+
         local cRock = Color3.fromRGB(89, 105, 108)
         local cRockB = Color3.fromRGB(89, 89, 89)
-        
+
         local cParkourSize = 4.0023837089539
         local cParkourEpsilon = 1e-2
-        
+
         for k, v in pairs(features) do -- not so important stuff
             if v:IsA("Model") and v.Name == "stupid tree1" then -- single square trees
                 self:plotPartQuad(v:FindFirstChild("Part"), cTree, cTreeB)
             elseif v:IsA("Part") then
                 local children = v:GetChildren()
-                
+
                 if v.Color == cRock then -- any rocks
                     self:plotPartQuad(v, cRock, cRockB)
                 elseif almostEqual(v.Size.X, cParkourSize, cParkourEpsilon) and -- parkour
@@ -2592,10 +2592,10 @@ do  -- minimap
                 end
             end
         end
-        
+
         local cBench = Color3.fromRGB(173, 125, 110)
         local cBenchB = Color3.fromRGB(173, 88, 62)
-        
+
         for k, v in pairs(features) do -- bench
             if v:IsA("Model") and (v.Name == "Bench" or v.Name == "log") then
                 local cf, size = v:GetBoundingBox()
@@ -2631,7 +2631,7 @@ do  -- minimap
             self.FriendsCache = LocalPlayer:GetFriendsOnline()
             self.FriendsCacheTime = DateTime.now().UnixTimestamp
         end
-        
+
         for k, v in pairs(self.FriendsCache) do
             if v.VisitorId == player.UserId then
                 dot:setParent(self.PlayerLayerSpecial)
@@ -2640,15 +2640,15 @@ do  -- minimap
                 return
             end
         end
-        
+
         dot:setColor(Color3.fromRGB(255, 255, 255))
     end
 
     function Minimap:plotPlayer(player)
         local cIconSize = 20
-        
+
         if not player.Character then return end
-        
+
         local humanRoot = player.Character:FindFirstChild("HumanoidRootPart")
         if not humanRoot then return end
 
@@ -2660,7 +2660,7 @@ do  -- minimap
         self.Players[player.UserId].Frame.Position = UDim2.fromOffset(mapped.X, mapped.Y)
         self.Players[player.UserId].Icon.Rotation = -humanRoot.Orientation.Y - 45
     end
-    
+
     function Minimap:plotBBox(cf, size, color, colorB, parent)
         if not parent then parent = self.TerrainLayer end
 
@@ -2671,13 +2671,13 @@ do  -- minimap
         quad.BackgroundColor3 = color
         quad.BorderSizePixel = 1
         quad.BorderColor3 = colorB
-        
+
         local info = {}
         info.UpdateSize = function()
             local scaled = size * self.ScaleFactor
 
             local x, y, z = cf:ToOrientation()
-            
+
             if y % (math.pi / 2) > 1e-3 then
                 quad.Rotation = -y * 180 / math.pi
             else
@@ -2685,27 +2685,27 @@ do  -- minimap
             end
 
             quad.Size = UDim2.fromOffset(scaled.X, scaled.Z)
-            
+
             local pos2 = self:mapPosition(Vector2.new(cf.Position.X, cf.Position.Z))
             quad.Position = UDim2.fromOffset(pos2.X, pos2.Y)
         end
-        
+
         info.UpdateSize()
-        
+
         self.Terrain[#self.Terrain + 1] = info
     end
-    
+
     function Minimap:plotPartQuad(part, color, colorB, parent)
         self:plotBBox(part.CFrame, part.Size, color, colorB, parent)
     end
-    
+
     function Minimap:_playerConnect(player)
         if not self.Players[player.UserId] then
             local dot = PlayerDot.new(self.PlayerLayerRandom, player)
             dot:UpdateSize(self.ScaleFactor)
-            
+
             self.Tooltips:register(dot)
-            
+
             self:_updatePlayerDot(player, dot)
 
             self.Players[player.UserId] = dot
@@ -2728,26 +2728,26 @@ do  -- minimap
         end
 
         local pos = self.PlayerPositions[LocalPlayer.UserId]
-        
+
         if not self.Expanded or (self._expandTween and self._expandTween.PlaybackState ~= Enum.PlaybackState.Completed) then
             self.FrameInner.Position = UDim2.new(0.5, -pos.X, 0.5, -pos.Y)
         end
     end
-    
+
     function Minimap:_inputB(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 and self.Expanded then
             self._dragStart = input.Position
             self._dragPosOrig = self.FrameInner.Position
         end
     end
-    
+
     function Minimap:_inputC(input)
         if input.UserInputType == Enum.UserInputType.MouseMovement and self._dragStart then
             local offset = input.Position - self._dragStart
             self.FrameInner.Position = self._dragPosOrig + UDim2.fromOffset(offset.X, offset.Y)
         end
     end
-    
+
     function Minimap:_inputE(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             self._dragStart = nil
@@ -2807,7 +2807,7 @@ end)
 binds:bind("RaySit", function()
     local pos = INPUT:GetMouseLocation()
     local unitRay = WORKSPACE.CurrentCamera:ScreenPointToRay(pos.X, pos.Y)
-    
+
     local filter = {}
     for k, v in pairs(WORKSPACE:GetDescendants()) do
         if v:IsA("Seat") then
@@ -2821,10 +2821,10 @@ binds:bind("RaySit", function()
 
     local result = WORKSPACE:Raycast(unitRay.Origin, unitRay.Direction * 1000, params)
     if not result then return end
-    
+
     if result.Instance:IsA("Seat") then
         local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-        
+
         if hum.SeatPart then
             hum.Sit = false
             wait()
@@ -2841,7 +2841,7 @@ binds:bind("Exit", function()
     lCharacter:Disconnect()
     disconnectJump()
     stopAllAnimations()
-    
+
     binds:destroy()
 
     lHeartbeat:Disconnect()
@@ -2850,7 +2850,7 @@ binds:bind("Exit", function()
     lInputC:Disconnect()
     lInputE:Disconnect()
     lCharacter2:Disconnect()
-    
+
     lCharacter3:Disconnect()
 
     pcall(function()
