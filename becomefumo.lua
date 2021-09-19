@@ -1008,6 +1008,7 @@ do  -- docs content
     cChangelogContent = cChangelogContent.."<b>1.5.1</b><br />"
     cChangelogContent = cChangelogContent.."- Added lerps back to mouse movement and orbit of weld parts + additional tweaking<br />"
     cChangelogContent = cChangelogContent.."- Blacklist music region bounding boxes and the main invis walls from weld raycast<br />"
+    cChangelogContent = cChangelogContent.."- Make bobbing movements be the correct direction instead of always up/down<br />"
     cChangelogContent = cChangelogContent.."- ???<br /><br />"
 
     cChangelogContent = cChangelogContent.."<b>1.5.0 - Minimap</b><br />"
@@ -1655,6 +1656,7 @@ do  -- hats come alive
             pos.P = 500000
             pos.D = 1000
             pos.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+            pos.Position = part.Position
 
             bodyPositions[#bodyPositions+1] = pos
 
@@ -1689,7 +1691,6 @@ do  -- hats come alive
 
         weld:Destroy()
         part.Velocity = Vector3.new(0, 100, 0)
-        RUN.Heartbeat:Wait()
         part.Anchored = true
 
         local lTouch = part.Touched:Connect(function(otherPart)
@@ -1761,7 +1762,7 @@ do  -- hats come alive
 
             local cf = targetPart.CFrame * info.TotalOffset
 
-            targetPos = cf.Position + vOff
+            targetPos = cf.Position + (cf - cf.Position) * vOff
             info.Part.CFrame = cf - cf.Position + info.Part.Position -- proper rotation (JANK!)
         else
             local theta = (t + 10 * idx) * 3
