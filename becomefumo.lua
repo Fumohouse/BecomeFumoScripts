@@ -1009,7 +1009,7 @@ do  -- docs content
     cChangelogContent = cChangelogContent.."- Added lerps back to mouse movement and orbit of weld parts + additional tweaking<br />"
     cChangelogContent = cChangelogContent.."- Blacklist music region bounding boxes and the main invis walls from weld raycast<br />"
     cChangelogContent = cChangelogContent.."- Make bobbing movements be the correct direction instead of always up/down<br />"
-    cChangelogContent = cChangelogContent.."- Try to maximize fps during removal of welds by teleporting and setting camera to first person<br />"
+    cChangelogContent = cChangelogContent.."- Try to maximize fps during removal of welds by teleporting to a remote location<br />"
     cChangelogContent = cChangelogContent.."- ???<br /><br />"
 
     cChangelogContent = cChangelogContent.."<b>1.5.0 - Minimap</b><br />"
@@ -1650,15 +1650,15 @@ do  -- hats come alive
 
     function makeAlive(weld)
         coroutine.wrap(function()
-            wait(2)
             inProgress = inProgress + 1
+            wait(2)
             local humanRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
             if not savedLocation then savedLocation = humanRoot.CFrame end
 
             teleport(CFrame.new(10000, 0, 10000))
             humanRoot.Anchored = true
-            LocalPlayer.CameraMode = Enum.CameraMode.LockFirstPerson
-            wait(0.2)
+            -- LocalPlayer.CameraMode = Enum.CameraMode.LockFirstPerson
+            wait(1)
 
             local part = weld.Part1
             part.CanTouch = true
@@ -1729,7 +1729,7 @@ do  -- hats come alive
                 teleport(savedLocation)
                 savedLocation = nil
                 humanRoot.Anchored = false
-                LocalPlayer.CameraMode = Enum.CameraMode.Classic
+                -- LocalPlayer.CameraMode = Enum.CameraMode.Classic
             end
         end)()
     end
@@ -1803,7 +1803,9 @@ do  -- hats come alive
         end
 
         for k, v in pairs(info.PosList) do
-            if alpha ~= 1 then
+            local dist = math.sqrt((targetPos.X - v.Position.X)^2 + (targetPos.Y - v.Position.Y)^2)
+
+            if alpha ~= 1 and dist < 1000 then
                 v.Position = v.Position:Lerp(targetPos, alpha * 60 * dT)
             else
                 v.Position = targetPos
