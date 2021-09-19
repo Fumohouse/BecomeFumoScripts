@@ -1010,6 +1010,7 @@ do  -- docs content
     cChangelogContent = cChangelogContent.."- Blacklist music region bounding boxes and the main invis walls from weld raycast<br />"
     cChangelogContent = cChangelogContent.."- Make bobbing movements be the correct direction instead of always up/down<br />"
     cChangelogContent = cChangelogContent.."- Try to maximize fps during removal of welds by teleporting to a remote location<br />"
+    cChangelogContent = cChangelogContent.."- Remove unnecessary code and use BodyGyro for all rotations<br />"
     cChangelogContent = cChangelogContent.."- ???<br /><br />"
 
     cChangelogContent = cChangelogContent.."<b>1.5.0 - Minimap</b><br />"
@@ -1623,18 +1624,6 @@ do  -- hats come alive
     local mousePos
     local draggedAway
 
-    local function iteratePart(p, del)
-        if p:IsA("BasePart") then
-            del(p)
-        end
-
-        for k, v in pairs(p:GetDescendants()) do
-            if v:IsA("BasePart") then
-                del(v)
-            end
-        end
-    end
-
     local function checkCommonWeld(partName)
         for k, v in pairs(commonWelds) do
             if v == partName then
@@ -1673,22 +1662,22 @@ do  -- hats come alive
             local part = weld.Part1
             part.CanTouch = true
 
-            local bodyPositions = {}
+            local pos = Instance.new("BodyPosition")
+            pos.Parent = part
+            pos.P = 500000
+            pos.D = 1000
+            pos.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+            pos.Position = part.Position
 
-            iteratePart(part, function(p)
-                local pos = Instance.new("BodyPosition")
-                pos.Parent = p
-                pos.P = 500000
-                pos.D = 1000
-                pos.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-                pos.Position = part.Position
+            local gyro = Instance.new("BodyGyro")
+            gyro.Parent = part
+            gyro.P = 500000
+            gyro.D = 1000
+            gyro.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
 
-                bodyPositions[#bodyPositions+1] = pos
-
-                local antiG = Instance.new("BodyForce")
-                antiG.Parent = p
-                antiG.Force = Vector3.new(0, p:GetMass() * workspace.Gravity, 0)
-            end)
+            local antiG = Instance.new("BodyForce")
+            antiG.Parent = part
+            antiG.Force = Vector3.new(0, part:GetMass() * workspace.Gravity, 0)
 
             -- add offsets of welds until a common part is reached
             local checkWeld = weld
@@ -1709,7 +1698,8 @@ do  -- hats come alive
             partInfo.Weld = weld
             partInfo.TargetName = checkWeld.Part0.Name
             partInfo.Part = part
-            partInfo.PosList = bodyPositions
+            partInfo.Pos = pos
+            partInfo.Gyro = gyro
             partInfo.TotalOffset = totalOffset
 
             parts[#parts+1] = partInfo
@@ -1748,7 +1738,7 @@ do  -- hats come alive
         local targetPos
         local alpha = 1
 
-        local ang = ((t + 10 * idx) * 180) % 360
+        local ang = ((t + 10 * idx) * math.pi) % (2 * math.pi)
 
         if mousePos then
             local unitRay = WORKSPACE.CurrentCamera:ScreenPointToRay(mousePos.X, mousePos.Y)
@@ -1761,7 +1751,7 @@ do  -- hats come alive
 
             targetPos = result.Position
             alpha = 0.3
-            info.Part.Rotation = Vector3.new(0, ang, 0)
+            info.Gyro.CFrame = CFrame.Angles(0, ang, 0)
         elseif tpTarget then
             local targetPart = tpTarget:FindFirstChild(info.TargetName)
             if targetPart then
@@ -1799,7 +1789,7 @@ do  -- hats come alive
             local cf = targetPart.CFrame * info.TotalOffset
 
             targetPos = cf.Position + (cf - cf.Position) * vOff
-            info.Part.CFrame = cf - cf.Position + info.Part.Position -- proper rotation (JANK!)
+            info.Gyro.CFrame = cf - cf.Position + info.Part.Position
         else
             local theta = (t + 10 * idx) * 3
             local xOff = math.cos(theta)
@@ -1809,17 +1799,15 @@ do  -- hats come alive
 
             targetPos = LocalPlayer.Character.Head.Head.Position + vOff
             alpha = 0.2
-            info.Part.Rotation = Vector3.new(ang, ang, ang)
+            info.Gyro.CFrame = CFrame.Angles(ang, ang, ang)
         end
 
-        for k, v in pairs(info.PosList) do
-            local dist = math.sqrt((targetPos.X - v.Position.X)^2 + (targetPos.Y - v.Position.Y)^2)
+        local dist = math.sqrt((targetPos.X - info.Pos.Position.X)^2 + (targetPos.Y - info.Pos.Position.Y)^2)
 
-            if alpha ~= 1 and dist < 1000 then
-                v.Position = v.Position:Lerp(targetPos, alpha * 60 * dT)
-            else
-                v.Position = targetPos
-            end
+        if alpha ~= 1 and dist < 1000 then
+            info.Pos.Position = info.Pos.Position:Lerp(targetPos, alpha * 60 * dT)
+        else
+            info.Pos.Position = targetPos
         end
     end
 
@@ -1860,9 +1848,7 @@ do  -- hats come alive
     lHeartbeat = RUN.Heartbeat:Connect(function()
         for k, info in pairs(parts) do
             if info then
-                iteratePart(info.Part, function(p)
-                    p.Velocity = Vector3.new(0, 35, 0)
-                end)
+                info.Part.Velocity = Vector3.new(0, 35, 0)
             end
         end
     end)
@@ -1873,7 +1859,7 @@ do  -- hats come alive
         tpTargetLastPos = {}
         tpTargetLastMove = {}
     end)
-end -- hats come alive -- globals exposed: iteratePart, makeAlive, lHeartbeat, lStepped, lInputB, lInputC, lInputE, lCharacter2
+end -- hats come alive -- globals exposed: makeAlive, lHeartbeat, lStepped, lInputB, lInputC, lInputE, lCharacter2
 
 do  -- welds
     local weldsTab = tabControl:createTab("Remove Welds", "6R", "TabWelds")
