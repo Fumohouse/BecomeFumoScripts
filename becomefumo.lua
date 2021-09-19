@@ -1020,6 +1020,8 @@ do  -- docs content
     cChangelogContent = cChangelogContent.."* Please try enabling it in the 7S tab ('Orbit Teleport') and report if it improves rate of death on removal.<br />"
     cChangelogContent = cChangelogContent.."- Remove unnecessary code and use BodyGyro for all rotations<br />"
     cChangelogContent = cChangelogContent.."- Limit raycasting to once per frame instead of once per part per frame<br />"
+    cChangelogContent = cChangelogContent.."- Automatically unweld children of parts set to be put into orbit (i.e. for Doremy's hat, the 'part of it yes' is now orbited first automatically)<br />"
+    cChangelogContent = cChangelogContent.."- Automatically unweld parts that are welded twice (i.e. for Nazrin's 'Neck' part, which is welded twice to the torso, both welds are now destroyed automatically)<br />"
     cChangelogContent = cChangelogContent.."- ???<br /><br />"
 
     cChangelogContent = cChangelogContent.."<b>1.5.0 - Minimap</b><br />"
@@ -1647,10 +1649,26 @@ do  -- hats come alive
     local inProgress = 0
     local awaitingStart = 0
 
-    function makeAlive(weld)
+    function makeAlive(weld, cb)
         coroutine.wrap(function()
+            local part = weld.Part1
+
             local humanRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
             local shouldTp = config.Value.orbitTp
+
+            for k, v in pairs(part:GetDescendants()) do
+                if v:IsA("Weld") then
+                    makeAlive(v, cb)
+                    if cb then cb(v) end
+                end
+            end
+
+            for k, v in pairs(LocalPlayer.Character:GetDescendants()) do
+                if v ~= weld and v:IsA("Weld") and v.Part1 == weld.Part1 then
+                    v:Destroy()
+                    if cb then cb(v) end
+                end
+            end
 
             if shouldTp then
                 inProgress = inProgress + 1
@@ -1672,7 +1690,6 @@ do  -- hats come alive
                 wait(1)
             end
 
-            local part = weld.Part1
             part.CanTouch = true
 
             local pos = Instance.new("BodyPosition")
@@ -1946,6 +1963,16 @@ do  -- welds
         end
     end
 
+    local function removeWeldButton(weld)
+        for k, l in pairs(labels) do
+            if l and l.Weld == weld then
+                l.Label:Destroy()
+
+                updateWeldsLayout()
+            end
+        end
+    end
+
     local function addWeld(weld)
         local label = nil
         local labelInfo = createLabelButtonLarge(weld.Name, function(setActive, type)
@@ -1978,15 +2005,11 @@ do  -- welds
                 tween.Completed:Wait()
                 setActive(false)
             else
-                makeAlive(weld)
+                makeAlive(weld, function(p)
+                    removeWeldButton(p)
+                end)
 
-                for k, l in pairs(labels) do
-                    if l and l.Weld == weld then
-                        l.Label:Destroy()
-
-                        updateWeldsLayout()
-                    end
-                end
+                removeWeldButton(weld)
             end
         end)
 
