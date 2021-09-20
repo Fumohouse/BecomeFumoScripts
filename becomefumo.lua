@@ -1021,8 +1021,7 @@ do  -- docs content
     cChangelogContent = cChangelogContent.."- Remove unnecessary code and use BodyGyro for all rotations<br />"
     cChangelogContent = cChangelogContent.."- Limit raycasting to once per frame instead of once per part per frame<br />"
     cChangelogContent = cChangelogContent.."- Automatically unweld children of parts set to be put into orbit (i.e. for Doremy's hat, the 'part of it yes' is now orbited first automatically)<br />"
-    cChangelogContent = cChangelogContent.."- Automatically unweld parts that are welded twice (i.e. for Nazrin's 'Neck' part, which is welded twice to the torso, both welds are now destroyed automatically)<br />"
-    cChangelogContent = cChangelogContent.."- ???<br /><br />"
+    cChangelogContent = cChangelogContent.."- Automatically unweld parts that are welded twice (i.e. for Nazrin's 'Neck' part, which is welded twice to the torso, both welds are now destroyed automatically)<br /><br />"
 
     cChangelogContent = cChangelogContent.."<b>1.5.0 - Minimap</b><br />"
     cChangelogContent = cChangelogContent.."- Added a minimap. Due to performance overhead and incompleteness, the map is unloaded by default. Press N (by default) to toggle map visiblity and M to toggle zoomed view.<br />"
