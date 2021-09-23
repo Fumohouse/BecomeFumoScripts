@@ -1014,6 +1014,7 @@ do  -- docs content
     local cChangelogContent = ""
     cChangelogContent = cChangelogContent.."<b>1.5.2</b><br />"
     cChangelogContent = cChangelogContent.."- Added September to the animations tab<br />"
+    cChangelogContent = cChangelogContent.."- Fix direction of the bobbing animation again<br />"
     cChangelogContent = cChangelogContent.."- ?<br /><br />"
 
     cChangelogContent = cChangelogContent.."<b>1.5.1</b><br />"
@@ -1816,7 +1817,7 @@ do  -- hats come alive
 
             local cf = targetPart.CFrame * info.TotalOffset
 
-            targetPos = cf.Position + (cf - cf.Position) * vOff
+            targetPos = cf.Position + (targetPart.CFrame - targetPart.Position) * vOff
             info.Gyro.CFrame = cf - cf.Position + info.Part.Position
         else
             local theta = (t + 10 * idx) * 3
