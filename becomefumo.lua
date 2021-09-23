@@ -7,7 +7,7 @@ local function log(msg)
     print("[fumo] "..msg)
 end
 
-version = "1.5.1"
+version = "1.5.2"
 
 do  -- double load prevention
     if BF_LOADED then
@@ -1012,6 +1012,10 @@ do  -- docs content
     addDoc(cAboutInfo)
 
     local cChangelogContent = ""
+    cChangelogContent = cChangelogContent.."<b>1.5.2</b><br />"
+    cChangelogContent = cChangelogContent.."- Added September to the animations tab<br />"
+    cChangelogContent = cChangelogContent.."- ?<br /><br />"
+
     cChangelogContent = cChangelogContent.."<b>1.5.1</b><br />"
     cChangelogContent = cChangelogContent.."- Added lerps back to mouse movement and orbit of weld parts + additional tweaking<br />"
     cChangelogContent = cChangelogContent.."- Blacklist music region bounding boxes and the main invis walls from weld raycast<br />"
@@ -1354,6 +1358,7 @@ do  -- animations
     addAnimation("Caramell", "rbxassetid://6542355684")
     addAnimation("Swag", "rbxassetid://6659873025")
     addAnimation("Penguin", "rbxassetid://6898226631")
+    addAnimation("September", "rbxassetid://7532444804")
 
     createAnimationCategory("Arcade")
     addAnimation("Taiko", "rbxassetid://7162205569")
