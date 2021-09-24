@@ -1020,7 +1020,7 @@ do  -- docs content
     cChangelogContent = cChangelogContent.."- Added a debug overlay which can be enabled through 7S<br />"
     cChangelogContent = cChangelogContent.."- Make the movement checker more strict, but consider rotation as motion (i.e. dance3 torso parts will no longer bob)<br />"
     cChangelogContent = cChangelogContent.."- Return parts to orbit when target character dies<br />"
-    cChangelogContent = cChangelogContent.."- ?<br /><br />"
+    cChangelogContent = cChangelogContent.."- Added Motor6Ds (aka limbs and head) to the welds list. This breaks everything, so expect frequent deaths when removing your head or any other integral part.<br /><br />"
 
     cChangelogContent = cChangelogContent.."<b>1.5.1</b><br />"
     cChangelogContent = cChangelogContent.."- Added lerps back to mouse movement and orbit of weld parts + additional tweaking<br />"
@@ -1882,7 +1882,11 @@ do  -- hats come alive
             local zOff = math.cos(theta * 2) / 2
             local vOff = Vector3.new(xOff, zOff, yOff) * 2
 
-            targetPos = LocalPlayer.Character.Head.Head.Position + vOff
+            if LocalPlayer.Character.Torso.Torso:FindFirstChild("Head") then
+                targetPos = LocalPlayer.Character.Head.Head.Position + vOff
+            else
+                targetPos = LocalPlayer.Character.Torso.Torso.Position + vOff
+            end
             alpha = 0.2
             info.Gyro.CFrame = CFrame.Angles(ang, ang, ang)
         end
@@ -2126,7 +2130,7 @@ do  -- welds
         labels = {}
 
         for k, v in pairs(char:GetDescendants()) do
-            if v:IsA("Weld") then
+            if v:IsA("Weld") or v:IsA("Motor6D") then
                 addWeld(v)
             end
         end
