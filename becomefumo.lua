@@ -1832,6 +1832,12 @@ do  -- hats come alive
                     targetPart = info.Weld.Part0
                 else
                     targetPart = tpTarget.Torso.Torso
+
+                    for k, v in pairs(parts) do
+                        if v and v.Part.Name == info.TargetName then
+                            targetPart = v.Part
+                        end
+                    end
                 end
             end
 
