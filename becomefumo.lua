@@ -99,7 +99,8 @@ do  -- config & bindings
                 ["RaySit"] = Enum.KeyCode.E.Name,
                 ["Exit"] = Enum.KeyCode.Zero.Name
             },
-            ["orbitTp"] = false
+            ["orbitTp"] = false,
+            ["debug"] = false
         }
 
         obj.UseFs = true
@@ -1014,7 +1015,11 @@ do  -- docs content
     local cChangelogContent = ""
     cChangelogContent = cChangelogContent.."<b>1.5.2</b><br />"
     cChangelogContent = cChangelogContent.."- Added September to the animations tab<br />"
-    cChangelogContent = cChangelogContent.."- Fix direction of the bobbing animation again<br />"
+    cChangelogContent = cChangelogContent.."- Remove bobbing direction and make it always vertical, as rotation seems to cause deaths, especially when target is face down<br />"
+    cChangelogContent = cChangelogContent.."- Added support for attaching to people with no Humanoid/replaced Humanoid<br />"
+    cChangelogContent = cChangelogContent.."- Added a debug overlay which can be enabled through 7S<br />"
+    cChangelogContent = cChangelogContent.."- Make the movement checker more strict, but consider rotation as motion (i.e. dance3 torso parts will no longer bob)<br />"
+    cChangelogContent = cChangelogContent.."- Return parts to orbit when target character dies<br />"
     cChangelogContent = cChangelogContent.."- ?<br /><br />"
 
     cChangelogContent = cChangelogContent.."<b>1.5.1</b><br />"
@@ -1631,12 +1636,34 @@ do  -- waypoints
 end -- waypoints
 
 do  -- hats come alive
+    debugL = Instance.new("TextLabel")
+    debugL.Parent = root
+    debugL.Visible = config.Value.debug
+    debugL.AnchorPoint = Vector2.new(0.5, 0)
+    debugL.BackgroundTransparency = 0.5
+    debugL.BackgroundColor3 = cBackgroundColor
+    debugL.TextColor3 = cForegroundColor
+    debugL.TextSize = 12
+    debugL.RichText = true
+    debugL.Position = UDim2.fromScale(0.5, 0)
+    debugL.AutomaticSize = Enum.AutomaticSize.XY
+
+    local cBobThreshold = 1e-6
+    local cAngleThreshold = math.pi / 48
+
     local commonWelds = {"Head", "Torso", "LArm", "RArm", "LLeg", "RLeg"}
     local parts = {}
 
     local tpTarget
     local tpTargetLastPos = {}
     local tpTargetLastMove = {}
+
+    local function resetTpTarget(newTarget)
+        tpTarget = newTarget
+        tpTargetLastPos = {}
+        tpTargetLastMove = {}
+    end
+
     local mousePos
     local draggedAway
 
@@ -1741,14 +1768,17 @@ do  -- hats come alive
 
             local lTouch = part.Touched:Connect(function(otherPart)
                 local hum = otherPart.Parent:FindFirstChildOfClass("Humanoid")
+
+                if not hum then
+                    hum = otherPart.Parent:FindFirstChild("HumanoidRootPart")
+                end
+
                 if hum and mousePos then
                     local newTarget = hum.Parent
 
                     if draggedAway ~= newTarget then
                         mousePos = nil
-                        tpTarget = newTarget
-                        tpTargetLastPos = {}
-                        tpTargetLastMove = {}
+                        resetTpTarget(newTarget)
                     end
                 end
             end)
@@ -1772,17 +1802,27 @@ do  -- hats come alive
     end
 
     local function updatePart(info, raycastPos, t, dT, idx)
+        local debugReport = {}
+
+        debugReport.Part = info.Part
+        debugReport.TargetName = info.TargetName
+
         local targetPos
         local alpha = 1
 
         local ang = ((t + 10 * idx) * math.pi) % (2 * math.pi)
 
         if raycastPos then
+            debugReport.Type = "cast"
+
             targetPos = raycastPos
             alpha = 0.3
             info.Gyro.CFrame = CFrame.Angles(0, ang, 0)
         elseif tpTarget then
+            debugReport.Type = "follow"
+
             local targetPart = tpTarget:FindFirstChild(info.TargetName)
+
             if targetPart then
                 targetPart = targetPart:FindFirstChild(info.TargetName)
             end
@@ -1795,31 +1835,47 @@ do  -- hats come alive
                 end
             end
 
-            local vOff = Vector3.new(0, 0, 0)
-            local lastPos = tpTargetLastPos[info.TargetName]
+            debugReport.TargetPart = targetPart
 
-            if lastPos then
+            local vOff = Vector3.new(0, 0, 0)
+            local lastCf = tpTargetLastPos[info.Part]
+
+            if lastCf then
                 local pos2 = targetPart.Position
-                local pos1 = lastPos
+                local pos1 = lastCf.Position
                 local dist = math.sqrt((pos2.X - pos1.X)^2 + (pos2.Y - pos1.Y)^2 + (pos2.Z - pos1.Z)^2)
 
-                if dist > 1/1e9 then
-                    tpTargetLastMove[info.TargetName] = t
+                local x2, y2, z2 = targetPart.CFrame:ToOrientation()
+                local x1, y1, z1 = lastCf:ToOrientation()
+
+                if dist > cBobThreshold or math.abs(x2 - x1) > cAngleThreshold or math.abs(y2 - y1) > cAngleThreshold or math.abs(z2 - z1) > cAngleThreshold then
+                    tpTargetLastMove[info.Part] = t
                 end
 
-                if not tpTargetLastMove[info.TargetName] or t - tpTargetLastMove[info.TargetName] > 0.1 then
+                if not tpTargetLastMove[info.Part] or t - tpTargetLastMove[info.Part] > 2/60 then
                     local shake = math.sin(t) * 0.25
                     vOff = Vector3.new(0, shake, 0)
+
+                    debugReport.DidBob = true
+                else
+                    debugReport.DidBob = false
                 end
+
+                debugReport.Distance = dist
+            else
+                debugReport.Distance = 0
             end
 
-            tpTargetLastPos[info.TargetName] = targetPart.Position
+            tpTargetLastPos[info.Part] = targetPart.CFrame
 
             local cf = targetPart.CFrame * info.TotalOffset
 
-            targetPos = cf.Position + (targetPart.CFrame - targetPart.Position) * vOff
+            -- targetPos = cf.Position + (targetPart.CFrame - targetPart.Position) * vOff
+            targetPos = cf.Position + vOff
             info.Gyro.CFrame = cf - cf.Position + info.Part.Position
         else
+            debugReport.Type = "orbit"
+
             local theta = (t + 10 * idx) * 3
             local xOff = math.cos(theta)
             local yOff = math.sin(theta)
@@ -1838,12 +1894,14 @@ do  -- hats come alive
         else
             info.Pos.Position = targetPos
         end
+
+        return debugReport
     end
 
     lInputB = INPUT.InputBegan:Connect(function(input, handled)
         if not handled and input.UserInputType == Enum.UserInputType.MouseButton3 then
             draggedAway = tpTarget
-            tpTarget = nil
+            resetTpTarget()
             mousePos = input.Position
         end
     end)
@@ -1877,14 +1935,42 @@ do  -- hats come alive
             end
         end
 
+        if tpTarget and tpTarget.Parent == nil then
+            resetTpTarget()
+        end
+
+        local debugStr
+
+        if tpTarget then
+            debugStr = "Currently tracking "..tpTarget.Name
+        else
+            debugStr = "Not tracking anybody"
+        end
+
         for k, info in pairs(parts) do
             if info then
                 info.Part.Anchored = false
-                updatePart(info, raycastPos, t, dT, idx)
+                local report = updatePart(info, raycastPos, t, dT, idx)
+
+                debugStr = debugStr.."<br />"..report.Part.Name.." -> "..report.TargetName
+
+                if report.Type == "follow" then
+                    local distColor = "#FFFFFF"
+
+                    if report.DidBob then
+                        distColor = "#FFFF00"
+                    elseif report.Distance <= cBobThreshold then
+                        distColor = "#FF0000"
+                    end
+
+                    debugStr = debugStr.." - A: "..report.TargetPart.Name..", <font color=\""..distColor.."\">D: "..report.Distance.."</font>"
+                end
             end
 
             idx = idx + 1
         end
+
+        debugL.Text = debugStr
     end)
 
     lHeartbeat = RUN.Heartbeat:Connect(function()
@@ -1897,11 +1983,9 @@ do  -- hats come alive
 
     lCharacter2 = LocalPlayer.CharacterAdded:Connect(function(char)
         parts = {}
-        tpTarget = nil
-        tpTargetLastPos = {}
-        tpTargetLastMove = {}
+        resetTpTarget()
     end)
-end -- hats come alive -- globals exposed: makeAlive, lHeartbeat, lStepped, lInputB, lInputC, lInputE, lCharacter2
+end -- hats come alive -- globals exposed: makeAlive, lHeartbeat, lStepped, lInputB, lInputC, lInputE, lCharacter2, debugL
 
 do  -- welds
     local weldsTab = tabControl:createTab("Remove Welds", "6R", "TabWelds")
@@ -2134,14 +2218,23 @@ do  -- settings
         addBind(v)
     end
 
-    local orbitTpCheckbox = createCheckbox("Orbit Teleport", function(checked)
-        config.Value.orbitTp = checked
-        config:save()
-    end, config.Value.orbitTp)
+    local function addCheckbox(label, field, cb)
+        local checkbox = createCheckbox(label, function(checked)
+            config.Value[field] = checked
+            config:save()
 
-    orbitTpCheckbox.Parent = settingsScroll
-    orbitTpCheckbox.Position = UDim2.fromOffset(0, settingsScrollY)
-    settingsScrollY = settingsScrollY + cCheckboxSize
+            if cb then cb(checked) end
+        end, config.Value[field])
+
+        checkbox.Parent = settingsScroll
+        checkbox.Position = UDim2.fromOffset(0, settingsScrollY)
+        settingsScrollY = settingsScrollY + cCheckboxSize
+    end
+
+    addCheckbox("Orbit Teleport", "orbitTp")
+    addCheckbox("Debug", "debug", function(checked)
+        debugL.Visible = checked
+    end)
 end -- settings
 
 do  -- info
