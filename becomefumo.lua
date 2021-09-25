@@ -1025,6 +1025,7 @@ At any time, you can press [0] to close the script and reset everything back to 
 - The minimap now renders under the tab gui
 - The minimap now scales to display size
 - Tweaked behavior of minimap keybinds
+- Added a label under all players in the minimap while expanded (sometimes unreadable, but should help)
 
 <b>1.5.2</b>
 - Added September to the animations tab
@@ -2463,10 +2464,23 @@ do  -- minimap
         icon.Size = UDim2.fromOffset(cIconSize, cIconSize)
         icon.BorderSizePixel = 0
 
+        local label = Instance.new("TextLabel")
+        label.Parent = frame
+        label.Position = UDim2.fromScale(1, 1)
+        label.BackgroundTransparency = 1
+        label.BorderSizePixel = 0
+        label.AutomaticSize = Enum.AutomaticSize.XY
+        label.Font = cFont
+        label.TextColor3 = cForegroundColor
+        label.TextSize = 12
+        label.Visible = false
+        label.Text = player.Name
+
         obj.TooltipObject = frame
         obj.Frame = frame
         obj.Dot = dot
         obj.Icon = icon
+        obj.Label = label
 
         obj.Player = player
         obj.IsLocal = player == LocalPlayer
@@ -2482,9 +2496,11 @@ do  -- minimap
         if scale > 2 then
             self.Dot.BackgroundTransparency = 1
             self.Icon.ImageTransparency = 0
+            self.Label.Visible = true
         else
             self.Dot.BackgroundTransparency = 0
             self.Icon.ImageTransparency = 1
+            self.Label.Visible = false
         end
     end
 
