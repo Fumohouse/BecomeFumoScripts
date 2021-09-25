@@ -288,6 +288,7 @@ do  -- config & bindings
                 ["TabWaypoints"] = Enum.KeyCode.Five.Name,
                 ["TabWelds"] = Enum.KeyCode.Six.Name,
                 ["TabSettings"] = Enum.KeyCode.Seven.Name,
+                ["HideGui"] = Enum.KeyCode.F1.Name,
                 ["MapVis"] = Enum.KeyCode.N.Name,
                 ["MapView"] = Enum.KeyCode.M.Name,
                 ["RaySit"] = Enum.KeyCode.E.Name,
@@ -505,6 +506,10 @@ do  -- tabcontrol
                 idx = idx + 1
             end
         end
+    end
+
+    function TabControl:setTabsVisible(visible)
+        self.TabContainer.Visible = visible
     end
 
     function TabControl:createTabButton(label, abbrev)
@@ -986,6 +991,7 @@ At any time, you can press [0] to close the script and reset everything back to 
 - (BORING!) Get rid of stupid layout code in favor of UIListLayout
 - Add category labels to the settings tab
 - Typing nothing in the animations speed field now sets the speed back to 1
+- Added a hotkey (default F1) which will hide all guis except the tab content (i.e. the tab buttons and the map). You can still use tab hotkeys while this is active.
 
 <b>1.5.3</b>
 - Added an announcement about the new character checks. <b>Please read it!</b>
@@ -2202,7 +2208,7 @@ do  -- settings
 
     createSettingsCategory("Keybinds")
 
-    local cBinds = { "TabCharacters", "TabOptions", "TabDocs", "TabAnims", "TabWaypoints", "TabWelds", "TabSettings", "MapVis", "MapView", "RaySit", "Exit" }
+    local cBinds = { "TabCharacters", "TabOptions", "TabDocs", "TabAnims", "TabWaypoints", "TabWelds", "TabSettings", "HideGui", "MapVis", "MapView", "RaySit", "Exit" }
 
     for k, v in pairs(cBinds) do
         addBind(v)
@@ -2979,12 +2985,21 @@ do  -- announcements
     end)
 end -- announcements
 
+local guiVisible = true
+
+binds:bind("HideGui", function()
+    guiVisible = not guiVisible
+
+    tabControl:setTabsVisible(guiVisible)
+    secondaryRoot.Visible = guiVisible
+end)
+
 local map = nil
 
 binds:bind("MapVis", function()
     if not map then
         map = Minimap.new(secondaryRoot)
-    else
+    elseif guiVisible then
         map:setVisible(not map.FrameOuter.Visible)
     end
 end)
