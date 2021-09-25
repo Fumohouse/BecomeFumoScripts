@@ -78,7 +78,13 @@ cGui = {
     ["BackgroundColorLight"] = Color3.fromRGB(32, 35, 56),
     ["ForegroundColor"] = Color3.fromRGB(255, 255, 255),
     ["AccentColor"] = Color3.fromRGB(10, 162, 175),
-    ["Font"] = Enum.Font.Ubuntu
+    ["Font"] = Enum.Font.Ubuntu,
+
+    ["LabelButtonHeight"] = 25,
+    ["ButtonHeightLarge"] = 30,
+    ["CategoryHeight"] = 32,
+
+    ["CheckboxSize"] = 25
 }
 
 do  -- gui components
@@ -100,6 +106,149 @@ do  -- gui components
         label.TextSize = size
 
         return label
+    end
+
+    -- creates a ScrollingFrame which takes up the entire parent by default
+    function Gui.createScroll(parent)
+        local scroll = Instance.new("ScrollingFrame")
+        scroll.Parent = parent
+        scroll.BorderSizePixel = 0
+        scroll.BackgroundTransparency = 1
+        scroll.Size = UDim2.fromScale(1, 1)
+        scroll.Position = UDim2.fromOffset(0, 0)
+        scroll.ScrollBarImageColor3 = cGui.ForegroundColor
+        scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+        scroll.CanvasSize = UDim2.fromScale(1, 0)
+        scroll.ScrollingDirection = Enum.ScrollingDirection.Y
+        scroll.ScrollBarThickness = 3
+
+        return scroll
+    end
+
+    -- creates a TextLabel with callback for MouseButton1, no background
+    function Gui.createLabelButton(parent, labelText, cb)
+        local label = Gui.createText(parent, cGui.LabelButtonHeight * 0.75)
+        label.Text = labelText
+        label.TextXAlignment = Enum.TextXAlignment.Center
+        label.TextYAlignment = Enum.TextYAlignment.Center
+        label.Size = UDim2.new(1, 0, 0, cGui.LabelButtonHeight)
+
+        label.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                cb()
+            end
+        end)
+
+        return label
+    end
+
+    -- creates a bold, centered TextLabel intended to be used as a category label for ScrollingFrames
+    function Gui.createCategoryLabel(parent, labelText)
+        local label = Gui.createText(parent, cGui.CategoryHeight * 0.75)
+        label.BackgroundTransparency = 0.9
+        label.BackgroundColor3 = cGui.BackgroundColorDark
+        label.TextXAlignment = Enum.TextXAlignment.Center
+        label.TextYAlignment = Enum.TextYAlignment.Bottom
+        label.AnchorPoint = Vector2.new(0.5, 0)
+        label.Size = UDim2.new(1, 0, 0, cGui.CategoryHeight)
+        label.RichText = true
+        label.Text = "<b>"..labelText.."</b>"
+
+        return label
+    end
+
+    -- creates a larger TextLabel with a background color and on/off state
+    function Gui.createLabelButtonLarge(parent, labelText, cb)
+        local label = Gui.createText(parent, cGui.ButtonHeightLarge * 0.8)
+        label.BackgroundTransparency = 0.5
+        label.BackgroundColor3 = cGui.BackgroundColorLight
+        label.TextXAlignment = Enum.TextXAlignment.Center
+        label.TextYAlignment = Enum.TextYAlignment.Center
+        label.AnchorPoint = Vector2.new(0.5, 0)
+        label.Size = UDim2.new(0.95, 0, 0, cGui.ButtonHeightLarge)
+        label.Text = labelText
+
+        local labelInfo = {}
+        labelInfo.Label = label
+        labelInfo.SetActive = function(active)
+            local tweenInfo = TweenInfo.new(0.15)
+            local goal = {}
+
+            if active then
+                goal.BackgroundColor3 = cGui.AccentColor
+            else
+                goal.BackgroundColor3 = cGui.BackgroundColorLight
+            end
+
+            local tween = TWEEN:Create(label, tweenInfo, goal)
+
+            tween:Play()
+        end
+
+        label.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.MouseButton2 or input.UserInputType == Enum.UserInputType.MouseButton3 then
+                cb(labelInfo.SetActive, input.UserInputType)
+            end
+        end)
+
+        return labelInfo
+    end
+
+    -- creates a checkbox component, with callback and initial value options
+    function Gui.createCheckbox(parent, labelText, cb, initial)
+        local cSpacing = 5
+
+        local checkbox = Instance.new("Frame")
+        checkbox.Parent = parent
+        checkbox.BorderSizePixel = 0
+        checkbox.BackgroundTransparency = 1
+        checkbox.Size = UDim2.new(1, 0, 0, cGui.CheckboxSize)
+
+        local indicator = Instance.new("Frame")
+        indicator.Parent = checkbox
+        indicator.BorderSizePixel = 0
+        indicator.BackgroundColor3 = cGui.BackgroundColorLight
+        indicator.Size = UDim2.fromOffset(cGui.CheckboxSize, cGui.CheckboxSize)
+        indicator.Position = UDim2.fromScale(0, 0)
+
+        local label = Gui.createText(checkbox, cGui.CheckboxSize * 0.75)
+        label.Text = labelText
+        label.TextTruncate = Enum.TextTruncate.AtEnd
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.TextYAlignment = Enum.TextYAlignment.Center
+        label.Size = UDim2.new(1, -(cGui.CheckboxSize + cSpacing), 0, cGui.CheckboxSize)
+        label.Position = UDim2.fromOffset(cGui.CheckboxSize + cSpacing, 0)
+
+        local checked = initial
+
+        local function updateColor()
+            local tweenInfo = TweenInfo.new(0.15)
+            local goal = {}
+
+            if checked then
+                goal.BackgroundColor3 = cGui.AccentColor
+            else
+                goal.BackgroundColor3 = cGui.BackgroundColorLight
+            end
+
+            local tween = TWEEN:Create(indicator, tweenInfo, goal)
+
+            tween:Play()
+        end
+
+        updateColor()
+
+        checkbox.InputBegan:Connect(function(input)
+            if input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
+
+            checked = not checked
+
+            updateColor()
+
+            cb(checked)
+        end)
+
+        return checkbox
     end
 end -- gui components -- globals exposed: Gui
 
@@ -555,154 +704,6 @@ end
 
 tabControl = TabControl.new(root, binds)
 
-function createScroll()
-    local scroll = Instance.new("ScrollingFrame")
-    scroll.BorderSizePixel = 0
-    scroll.BackgroundTransparency = 1
-    scroll.Size = UDim2.fromScale(1, 1)
-    scroll.Position = UDim2.fromOffset(0, 0)
-    scroll.ScrollBarImageColor3 = cGui.ForegroundColor
-    scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    scroll.CanvasSize = UDim2.fromScale(1, 0)
-    scroll.ScrollingDirection = Enum.ScrollingDirection.Y
-    scroll.ScrollBarThickness = 3
-
-    return scroll
-end
-
-cLabelButtonHeight = 25
-
-function createLabelButton(labelText, cb)
-    local label = Gui.createText(nil, cLabelButtonHeight * 0.75)
-    label.Text = labelText
-    label.TextXAlignment = Enum.TextXAlignment.Center
-    label.TextYAlignment = Enum.TextYAlignment.Center
-    label.Size = UDim2.new(1, 0, 0, cLabelButtonHeight)
-
-    label.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            cb()
-        end
-    end)
-
-    return label
-end
-
-cCategoryHeight = 32
-
-function createCategoryLabel(labelText)
-    local label = Gui.createText(nil, cCategoryHeight * 0.75)
-    label.BackgroundTransparency = 0.9
-    label.BackgroundColor3 = cGui.BackgroundColorDark
-    label.TextXAlignment = Enum.TextXAlignment.Center
-    label.TextYAlignment = Enum.TextYAlignment.Bottom
-    label.AnchorPoint = Vector2.new(0.5, 0)
-    label.Size = UDim2.new(1, 0, 0, cCategoryHeight)
-    label.RichText = true
-    label.Text = "<b>"..labelText.."</b>"
-
-    return label
-end
-
-local cButtonOff = cGui.BackgroundColorLight
-local cButtonOn = cGui.AccentColor
-
-cButtonHeightLarge = 30
-
-function createLabelButtonLarge(labelText, cb)
-    local label = Gui.createText(nil, cButtonHeightLarge * 0.8)
-    label.BackgroundTransparency = 0.5
-    label.BackgroundColor3 = cButtonOff
-    label.TextXAlignment = Enum.TextXAlignment.Center
-    label.TextYAlignment = Enum.TextYAlignment.Center
-    label.AnchorPoint = Vector2.new(0.5, 0)
-    label.Size = UDim2.new(0.95, 0, 0, cButtonHeightLarge)
-    label.Text = labelText
-
-    local labelInfo = {}
-    labelInfo.Label = label
-    labelInfo.SetActive = function(active)
-        local tweenInfo = TweenInfo.new(0.15)
-        local goal = {}
-
-        if active then
-            goal.BackgroundColor3 = cButtonOn
-        else
-            goal.BackgroundColor3 = cButtonOff
-        end
-
-        local tween = TWEEN:Create(label, tweenInfo, goal)
-
-        tween:Play()
-    end
-
-    label.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.MouseButton2 or input.UserInputType == Enum.UserInputType.MouseButton3 then
-            cb(labelInfo.SetActive, input.UserInputType)
-        end
-    end)
-
-    return labelInfo
-end
-
-cCheckboxSize = 25
-cCheckboxSpace = 5
-
--- function: creates a checkbox frame given label, calls the cb with the checkbox value when it changes, and returns the frame
-
-function createCheckbox(labelText, cb, initial)
-    local checkbox = Instance.new("Frame")
-    checkbox.BorderSizePixel = 0
-    checkbox.BackgroundTransparency = 1
-    checkbox.Size = UDim2.new(1, 0, 0, cCheckboxSize)
-
-    local indicator = Instance.new("Frame")
-    indicator.Parent = checkbox
-    indicator.BorderSizePixel = 0
-    indicator.BackgroundColor3 = cGui.BackgroundColorLight
-    indicator.Size = UDim2.fromOffset(cCheckboxSize, cCheckboxSize)
-    indicator.Position = UDim2.fromScale(0, 0)
-
-    local label = Gui.createText(checkbox, cCheckboxSize * 0.75)
-    label.Text = labelText
-    label.TextTruncate = Enum.TextTruncate.AtEnd
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.TextYAlignment = Enum.TextYAlignment.Center
-    label.Size = UDim2.new(1, -(cCheckboxSize + cCheckboxSpace), 0, cCheckboxSize)
-    label.Position = UDim2.fromOffset(cCheckboxSize + cCheckboxSpace, 0)
-
-    local checked = initial
-
-    local function updateColor()
-        local tweenInfo = TweenInfo.new(0.15)
-        local goal = {}
-
-        if checked then
-            goal.BackgroundColor3 = cGui.AccentColor
-        else
-            goal.BackgroundColor3 = cGui.BackgroundColorLight
-        end
-
-        local tween = TWEEN:Create(indicator, tweenInfo, goal)
-
-        tween:Play()
-    end
-
-    updateColor()
-
-    checkbox.InputBegan:Connect(function(input)
-        if input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
-
-        checked = not checked
-
-        updateColor()
-
-        cb(checked)
-    end)
-
-    return checkbox
-end
-
 do  -- characters
     -- constants
 
@@ -720,21 +721,17 @@ do  -- characters
 
     local charactersTab = tabControl:createTab("Characters", "1C", "TabCharacters")
 
-    local characterScroll = createScroll()
-    characterScroll.Parent = charactersTab
-    characterScroll.Size = characterScroll.Size - UDim2.fromOffset(0, cCheckboxSize + cLabelButtonHeight)
-    characterScroll.Position = characterScroll.Position + UDim2.fromOffset(0, cCheckboxSize + cLabelButtonHeight)
+    local characterScroll = Gui.createScroll(charactersTab)
+    characterScroll.Size = characterScroll.Size - UDim2.fromOffset(0, cGui.CheckboxSize + cGui.LabelButtonHeight)
+    characterScroll.Position = characterScroll.Position + UDim2.fromOffset(0, cGui.CheckboxSize + cGui.LabelButtonHeight)
 
     local characterCount = 0
 
     local shouldReplaceHumanoid = false
 
-    local humanoidCheckbox = createCheckbox("Replace Humanoid", function(checked)
+    local humanoidCheckbox = Gui.createCheckbox(charactersTab, "Replace Humanoid", function(checked)
         shouldReplaceHumanoid = checked
     end)
-
-    humanoidCheckbox.Parent = charactersTab
-    humanoidCheckbox.Position = UDim2.fromScale(0, 0)
 
     local jumpListener = nil
 
@@ -768,12 +765,11 @@ do  -- characters
         end
     end
 
-    local replaceNowButton = createLabelButton("Replace Humanoid Now", function()
+    local replaceNowButton, _ = Gui.createLabelButton(charactersTab, "Replace Humanoid Now", function()
         replaceHumanoid(LocalPlayer.Character, true)
     end)
 
-    replaceNowButton.Parent = charactersTab
-    replaceNowButton.Position = UDim2.fromOffset(0, cCheckboxSize)
+    replaceNowButton.Position = UDim2.fromOffset(0, cGui.CheckboxSize)
 
     local waitingForSwitch = false
 
@@ -792,12 +788,11 @@ do  -- characters
     end
 
     local function addCharacter(name)
-        local characterLabel = createLabelButton(name, function()
+        local characterLabel = Gui.createLabelButton(characterScroll, name, function()
             switchCharacter(name)
         end)
 
-        characterLabel.Parent = characterScroll
-        characterLabel.Position = UDim2.fromOffset(0, characterCount * cLabelButtonHeight)
+        characterLabel.Position = UDim2.fromOffset(0, characterCount * cGui.LabelButtonHeight)
 
         characterCount = characterCount + 1
     end
@@ -825,15 +820,14 @@ do  -- options
     local optionButtonCount = 0
 
     local function createOptionsButton(labelText, cb)
-        local labelInfo = createLabelButtonLarge(labelText, function()
+        local labelInfo = Gui.createLabelButtonLarge(optionsFrame, labelText, function()
             tabControl:closeAllTabs()
             cb()
         end)
 
         local label = labelInfo.Label
 
-        label.Parent = optionsFrame
-        label.Position = UDim2.new(0.5, 0, 0, optionButtonCount * (cButtonHeightLarge + cOptionSpacing))
+        label.Position = UDim2.new(0.5, 0, 0, optionButtonCount * (cGui.ButtonHeightLarge + cOptionSpacing))
 
         optionButtonCount = optionButtonCount + 1
     end
@@ -887,8 +881,7 @@ do  -- knowledgebase UI
     docsClose.Position = UDim2.fromScale(1, 0)
     docsClose.Text = "x"
 
-    local docsContentScroll = createScroll()
-    docsContentScroll.Parent = docsFrame
+    local docsContentScroll = Gui.createScroll(docsFrame)
     docsContentScroll.Size = UDim2.fromScale(1, 1)
 
     local docsTitle = Gui.createText(docsContentScroll, cDocsTitleHeight * 0.9)
@@ -951,18 +944,16 @@ do  -- knowledgebase UI
 
     local docsTab = tabControl:createTab("Knowledgebase", "3K", "TabDocs")
 
-    local docsScroll = createScroll()
-    docsScroll.Parent = docsTab
+    local docsScroll = Gui.createScroll(docsTab)
 
     local docCount = 0
 
     function addDoc(info)
-        local docLabel = createLabelButton(info.Label, function()
+        local docLabel = Gui.createLabelButton(docsScroll, info.Label, function()
             openPage(info)
         end)
 
-        docLabel.Parent = docsScroll
-        docLabel.Position = UDim2.fromOffset(0, docCount * cLabelButtonHeight)
+        docLabel.Position = UDim2.fromOffset(0, docCount * cGui.LabelButtonHeight)
 
         docCount = docCount + 1
     end
@@ -1278,7 +1269,7 @@ do  -- animation UI
     speedField.BackgroundColor3 = cGui.BackgroundColorLight
     speedField.BorderSizePixel = 1
     speedField.Font = cGui.Font
-    speedField.TextSize = cButtonHeightLarge * 0.8
+    speedField.TextSize = cGui.ButtonHeightLarge * 0.8
     speedField.TextColor3 = cGui.ForegroundColor
     speedField.Text = ""
     speedField.PlaceholderColor3 = Color3.fromRGB(127, 127, 127)
@@ -1296,8 +1287,7 @@ do  -- animation UI
         end
     end)
 
-    local animationsScroll = createScroll()
-    animationsScroll.Parent = animationsTab
+    local animationsScroll = Gui.createScroll(animationsTab)
     animationsScroll.Size = animationsScroll.Size - UDim2.fromOffset(0, cSpeedFieldSize + cSpeedFieldPadding)
     animationsScroll.Position = animationsScroll.Position + UDim2.fromOffset(0, cSpeedFieldSize + cSpeedFieldPadding)
 
@@ -1344,17 +1334,16 @@ do  -- animation UI
     local animScrollY = 0
 
     function createAnimationCategory(name)
-        local label = createCategoryLabel(name)
-        label.Parent = animationsScroll
+        local label = Gui.createCategoryLabel(animationsScroll, name)
         label.Position = UDim2.new(0.5, 0, 0 , animScrollY)
 
-        animScrollY = animScrollY + cCategoryHeight
+        animScrollY = animScrollY + cGui.CategoryHeight
     end
 
     function createAnimationButton(info)
         local active = false
 
-        local labelInfo = createLabelButtonLarge(info.Name, function(setActive)
+        local labelInfo = Gui.createLabelButtonLarge(animationsScroll, info.Name, function(setActive)
             active = not active
 
             if active then
@@ -1370,10 +1359,9 @@ do  -- animation UI
         end)
 
         local label = labelInfo.Label
-        label.Parent = animationsScroll
         label.Position = UDim2.new(0.5, 0, 0, animScrollY)
 
-        animScrollY = animScrollY + cButtonHeightLarge
+        animScrollY = animScrollY + cGui.ButtonHeightLarge
     end
 
     lCharacter3 = LocalPlayer.CharacterAdded:Connect(function(char)
@@ -1427,29 +1415,26 @@ end -- animations
 do  -- waypoints UI
     local waypointsTab = tabControl:createTab("Waypoints", "5W", "TabWaypoints")
 
-    local waypointsScroll = createScroll()
-    waypointsScroll.Parent = waypointsTab
+    local waypointsScroll = Gui.createScroll(waypointsTab)
 
     local waypointsScrollY = 0
 
     function createWaypointCategory(name)
-        local label = createCategoryLabel(name)
-        label.Parent = waypointsScroll
+        local label = Gui.createCategoryLabel(waypointsScroll, name)
         label.Position = UDim2.new(0.5, 0, 0, waypointsScrollY)
 
-        waypointsScrollY = waypointsScrollY + cCategoryHeight
+        waypointsScrollY = waypointsScrollY + cGui.CategoryHeight
     end
 
     function createWaypointButton(info)
-        local labelInfo = createLabelButtonLarge(info.Name, function()
+        local labelInfo = Gui.createLabelButtonLarge(waypointsScroll, info.Name, function()
             teleport(info.CFrame)
         end)
 
         local label = labelInfo.Label
-        label.Parent = waypointsScroll
         label.Position = UDim2.new(0.5, 0, 0, waypointsScrollY)
 
-        waypointsScrollY = waypointsScrollY + cButtonHeightLarge
+        waypointsScrollY = waypointsScrollY + cGui.ButtonHeightLarge
     end
 end -- waypoints UI -- globals exposed: createWaypointButton, createWaypointCategory
 
@@ -2037,8 +2022,7 @@ end -- hats come alive -- globals exposed: makeAlive, lHeartbeat, lStepped, lInp
 do  -- welds
     local weldsTab = tabControl:createTab("Remove Welds", "6R", "TabWelds")
 
-    local weldsScroll = createScroll()
-    weldsScroll.Parent = weldsTab
+    local weldsScroll = Gui.createScroll(weldsTab)
 
     local weldsScrollY = 0
     local cWeldSpacing = 2
@@ -2093,7 +2077,7 @@ do  -- welds
                     labels[k] = nil
                 else
                     l.Label.Position = UDim2.new(0.5, 0, 0, weldsScrollY)
-                    weldsScrollY = weldsScrollY + cButtonHeightLarge + cWeldSpacing
+                    weldsScrollY = weldsScrollY + cGui.ButtonHeightLarge + cWeldSpacing
                 end
             end
         end
@@ -2111,7 +2095,7 @@ do  -- welds
 
     local function addWeld(weld)
         local label = nil
-        local labelInfo = createLabelButtonLarge(weld.Name, function(setActive, type)
+        local labelInfo = Gui.createLabelButtonLarge(weldsScroll, weld.Name, function(setActive, type)
             if not weld.Parent then return end
 
             if type == Enum.UserInputType.MouseButton1 then
@@ -2150,7 +2134,6 @@ do  -- welds
         end)
 
         label = labelInfo.Label
-        label.Parent = weldsScroll
         label.TextTruncate = Enum.TextTruncate.AtEnd
 
         -- I hate Yuyuko.
@@ -2190,7 +2173,7 @@ end -- welds -- globals exposed: lCharacter
 do  -- settings
     local settingsTab = tabControl:createTab("Settings", "7S", "TabSettings")
 
-    local settingsScroll = createScroll()
+    local settingsScroll = Gui.createScroll(settingsTab)
     settingsScroll.Parent = settingsTab
 
     local settingsScrollY = 0
@@ -2221,7 +2204,7 @@ do  -- settings
             currentlyBinding = nil
         end
 
-        labelInfo = createLabelButtonLarge(getName(), function(setActive, type)
+        labelInfo = Gui.createLabelButtonLarge(settingsScroll, getName(), function(setActive, type)
             if type == Enum.UserInputType.MouseButton1 then
                 if currentlyBinding then
                     if currentlyBinding == name then
@@ -2253,10 +2236,9 @@ do  -- settings
         end)
 
         label = labelInfo.Label
-        label.Parent = settingsScroll
         label.Position = UDim2.new(0.5, 0, 0, settingsScrollY)
 
-        settingsScrollY = settingsScrollY + cButtonHeightLarge
+        settingsScrollY = settingsScrollY + cGui.ButtonHeightLarge
     end
 
     local cBinds = { "TabCharacters", "TabOptions", "TabDocs", "TabAnims", "TabWaypoints", "TabWelds", "TabSettings", "MapVis", "MapView", "RaySit", "Exit" }
@@ -2266,16 +2248,15 @@ do  -- settings
     end
 
     local function addCheckbox(label, field, cb)
-        local checkbox = createCheckbox(label, function(checked)
+        local checkbox = Gui.createCheckbox(settingsScroll, label, function(checked)
             config.Value[field] = checked
             config:save()
 
             if cb then cb(checked) end
         end, config.Value[field])
 
-        checkbox.Parent = settingsScroll
         checkbox.Position = UDim2.fromOffset(0, settingsScrollY)
-        settingsScrollY = settingsScrollY + cCheckboxSize
+        settingsScrollY = settingsScrollY + cGui.CheckboxSize
     end
 
     addCheckbox("Orbit Teleport", "orbitTp")
