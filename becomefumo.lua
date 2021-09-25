@@ -984,6 +984,7 @@ At any time, you can press [0] to close the script and reset everything back to 
     - Began putting common GUI components into a static class
 - (BORING!) Get rid of the WORKSPACE global
 - (BORING!) Get rid of stupid layout code in favor of UIListLayout
+- Add category labels to the settings tab
 
 <b>1.5.3</b>
 - Added an announcement about the new character checks. <b>Please read it!</b>
@@ -2127,6 +2128,10 @@ do  -- settings
 
     local settingsScroll = Gui.createListScroll(settingsTab)
 
+    local function createSettingsCategory(name)
+        Gui.createCategoryLabel(settingsScroll, name)
+    end
+
     local currentlyBinding = nil
     local listener = nil
 
@@ -2187,6 +2192,8 @@ do  -- settings
         label = labelInfo.Label
     end
 
+    createSettingsCategory("Keybinds")
+
     local cBinds = { "TabCharacters", "TabOptions", "TabDocs", "TabAnims", "TabWaypoints", "TabWelds", "TabSettings", "MapVis", "MapView", "RaySit", "Exit" }
 
     for k, v in pairs(cBinds) do
@@ -2201,6 +2208,8 @@ do  -- settings
             if cb then cb(checked) end
         end, config.Value[field])
     end
+
+    createSettingsCategory("Weld Options")
 
     addCheckbox("Orbit Teleport", "orbitTp")
     addCheckbox("Debug", "debug", function(checked)
