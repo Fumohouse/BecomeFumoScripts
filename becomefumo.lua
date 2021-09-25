@@ -7,7 +7,7 @@ local function log(msg)
     print("[fumo] "..msg)
 end
 
-version = "1.5.2"
+version = "1.5.3"
 
 do  -- double load prevention
     if BF_LOADED then
@@ -990,21 +990,21 @@ do  -- knowledgebase UI
 end -- knowledgebase UI -- globals exposed: addDoc, openPage
 
 do  -- docs content
-    local cAboutContent =          "This script is dedicated to Become Fumo, and it has functions specific to it.<br />"
-    cAboutContent = cAboutContent.."It provides replacements for some of Become Fumo's default UI components, as they currently lack polish.<br />"
-    cAboutContent = cAboutContent.."It is intended to work alongside Infinite Yield and DEX, not replace them.<br />"
-    cAboutContent = cAboutContent.."Information on certain features and bugs is provided in this knowledgebase. "
-    cAboutContent = cAboutContent.."Credit for this information is provided whenever I can remember it. "
-    cAboutContent = cAboutContent.."Please note that 'disclosed' and 'discovered' don't mean the same thing. I don't know who discovered most of these bugs.<br />"
-    cAboutContent = cAboutContent.."For any questions, you can ask me in game.<br />"
-    cAboutContent = cAboutContent.."As an alternative to clicking the tabs, you can navigate to any tab except the info tab through the number keys.<br />"
-    cAboutContent = cAboutContent.."At any time, you can press [0] to close the script and reset everything back to normal.<br /><br />"
-    cAboutContent = cAboutContent.."<b>Credits:</b><br />"
-    cAboutContent = cAboutContent.."- xowada - Detaching and controlling accessories<br />"
-    cAboutContent = cAboutContent.."- AyaShameimaruCamera - Replace Humanoid & Inspiration<br />"
-    cAboutContent = cAboutContent.."- FutoLurkingAround - Emotional Support<br />"
-    cAboutContent = cAboutContent.."- LordOfCatgirls - Early user & Welds research<br />"
-    cAboutContent = cAboutContent.."- gandalf872 - ? & Welds research<br />"
+    local cAboutContent =[[
+This script is dedicated to Become Fumo, and it has functions specific to it.
+It provides replacements for some of Become Fumo's default UI components, as they currently lack polish.
+It is intended to work alongside Infinite Yield and DEX, not replace them.
+Information on certain features and bugs is provided in this knowledgebase. Credit for this information is provided whenever I can remember it. Please note that 'disclosed' and 'discovered' don't mean the same thing. I don't know who discovered most of these bugs.
+For any questions, you can ask me in game.
+As an alternative to clicking the tabs, you can navigate to any tab except the info tab through the number keys.
+At any time, you can press [0] to close the script and reset everything back to normal.
+<b>Credits:</b>
+- xowada - Detaching and controlling accessories
+- AyaShameimaruCamera - Replace Humanoid & Inspiration
+- FutoLurkingAround - Emotional Support
+- LordOfCatgirls - Early user & Welds research
+- gandalf872 - ? & Welds research
+    ]]
 
     local cAboutInfo = {}
     cAboutInfo.Label = "About this Script"
@@ -1012,114 +1012,119 @@ do  -- docs content
 
     addDoc(cAboutInfo)
 
-    local cChangelogContent = ""
-    cChangelogContent = cChangelogContent.."<b>1.5.2</b><br />"
-    cChangelogContent = cChangelogContent.."- Added September to the animations tab<br />"
-    cChangelogContent = cChangelogContent.."- Remove bobbing direction and make it always vertical, as rotation seems to cause deaths, especially when target is face down<br />"
-    cChangelogContent = cChangelogContent.."- Added support for attaching to people with no Humanoid/replaced Humanoid<br />"
-    cChangelogContent = cChangelogContent.."- Added a debug overlay which can be enabled through 7S<br />"
-    cChangelogContent = cChangelogContent.."- Make the movement checker more strict, but consider rotation as motion (i.e. dance3 torso parts will no longer bob)<br />"
-    cChangelogContent = cChangelogContent.."- Return parts to orbit when target character dies<br />"
-    cChangelogContent = cChangelogContent.."- Added Motor6Ds (aka limbs and head) to the welds list. This breaks everything, so expect frequent deaths when removing your head or any other integral part.<br /><br />"
+    local cChangelogContent = [[
+<b>1.5.3</b>
+- Added an announcement about the new character checks. <b>Please read it!</b>
+- (BORING!) Refactor Knowledgebase articles to use multiline strings instead of concatenation
+- ?
 
-    cChangelogContent = cChangelogContent.."<b>1.5.1</b><br />"
-    cChangelogContent = cChangelogContent.."- Added lerps back to mouse movement and orbit of weld parts + additional tweaking<br />"
-    cChangelogContent = cChangelogContent.."- Blacklist music region bounding boxes and the main invis walls from weld raycast<br />"
-    cChangelogContent = cChangelogContent.."- Make bobbing movements be the correct direction instead of always up/down<br />"
-    cChangelogContent = cChangelogContent.."- Try to maximize fps during removal of welds by teleporting to a remote location (disabled by default)<br />"
-    cChangelogContent = cChangelogContent.."* Please try enabling it in the 7S tab ('Orbit Teleport') and report if it improves rate of death on removal.<br />"
-    cChangelogContent = cChangelogContent.."- Remove unnecessary code and use BodyGyro for all rotations<br />"
-    cChangelogContent = cChangelogContent.."- Limit raycasting to once per frame instead of once per part per frame<br />"
-    cChangelogContent = cChangelogContent.."- Automatically unweld children of parts set to be put into orbit (i.e. for Doremy's hat, the 'part of it yes' is now orbited first automatically)<br />"
-    cChangelogContent = cChangelogContent.."- Automatically unweld parts that are welded twice (i.e. for Nazrin's 'Neck' part, which is welded twice to the torso, both welds are now destroyed automatically)<br /><br />"
+<b>1.5.2</b>
+- Added September to the animations tab
+- Remove bobbing direction and make it always vertical, as rotation seems to cause deaths, especially when target is face down
+- Added support for attaching to people with no Humanoid/replaced Humanoid
+- Added a debug overlay which can be enabled through 7S
+- Make the movement checker more strict, but consider rotation as motion (i.e. dance3 torso parts will no longer bob)
+- Return parts to orbit when target character dies
+- Added Motor6Ds (aka limbs and head) to the welds list. This breaks everything, so expect frequent deaths when removing your head or any other integral part.
 
-    cChangelogContent = cChangelogContent.."<b>1.5.0 - Minimap</b><br />"
-    cChangelogContent = cChangelogContent.."- Added a minimap. Due to performance overhead and incompleteness, the map is unloaded by default. Press N (by default) to toggle map visiblity and M to toggle zoomed view.<br />"
-    cChangelogContent = cChangelogContent.."- Fixed animations still being highlighted after character is reset<br />"
-    cChangelogContent = cChangelogContent.."- Fixed badged characters not appearing in the character list when they are unlocked<br />"
-    cChangelogContent = cChangelogContent.."- Switched to a JSON config system. In your workspace folder, you can now delete the file named 'fumofumo.txt'.<br />"
-    cChangelogContent = cChangelogContent.."- You can now rebind keybinds to other keys if you wish, by using the 7S tab. Tab numbers will not change with keybind changes. To set a keybind to blank, right click it.<br />"
-    cChangelogContent = cChangelogContent.."- Since sitting is fixed, the raycast sit feature has been moved to a keybind (E by default) and is now extra janky for some reason.<br /><br />"
+<b>1.5.1</b>
+- Added lerps back to mouse movement and orbit of weld parts + additional tweaking
+- Blacklist music region bounding boxes and the main invis walls from weld raycast
+- Make bobbing movements be the correct direction instead of always up/down
+- Try to maximize fps during removal of welds by teleporting to a remote location (disabled by default)
+* Please try enabling it in the 7S tab ('Orbit Teleport') and report if it improves rate of death on removal.
+- Remove unnecessary code and use BodyGyro for all rotations
+- Limit raycasting to once per frame instead of once per part per frame
+- Automatically unweld children of parts set to be put into orbit (i.e. for Doremy's hat, the 'part of it yes' is now orbited first automatically)
+- Automatically unweld parts that are welded twice (i.e. for Nazrin's 'Neck' part, which is welded twice to the torso, both welds are now destroyed automatically)
 
-    cChangelogContent = cChangelogContent.."<b>1.4.5</b><br />"
-    cChangelogContent = cChangelogContent.."- Holding down middle click while dragging multiple parts no longer causes them to get closer to the camera<br />"
-    cChangelogContent = cChangelogContent.."- Parts no longer appear too high when attached to players<br />"
-    cChangelogContent = cChangelogContent.."- Parts welded to non-standard parts (such as Doremy's dress' balls) can now be attached to proper positions on other characters<br />"
-    cChangelogContent = cChangelogContent.."- Stationary target check has been made a bit more strict<br />"
-    cChangelogContent = cChangelogContent.."- Attempt to improve stability of initially detaching welds<br />"
-    cChangelogContent = cChangelogContent.."- The middle click raycast for sitting no longer runs in guis<br />"
-    cChangelogContent = cChangelogContent.."* Stability issues likely persist. Continue to report them to me.<br /><br />"
+<b>1.5.0 - Minimap</b>
+- Added a minimap. Due to performance overhead and incompleteness, the map is unloaded by default. Press N (by default) to toggle map visiblity and M to toggle zoomed view.
+- Fixed animations still being highlighted after character is reset
+- Fixed badged characters not appearing in the character list when they are unlocked
+- Switched to a JSON config system. In your workspace folder, you can now delete the file named 'fumofumo.txt'.
+- You can now rebind keybinds to other keys if you wish, by using the 7S tab. Tab numbers will not change with keybind changes. To set a keybind to blank, right click it.
+- Since sitting is fixed, the raycast sit feature has been moved to a keybind (E by default) and is now extra janky for some reason.
 
-    cChangelogContent = cChangelogContent.."<b>1.4.4</b><br />"
-    cChangelogContent = cChangelogContent.."- Better ensure constant motion of detached accessories<br /><br />"
+<b>1.4.5</b>
+- Holding down middle click while dragging multiple parts no longer causes them to get closer to the camera
+- Parts no longer appear too high when attached to players
+- Parts welded to non-standard parts (such as Doremy's dress' balls) can now be attached to proper positions on other characters
+- Stationary target check has been made a bit more strict
+- Attempt to improve stability of initially detaching welds
+- The middle click raycast for sitting no longer runs in guis
+* Stability issues likely persist. Continue to report them to me.
 
-    cChangelogContent = cChangelogContent.."<b>1.4.3</b><br />"
-    cChangelogContent = cChangelogContent.."- Fix accessory teleport target not resetting when character reset<br />"
-    cChangelogContent = cChangelogContent.."- Fix middle click moving accessories while in menu<br /><br />"
+<b>1.4.4</b>
+- Better ensure constant motion of detached accessories
 
-    cChangelogContent = cChangelogContent.."<b>1.4.2</b><br />"
-    cChangelogContent = cChangelogContent.."- Fix some situations where part rotation is wrong (i.e. Nazrin's inner ear parts)<br /><br />"
+<b>1.4.3</b>
+- Fix accessory teleport target not resetting when character reset
+- Fix middle click moving accessories while in menu
 
-    cChangelogContent = cChangelogContent.."<b>1.4.1</b><br />"
-    cChangelogContent = cChangelogContent.."- Refactor the tab system and add an alert when a new version is run. Thanks for reading the changelog!<br /><br />"
+<b>1.4.2</b>
+- Fix some situations where part rotation is wrong (i.e. Nazrin's inner ear parts)
 
-    cChangelogContent = cChangelogContent.."<b>1.4.0 - Hats Come Alive</b><br />"
-    cChangelogContent = cChangelogContent.."- Add the ability to detach and control accessories by middle clicking welds in the 6R menu and dragging while middle clicking<br />"
-    cChangelogContent = cChangelogContent.."- Add article on detached accessories<br /><br />"
+<b>1.4.1</b>
+- Refactor the tab system and add an alert when a new version is run. Thanks for reading the changelog!
 
-    cChangelogContent = cChangelogContent.."<b>1.3.7</b><br />"
-    cChangelogContent = cChangelogContent.."- Give the ability to sit in any seat by middle clicking its approximate location<br /><br />"
+<b>1.4.0 - Hats Come Alive</b>
+- Add the ability to detach and control accessories by middle clicking welds in the 6R menu and dragging while middle clicking
+- Add article on detached accessories
 
-    cChangelogContent = cChangelogContent.."<b>1.3.6</b><br />"
-    cChangelogContent = cChangelogContent.."- Attempt to fix some deaths on laggy systems<br />"
-    cChangelogContent = cChangelogContent.."- Fix early teleport back when removing multiple welds at once<br /><br />"
+<b>1.3.7</b>
+- Give the ability to sit in any seat by middle clicking its approximate location
 
-    cChangelogContent = cChangelogContent.."<b>1.3.5</b><br />"
-    cChangelogContent = cChangelogContent.."- GUI tweaks<br /><br />"
+<b>1.3.6</b>
+- Attempt to fix some deaths on laggy systems
+- Fix early teleport back when removing multiple welds at once
 
-    cChangelogContent = cChangelogContent.."<b>1.3.4</b><br />"
-    cChangelogContent = cChangelogContent.."- Flash weld target on right click<br /><br />"
+<b>1.3.5</b>
+- GUI tweaks
 
-    cChangelogContent = cChangelogContent.."<b>1.3.3</b><br />"
-    cChangelogContent = cChangelogContent.."- I hate Yuyuko<br />"
-    cChangelogContent = cChangelogContent.."- Scale the buttons for ridiculously long weld names<br /><br />"
+<b>1.3.4</b>
+- Flash weld target on right click
 
-    cChangelogContent = cChangelogContent.."<b>1.3.2</b><br />"
-    cChangelogContent = cChangelogContent.."- Add some UI scaling for better usability at lower resolution<br />"
-    cChangelogContent = cChangelogContent.."- Remove mention of Doremy's hat's ball<br /><br />"
+<b>1.3.3</b>
+- I hate Yuyuko
+- Scale the buttons for ridiculously long weld names
 
-    cChangelogContent = cChangelogContent.."<b>1.3.1</b><br />"
-    cChangelogContent = cChangelogContent.."- Minor fixes<br /><br />"
+<b>1.3.2</b>
+- Add some UI scaling for better usability at lower resolution
+- Remove mention of Doremy's hat's ball
 
-    cChangelogContent = cChangelogContent.."<b>1.3.0 - The Welds Update</b><br />"
-    cChangelogContent = cChangelogContent.."- Added a welds tab (6R) and populate it with a list of welds that can be deleted<br />"
-    cChangelogContent = cChangelogContent.."- Added a Knowledgebase article on welds<br /><br />"
+<b>1.3.1</b>
+- Minor fixes
 
-    cChangelogContent = cChangelogContent.."<b>1.2.0</b><br />"
-    cChangelogContent = cChangelogContent.."- Added a Knowledgebase article on etiquette<br />"
-    cChangelogContent = cChangelogContent.."- Add waypoints tab (5W) and add waypoints to most major locations outside of Memento Mori<br /><br />"
+<b>1.3.0 - The Welds Update</b>
+- Added a welds tab (6R) and populate it with a list of welds that can be deleted
+- Added a Knowledgebase article on welds
 
-    cChangelogContent = cChangelogContent.."<b>1.1.3</b><br />"
-    cChangelogContent = cChangelogContent.."- Increase maintainability by reusing the animation button style elsewhere<br />"
-    cChangelogContent = cChangelogContent.."- Add category labels to the animations list<br /><br />"
+<b>1.2.0</b>
+- Added a Knowledgebase article on etiquette
+- Add waypoints tab (5W) and add waypoints to most major locations outside of Memento Mori
 
-    cChangelogContent = cChangelogContent.."<b>1.1.2</b><br />"
-    cChangelogContent = cChangelogContent.."- Fix two tabs opening at once when pressing two keys simultaneously<br /><br />"
+<b>1.1.3</b>
+- Increase maintainability by reusing the animation button style elsewhere
+- Add category labels to the animations list
 
-    cChangelogContent = cChangelogContent.."<b>1.1.1</b><br />"
-    cChangelogContent = cChangelogContent.."- Fix tweens when using hotkeys to open menus<br /><br />"
+<b>1.1.2</b>
+- Fix two tabs opening at once when pressing two keys simultaneously
 
-    cChangelogContent = cChangelogContent.."<b>1.1.0</b><br />"
-    cChangelogContent = cChangelogContent.."- Added an animations tab and added every significant animation default to the game (mostly emotes and arcade)<br />"
-    cChangelogContent = cChangelogContent.."- Allow navigation through number keys<br /><br />"
+<b>1.1.1</b>
+- Fix tweens when using hotkeys to open menus
 
-    cChangelogContent = cChangelogContent.."<b>1.0.0</b><br />"
-    cChangelogContent = cChangelogContent.."- Created a simple tab interface<br />"
-    cChangelogContent = cChangelogContent.."- Replaced the default character select and options<br />"
-    cChangelogContent = cChangelogContent.."    - Added options to replace the humanoid<br />"
-    cChangelogContent = cChangelogContent.."- Added knowledgebase articles for the script and the replace humanoid option<br />"
-    cChangelogContent = cChangelogContent.."- Added an about page"
-    -- cChangelogContent = cChangelogContent..""
+<b>1.1.0</b>
+- Added an animations tab and added every significant animation default to the game (mostly emotes and arcade)
+- Allow navigation through number keys
+
+<b>1.0.0</b>
+- Created a simple tab interface
+- Replaced the default character select and options
+    - Added options to replace the humanoid
+- Added knowledgebase articles for the script and the replace humanoid option
+- Added an about page
+    ]]
 
     cChangelogInfo = {}
     cChangelogInfo.Label = "Changelog"
@@ -1127,19 +1132,21 @@ do  -- docs content
 
     addDoc(cChangelogInfo)
 
-    local cEtiquetteContent = "Please try to be polite when using exploits on Become Fumo. This means, please:<br />"
-    cEtiquetteContent = cEtiquetteContent.."<b><i>DO NOT BREAK THE TRAIN</i></b><br />"
-    cEtiquetteContent = cEtiquetteContent.."<b><i>DO NOT BREAK THE TRAIN</i></b><br />"
-    cEtiquetteContent = cEtiquetteContent.."<b><i>DO NOT BREAK THE TRAIN</i></b><br />"
-    cEtiquetteContent = cEtiquetteContent.."<b><i>DO NOT BREAK THE TRAIN</i></b><br />"
-    cEtiquetteContent = cEtiquetteContent.."<b><i>DO NOT BREAK THE TRAIN</i></b><br />"
-    cEtiquetteContent = cEtiquetteContent.."<b><i>DO NOT BREAK THE TRAIN</i></b><br />"
-    cEtiquetteContent = cEtiquetteContent.."and...<br />"
-    cEtiquetteContent = cEtiquetteContent.."<b><i>DO NOT HAVE SEX</i></b><br />"
-    cEtiquetteContent = cEtiquetteContent.."<b><i>DO NOT HAVE SEX</i></b><br />"
-    cEtiquetteContent = cEtiquetteContent.."<b><i>DO NOT HAVE SEX</i></b><br />"
-    cEtiquetteContent = cEtiquetteContent.."<b><i>DO NOT HAVE SEX</i></b><br />"
-    cEtiquetteContent = cEtiquetteContent.."<b><i>DO NOT HAVE SEX</i></b><br />"
+    local cEtiquetteContent = [[
+Please try to be polite when using exploits on Become Fumo. This means, please:
+<b><i>DO NOT BREAK THE TRAIN</i></b>
+<b><i>DO NOT BREAK THE TRAIN</i></b>
+<b><i>DO NOT BREAK THE TRAIN</i></b>
+<b><i>DO NOT BREAK THE TRAIN</i></b>
+<b><i>DO NOT BREAK THE TRAIN</i></b>
+<b><i>DO NOT BREAK THE TRAIN</i></b>
+and...
+<b><i>DO NOT HAVE SEX</i></b>
+<b><i>DO NOT HAVE SEX</i></b>
+<b><i>DO NOT HAVE SEX</i></b>
+<b><i>DO NOT HAVE SEX</i></b>
+<b><i>DO NOT HAVE SEX</i></b>
+    ]]
 
     local cEtiquetteInfo = {}
     cEtiquetteInfo.Label = "Cheaters' Etiquette"
@@ -1147,23 +1154,27 @@ do  -- docs content
 
     addDoc(cEtiquetteInfo)
 
-    local cHumanoidContent =             "<i>Disclosed by: AyaShameimaruCamera</i><br />"
-    cHumanoidContent = cHumanoidContent.."<i>Scripting refined by: me</i><br /><br />"
-    cHumanoidContent = cHumanoidContent.."The 'Replace Humanoid' option found in the Character menu bypasses the check for removal of any children of your character's Head/Torso by replacing the humanoid object with a clone.<br />"
-    cHumanoidContent = cHumanoidContent.."Note that this script purposefully provides no way of deleting any specific part from your character, as the way they are designed is inconsistent. Use DEX to delete parts.<br />"
-    cHumanoidContent = cHumanoidContent.."Attempting to remove parts like bows and hats without using this feature will result in your character being reset.<br />"
-    cHumanoidContent = cHumanoidContent.."You should not use this if you only want to delete limbs, or descendants of your Head that aren't direct children, such as your eyes and face. Those can be deleted without using this feature.<br /><br />"
-    cHumanoidContent = cHumanoidContent.."The same functionality can be achieved using DEX only by duplicating your humanoid, deleting the original, and disabling and reenabling your camera, but it has more limitations. "
-    cHumanoidContent = cHumanoidContent.."This script will replace the humanoid at almost the same time as you switch characters (as soon as the character is available by the CharacterAdded event). "
-    cHumanoidContent = cHumanoidContent.."This will allow you to retain the ability to jump normally, and eliminates the need to reset the camera manually. Animations will be displayed client-side, but don't be fooled: they cannot be seen by others.<br /><br />"
-    cHumanoidContent = cHumanoidContent.."<b>The following actions are impossible to do with this feature active:</b><br />"
-    cHumanoidContent = cHumanoidContent.."1. Any emotes or animations (walk, idle, etc) including those provided by exploits. As mentioned above, they will be visible to you only (if at all).<br />"
-    cHumanoidContent = cHumanoidContent.."2. Sitting in benches or on the train, or using the arcade.<br />"
-    cHumanoidContent = cHumanoidContent.."3. Resetting your character. The only way to 'reset your character' is to switch characters.<br />"
-    cHumanoidContent = cHumanoidContent.."4. Using tools or items. You may be able to hold them, but you cannot use them.<br /><br />"
-    cHumanoidContent = cHumanoidContent.."Generally speaking, most server side scripts affecting your character will no longer work.<br /><br />"
-    cHumanoidContent = cHumanoidContent.."Another button labeled 'Replace Humanoid Now' provides older functionality. It doesn't show animations client-side, it requires a custom key listener for jumping to work, and it requires resetting the camera. "
-    cHumanoidContent = cHumanoidContent.."But, it activates the feature without needing to change characters. The benefit of this is you can use items or do things before you activate the feature (such as getting the red glow on Soul Edge)."
+    local cHumanoidContent = [[
+<i>Disclosed by: AyaShameimaruCamera</i>
+<i>Scripting refined by: me</i>
+
+The 'Replace Humanoid' option found in the Character menu bypasses the check for removal of any children of your character's Head/Torso by replacing the humanoid object with a clone.
+Note that this script purposefully provides no way of deleting any specific part from your character, as the way they are designed is inconsistent. Use DEX to delete parts.
+Attempting to remove parts like bows and hats without using this feature will result in your character being reset.
+You should not use this if you only want to delete limbs, or descendants of your Head that aren't direct children, such as your eyes and face. Those can be deleted without using this feature.
+
+The same functionality can be achieved using DEX only by duplicating your humanoid, deleting the original, and disabling and reenabling your camera, but it has more limitations. This script will replace the humanoid at almost the same time as you switch characters (as soon as the character is available by the CharacterAdded event). This will allow you to retain the ability to jump normally, and eliminates the need to reset the camera manually. Animations will be displayed client-side, but don't be fooled: they cannot be seen by others.
+
+<b>The following actions are impossible to do with this feature active:</b>
+1. Any emotes or animations (walk, idle, etc) including those provided by exploits. As mentioned above, they will be visible to you only (if at all).
+2. Sitting in benches or on the train, or using the arcade.
+3. Resetting your character. The only way to 'reset your character' is to switch characters.
+4. Using tools or items. You may be able to hold them, but you cannot use them.
+
+Generally speaking, most server side scripts affecting your character will no longer work.
+
+Another button labeled 'Replace Humanoid Now' provides older functionality. It doesn't show animations client-side, it requires a custom key listener for jumping to work, and it requires resetting the camera. But, it activates the feature without needing to change characters. The benefit of this is you can use items or do things before you activate the feature (such as getting the red glow on Soul Edge).
+    ]]
 
     local cHumanoidInfo = {}
     cHumanoidInfo.Label = "Replacing Humanoid"
@@ -1171,23 +1182,23 @@ do  -- docs content
 
     addDoc(cHumanoidInfo)
 
-    local cWeldsContent =          "<i>Discovery & disclosure: gandalf872 and LordOfCatgirls</i><br />"
-    cWeldsContent = cWeldsContent.."<i>Scripting refined by: me</i><br /><br />"
-    cWeldsContent = cWeldsContent.."The 'Remove Welds' tab serves as a successor to the 'Replace Humanoid' functionality. However, it cannot remove any parts that are not held on with welds. For those parts, continue to use 'Replace Humanoid.'<br /><br />"
-    cWeldsContent = cWeldsContent.."Many parts are held onto the fumo's head, torso, or limbs through welds. Deleting the welds will cause the parts to effectively be removed from your body. "
-    cWeldsContent = cWeldsContent.."This script automates the process of removing welds.<br />"
-    cWeldsContent = cWeldsContent.."Unlike 'Replace Humanoid,' removing welds through this script does not require the use of DEX or any other scripts.<br /><br />"
-    cWeldsContent = cWeldsContent.."Welds are named with the name of the anchor point (usually something like Head, Torso, etc), then a box character, then the name of the part (e.g. hat, clothes, shoes). This is how you should identify them in the list. "
-    cWeldsContent = cWeldsContent.."If the name of a weld is ambiguous or unclear, right click it and the weld's Part1 ('target') will flash for a few seconds instead of the weld being deleted.<br />"
-    cWeldsContent = cWeldsContent.."Much like Replace Humanoid, the functionality in this script can be achieved using DEX by removing the weld and quickly anchoring the part that fell. "
-    cWeldsContent = cWeldsContent.."This method has proven to be unreliable and sometimes difficult to pull off, but best results are achieved by going to high locations like a hill or the treehouse.<br />"
-    cWeldsContent = cWeldsContent.."Early findings indicate that leaving children in the object that falls (see Doremy's hat for an example) will make death after removal much more likely. As such, this script will clear all children of the target before removing the weld. "
-    cWeldsContent = cWeldsContent.."The script will teleport you to the top of the treehouse to ensure that the part's falling distance is held relatively constant. "
-    cWeldsContent = cWeldsContent.."After deleting the weld, the script waits around 1.5 seconds to anchor the part, as giving too little time has also resulted in death (for unknown reasons). "
-    cWeldsContent = cWeldsContent.."After everything is done, the button you clicked will disappear and the script will teleport you back to your original location. "
-    cWeldsContent = cWeldsContent.."Support exists for removing multiple welds at once, if you wanted to do that.<br /><br />"
-    cWeldsContent = cWeldsContent.."The method used in this script may still be unstable, causing death after minutes or hours. If this occurs, please report to me how long it took, which character, and which part you removed. Include as much detail as possible.<br /><br />"
-    cWeldsContent = cWeldsContent.."Please remember that the people who discovered this did not do it for you to take off your clothes. Please do not take off your clothes. Please do not take off your clothes. Ple"
+    local cWeldsContent = [[
+<i>Discovery & disclosure: gandalf872 and LordOfCatgirls</i>
+<i>Scripting refined by: me</i>
+
+The 'Remove Welds' tab serves as a successor to the 'Replace Humanoid' functionality. However, it cannot remove any parts that are not held on with welds. For those parts, continue to use 'Replace Humanoid.'
+
+Many parts are held onto the fumo's head, torso, or limbs through welds. Deleting the welds will cause the parts to effectively be removed from your body. This script automates the process of removing welds.
+Unlike 'Replace Humanoid,' removing welds through this script does not require the use of DEX or any other scripts.
+
+Welds are named with the name of the anchor point (usually something like Head, Torso, etc), then a box character, then the name of the part (e.g. hat, clothes, shoes). This is how you should identify them in the list. If the name of a weld is ambiguous or unclear, right click it and the weld's Part1 ('target') will flash for a few seconds instead of the weld being deleted.
+Much like Replace Humanoid, the functionality in this script can be achieved using DEX by removing the weld and quickly anchoring the part that fell. This method has proven to be unreliable and sometimes difficult to pull off, but best results are achieved by going to high locations like a hill or the treehouse.
+Early findings indicate that leaving children in the object that falls (see Doremy's hat for an example) will make death after removal much more likely. As such, this script will clear all children of the target before removing the weld. The script will teleport you to the top of the treehouse to ensure that the part's falling distance is held relatively constant. After deleting the weld, the script waits around 1.5 seconds to anchor the part, as giving too little time has also resulted in death (for unknown reasons). After everything is done, the button you clicked will disappear and the script will teleport you back to your original location. Support exists for removing multiple welds at once, if you wanted to do that.
+
+The method used in this script may still be unstable, causing death after minutes or hours. If this occurs, please report to me how long it took, which character, and which part you removed. Include as much detail as possible.
+
+Please remember that the people who discovered this did not do it for you to take off your clothes. Please do not take off your clothes. Please do not take off your clothes. Ple
+    ]]
 
     local cWeldsInfo = {}
     cWeldsInfo.Label = "Removing Welds"
@@ -1195,21 +1206,62 @@ do  -- docs content
 
     addDoc(cWeldsInfo)
 
-    local cDetachContent =             "<i>Disclosure: xowada</i><br />"
-    cDetachContent = cDetachContent .. "<i>Code basis: Infinite Yield</i><br />"
-    cDetachContent = cDetachContent .. "<i>Scripting refined by: me</i><br />"
-    cDetachContent = cDetachContent .. "The weld strategy to 'removing' parts from the character's body can also be used to detach and control them.<br />"
-    cDetachContent = cDetachContent .. "The BodyPosition class is used to control the parts after they have been detached, and a constant velocity is applied to them for (relative) stability (i.e. less death).<br />"
-    cDetachContent = cDetachContent .. "The Stepped event in RunService is used to control the parts, and set their position and rotation every frame. Paths for the objects can be made through functions of position offset to time.<br /><br />"
-    cDetachContent = cDetachContent .. "This script has the parts orbit the player by default. If middle click is held, the parts will follow the mouse, and if the parts touch a player then they will attach to them as close to the correct position as possible.<br /><br />"
-    cDetachContent = cDetachContent .. "The script still suffers from relative instability and death may occur frequently. Report these instances to me with as much detail as possible."
+    local cDetachContent = [[
+<i>Disclosure: xowada</i>
+<i>Code basis: Infinite Yield</i>
+<i>Scripting refined by: me</i>
+The weld strategy to 'removing' parts from the character's body can also be used to detach and control them.
+The BodyPosition class is used to control the parts after they have been detached, and a constant velocity is applied to them for (relative) stability (i.e. less death).
+The Stepped event in RunService is used to control the parts, and set their position and rotation every frame. Paths for the objects can be made through functions of position offset to time.
+
+This script has the parts orbit the player by default. If middle click is held, the parts will follow the mouse, and if the parts touch a player then they will attach to them as close to the correct position as possible.
+
+The script still suffers from relative instability and death may occur frequently. Report these instances to me with as much detail as possible."
+    ]]
 
     local cDetachInfo = {}
     cDetachInfo.Label = "Detaching Accessories"
     cDetachInfo.Content = cDetachContent
 
     addDoc(cDetachInfo)
-end -- docs content -- globals exposed: cChangelogInfo
+
+    local cChecksContent = [[
+Announcement, 2021/9/24
+<i>Initial disclosure: initialfum</i>
+On 09/23, initialfum disclosed that scary had planned to release a patch disabling the removal of parts in the next week.
+On 09/24, I discovered these scripts (currently disabled as of writing) inside ReplicatedFirst.
+These scripts have now been deobfuscated and inspected, and they appear to target specifically the movement of detached parts. For your reference, these scripts have been made available at: <i>https://pastebin.com/s3uwN4Z2</i>. The pastebin also contains comments on structure and function of each script. If you wish to view these scripts yourself, open DarkDex and browse ReplicatedFirst.
+
+In short, these scripts target the modification of the character:
+- I <i>know</i> that it targets movement functionality (as implemented by xowada) because it checks if certain instance types (BodyGyro, BodyPosition, BodyVelocity, BodyThrust, BodyAngularVelocity, and BodyForce) are added to RootPart (as far as I know, checking using this method does not work, but nonetheless it shows scary is targeting this script)
+- I <i>know</i> that the new scripts will phone home to the server whenever something suspicious is done (ReplicatedStorage/DoCheck2) and every five seconds (ReplicatedFirst/DoCheck), after which the server will investigate.
+    - I <i>suspect</i> that the both checks may also kick the player upon deleting parts/instances or otherwise modifying the character, but this behavior is unconfirmed.
+- I <i>believe</i> that the tests scary performed a few days ago were targeting testing for this change, and possibly specifically me.
+
+After discovering these unreleased changes, I recommend the following for <b>all users of this script</b>:
+- Do not use the Replace Humanoid feature or the 6R tab prominently (i.e. avoid orbiting for long periods, removing your clothes, or anything that stands out).
+- Avoid giving your parts to random people.
+- Avoid using the above mentioned features near the developers (specifically scary and Naz). Using it around contributors (specifically zorro, cyrrots, and Anx) is probably safe.
+- If these changes are pushed soon, <i>do not</i> try to bypass the new checks. If scary is serious about this enough to write checks to prevent it, please respect the decision for now.
+
+As for the development of this script:
+- This script's founding purpose was to remove parts, so it is slightly disheartening to see these changes being pushed. See the 1.0.0 changelog and you will know.
+- Updates will likely slow down as the above mentioned features are not going to be maintained until their functionality is confirmed upon release of the checks.
+- Upon release of the checks, the affected features will be disabled by default and may be accessible through a hidden config option.
+- Focus will return to less 'destructive' parts of the script, including the minimap and animations tab.
+- If you have any ideas for me to code, please tell me (I need ideas more than ever!)
+
+Other information about the new checks and the fate of this script will be in this announcement. Pay attention to the changelog.
+
+<i>This script is not dead yet!</i>
+    ]]
+
+    cChecksInfo = {}
+    cChecksInfo.Label = "ReplicatedFirst Scripts"
+    cChecksInfo.Content = cChecksContent
+
+    addDoc(cChecksInfo)
+end -- docs content -- globals exposed: cChangelogInfo, cChecksInfo
 
 do  -- animation UI
     local cSpeedFieldSize = 25
@@ -2951,6 +3003,16 @@ do  -- update info
         config:save()
     end
 end -- update info
+
+do  -- announcements
+    local tabButtonInfo = tabControl:createTabButton("Announcement", "!A1!")
+
+    tabButtonInfo.Tab.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            openPage(cChecksInfo)
+        end
+    end)
+end -- announcements
 
 local map = nil
 
