@@ -124,6 +124,23 @@ do  -- gui components
         return scroll
     end
 
+    -- creates a ScrollingFrame with a vertical UIListLayout inside.
+    function Gui.createListScroll(parent, padding)
+        local scroll = Gui.createScroll(parent)
+        local listLayout = Instance.new("UIListLayout")
+        listLayout.Parent = scroll
+
+        if padding then
+            listLayout.Padding = UDim2.fromOffset(0, padding).Y
+        end
+
+        listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+        listLayout.FillDirection = Enum.FillDirection.Vertical
+        listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+        return scroll
+    end
+
     -- creates a TextLabel with callback for MouseButton1, no background
     function Gui.createLabelButton(parent, labelText, cb)
         local label = Gui.createText(parent, cGui.LabelButtonHeight * 0.75)
@@ -716,11 +733,9 @@ do  -- characters
 
     local charactersTab = tabControl:createTab("Characters", "1C", "TabCharacters")
 
-    local characterScroll = Gui.createScroll(charactersTab)
+    local characterScroll = Gui.createListScroll(charactersTab)
     characterScroll.Size = characterScroll.Size - UDim2.fromOffset(0, cGui.CheckboxSize + cGui.LabelButtonHeight)
     characterScroll.Position = characterScroll.Position + UDim2.fromOffset(0, cGui.CheckboxSize + cGui.LabelButtonHeight)
-
-    local characterCount = 0
 
     local shouldReplaceHumanoid = false
 
@@ -782,18 +797,10 @@ do  -- characters
         waitingForSwitch = false
     end
 
-    local function addCharacter(name)
-        local characterLabel = Gui.createLabelButton(characterScroll, name, function()
+    for k, name in pairs(cCharacters) do
+        Gui.createLabelButton(characterScroll, name, function()
             switchCharacter(name)
         end)
-
-        characterLabel.Position = UDim2.fromOffset(0, characterCount * cGui.LabelButtonHeight)
-
-        characterCount = characterCount + 1
-    end
-
-    for k, v in pairs(cCharacters) do
-        addCharacter(v)
     end
 end -- characters -- globals exposed: disconnectJump
 
@@ -877,7 +884,6 @@ do  -- knowledgebase UI
     docsClose.Text = "x"
 
     local docsContentScroll = Gui.createScroll(docsFrame)
-    docsContentScroll.Size = UDim2.fromScale(1, 1)
 
     local docsTitle = Gui.createText(docsContentScroll, cDocsTitleHeight * 0.9)
     docsTitle.TextXAlignment = Enum.TextXAlignment.Left
@@ -939,18 +945,12 @@ do  -- knowledgebase UI
 
     local docsTab = tabControl:createTab("Knowledgebase", "3K", "TabDocs")
 
-    local docsScroll = Gui.createScroll(docsTab)
-
-    local docCount = 0
+    local docsScroll = Gui.createListScroll(docsTab)
 
     function addDoc(info)
-        local docLabel = Gui.createLabelButton(docsScroll, info.Label, function()
+        Gui.createLabelButton(docsScroll, info.Label, function()
             openPage(info)
         end)
-
-        docLabel.Position = UDim2.fromOffset(0, docCount * cGui.LabelButtonHeight)
-
-        docCount = docCount + 1
     end
 end -- knowledgebase UI -- globals exposed: addDoc, openPage
 
@@ -983,6 +983,7 @@ At any time, you can press [0] to close the script and reset everything back to 
     - Began moving constants into an object
     - Began putting common GUI components into a static class
 - (BORING!) Get rid of the WORKSPACE global
+- (BORING!) Get rid of stupid layout code in favor of UIListLayout
 
 <b>1.5.3</b>
 - Added an announcement about the new character checks. <b>Please read it!</b>
@@ -1283,7 +1284,7 @@ do  -- animation UI
         end
     end)
 
-    local animationsScroll = Gui.createScroll(animationsTab)
+    local animationsScroll = Gui.createListScroll(animationsTab)
     animationsScroll.Size = animationsScroll.Size - UDim2.fromOffset(0, cSpeedFieldSize + cSpeedFieldPadding)
     animationsScroll.Position = animationsScroll.Position + UDim2.fromOffset(0, cSpeedFieldSize + cSpeedFieldPadding)
 
@@ -1327,19 +1328,14 @@ do  -- animation UI
         end)
     end
 
-    local animScrollY = 0
-
     function createAnimationCategory(name)
-        local label = Gui.createCategoryLabel(animationsScroll, name)
-        label.Position = UDim2.new(0.5, 0, 0 , animScrollY)
-
-        animScrollY = animScrollY + cGui.CategoryHeight
+        Gui.createCategoryLabel(animationsScroll, name)
     end
 
     function createAnimationButton(info)
         local active = false
 
-        local labelInfo = Gui.createLabelButtonLarge(animationsScroll, info.Name, function(setActive)
+        Gui.createLabelButtonLarge(animationsScroll, info.Name, function(setActive)
             active = not active
 
             if active then
@@ -1353,11 +1349,6 @@ do  -- animation UI
 
             setActive(active)
         end)
-
-        local label = labelInfo.Label
-        label.Position = UDim2.new(0.5, 0, 0, animScrollY)
-
-        animScrollY = animScrollY + cGui.ButtonHeightLarge
     end
 
     lCharacter3 = LocalPlayer.CharacterAdded:Connect(function(char)
@@ -1411,26 +1402,16 @@ end -- animations
 do  -- waypoints UI
     local waypointsTab = tabControl:createTab("Waypoints", "5W", "TabWaypoints")
 
-    local waypointsScroll = Gui.createScroll(waypointsTab)
-
-    local waypointsScrollY = 0
+    local waypointsScroll = Gui.createListScroll(waypointsTab)
 
     function createWaypointCategory(name)
-        local label = Gui.createCategoryLabel(waypointsScroll, name)
-        label.Position = UDim2.new(0.5, 0, 0, waypointsScrollY)
-
-        waypointsScrollY = waypointsScrollY + cGui.CategoryHeight
+        Gui.createCategoryLabel(waypointsScroll, name)
     end
 
     function createWaypointButton(info)
-        local labelInfo = Gui.createLabelButtonLarge(waypointsScroll, info.Name, function()
+        Gui.createLabelButtonLarge(waypointsScroll, info.Name, function()
             teleport(info.CFrame)
         end)
-
-        local label = labelInfo.Label
-        label.Position = UDim2.new(0.5, 0, 0, waypointsScrollY)
-
-        waypointsScrollY = waypointsScrollY + cGui.ButtonHeightLarge
     end
 end -- waypoints UI -- globals exposed: createWaypointButton, createWaypointCategory
 
@@ -2018,10 +1999,7 @@ end -- hats come alive -- globals exposed: makeAlive, lHeartbeat, lStepped, lInp
 do  -- welds
     local weldsTab = tabControl:createTab("Remove Welds", "6R", "TabWelds")
 
-    local weldsScroll = Gui.createScroll(weldsTab)
-
-    local weldsScrollY = 0
-    local cWeldSpacing = 2
+    local weldsScroll = Gui.createListScroll(weldsTab, 2)
 
     local savedLocation = nil
     local inProgress = 0
@@ -2064,27 +2042,10 @@ do  -- welds
 
     local labels = {}
 
-    local function updateWeldsLayout()
-        weldsScrollY = 0
-
-        for k, l in pairs(labels) do
-            if l then
-                if not l.Label.Parent then
-                    labels[k] = nil
-                else
-                    l.Label.Position = UDim2.new(0.5, 0, 0, weldsScrollY)
-                    weldsScrollY = weldsScrollY + cGui.ButtonHeightLarge + cWeldSpacing
-                end
-            end
-        end
-    end
-
     local function removeWeldButton(weld)
         for k, l in pairs(labels) do
             if l and l.Weld == weld then
                 l.Label:Destroy()
-
-                updateWeldsLayout()
             end
         end
     end
@@ -2101,14 +2062,11 @@ do  -- welds
                     for k, l in pairs(labels) do
                         if l and l.Weld == p or l.Weld.Part0 == p or l.Weld.Part1 == p then
                             l.Label:Destroy()
-
-                            updateWeldsLayout()
                         end
                     end
                 end)
 
                 if label then label:Destroy() end
-                updateWeldsLayout()
             elseif type == Enum.UserInputType.MouseButton2 then
                 local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, 5, true)
                 local goal = {}
@@ -2156,8 +2114,6 @@ do  -- welds
                 addWeld(v)
             end
         end
-
-        updateWeldsLayout()
     end
 
     lCharacter = LocalPlayer.CharacterAdded:Connect(function(char)
@@ -2169,10 +2125,7 @@ end -- welds -- globals exposed: lCharacter
 do  -- settings
     local settingsTab = tabControl:createTab("Settings", "7S", "TabSettings")
 
-    local settingsScroll = Gui.createScroll(settingsTab)
-    settingsScroll.Parent = settingsTab
-
-    local settingsScrollY = 0
+    local settingsScroll = Gui.createListScroll(settingsTab)
 
     local currentlyBinding = nil
     local listener = nil
@@ -2232,9 +2185,6 @@ do  -- settings
         end)
 
         label = labelInfo.Label
-        label.Position = UDim2.new(0.5, 0, 0, settingsScrollY)
-
-        settingsScrollY = settingsScrollY + cGui.ButtonHeightLarge
     end
 
     local cBinds = { "TabCharacters", "TabOptions", "TabDocs", "TabAnims", "TabWaypoints", "TabWelds", "TabSettings", "MapVis", "MapView", "RaySit", "Exit" }
@@ -2244,15 +2194,12 @@ do  -- settings
     end
 
     local function addCheckbox(label, field, cb)
-        local checkbox = Gui.createCheckbox(settingsScroll, label, function(checked)
+        Gui.createCheckbox(settingsScroll, label, function(checked)
             config.Value[field] = checked
             config:save()
 
             if cb then cb(checked) end
         end, config.Value[field])
-
-        checkbox.Position = UDim2.fromOffset(0, settingsScrollY)
-        settingsScrollY = settingsScrollY + cGui.CheckboxSize
     end
 
     addCheckbox("Orbit Teleport", "orbitTp")
