@@ -985,8 +985,8 @@ At any time, you can press [0] to close the script and reset everything back to 
     local cChangelogContent = [[
 <b>1.5.4</b>
 - (BORING!) Code quality improvements to GUI
-    - Began moving constants into an object
-    - Began putting common GUI components into a static class
+    - Moved constants into an object
+    - Put common GUI components into a static class
 - (BORING!) Get rid of the WORKSPACE global
 - (BORING!) Get rid of stupid layout code in favor of UIListLayout
 - Add category labels to the settings tab
