@@ -1026,6 +1026,7 @@ At any time, you can press [0] to close the script and reset everything back to 
 - The minimap now scales to display size
 - Tweaked behavior of minimap keybinds
 - Added a label under all players in the minimap while expanded (sometimes unreadable, but should help)
+- (BORING!) Increased code quality with minimap player handling
 
 <b>1.5.2</b>
 - Added September to the animations tab
@@ -2434,10 +2435,32 @@ do  -- minimap
         end
     end
 
+    local FriendsCache = {}
+    FriendsCache.__index = FriendsCache
+
+    function FriendsCache.new()
+        local obj = {}
+        setmetatable(obj, FriendsCache)
+
+        obj.Value = nil
+        obj.LastCollected = 0
+
+        obj:update()
+
+        return obj
+    end
+
+    function FriendsCache:update()
+        if not self.Value or DateTime.now().UnixTimestamp - self.LastCollected > 10 then
+            self.Value = LocalPlayer:GetFriendsOnline()
+            self.LastCollected = DateTime.now().UnixTimestamp
+        end
+    end
+
     local PlayerDot = {}
     PlayerDot.__index = PlayerDot
 
-    function PlayerDot.new(parent, player)
+    function PlayerDot.new(player, cache, layers)
         local obj = {}
         setmetatable(obj, PlayerDot)
 
@@ -2485,9 +2508,35 @@ do  -- minimap
         obj.Player = player
         obj.IsLocal = player == LocalPlayer
 
+        obj.FriendsCache = cache
+
+        obj.Layers = layers
+
         obj.InfoText = nil
 
+        obj:update()
+
         return obj
+    end
+
+    function PlayerDot:update()
+        if self.Player.UserId == LocalPlayer.UserId then
+            self:setParent(self.Layers[3])
+            self:setColor(Color3.fromRGB(255, 255, 0))
+            return
+        end
+
+        for k, v in pairs(self.FriendsCache.Value) do
+            if v.VisitorId == self.Player.UserId then
+                self:setParent(self.Layers[2])
+                self.InfoText = "Friend"
+                self:setColor(Color3.fromRGB(19, 165, 214))
+                return
+            end
+        end
+
+        self:setParent(self.Layers[1])
+        self:setColor(Color3.fromRGB(255, 255, 255))
     end
 
     function PlayerDot:UpdateSize(scale)
@@ -2567,7 +2616,7 @@ do  -- minimap
         return math.abs(v1 - v2) < epsilon
     end
 
-    Minimap = {} -- TODO
+    Minimap = {}
     Minimap.__index = Minimap
 
     function Minimap.new(parent)
@@ -2613,12 +2662,15 @@ do  -- minimap
         obj.PlayerLayerSpecial = obj:createLayer()
         obj.PlayerLayerSelf = obj:createLayer()
 
+        obj.PlayerLayers = { obj.PlayerLayerRandom, obj.PlayerLayerSpecial, obj.PlayerLayerSelf }
+
         obj.Terrain = {}
         obj:_plotAreas()
         obj:_plotTerrain()
 
         obj.Players = {}
         obj.PlayerPositions = {}
+        obj.FriendsCache = FriendsCache.new()
 
         for k, v in pairs(PLAYERS:GetPlayers()) do
             obj:_playerConnect(v)
@@ -2635,9 +2687,6 @@ do  -- minimap
         obj._lHeartbeat = RUN.Heartbeat:Connect(function()
             obj:_heartbeat()
         end)
-
-        obj.FriendsCache = nil
-        obj.FriendsCacheTime = 0
 
         obj._expandTween = nil
         obj.Expanded = nil
@@ -2675,10 +2724,6 @@ do  -- minimap
         layer.BackgroundTransparency = 1
 
         return layer
-    end
-
-    function Minimap:TargetSize()
-        return self.RealSize2 * self.ScaleFactor -- TODO
     end
 
     function Minimap:_findBounds(insts, check)
@@ -2777,7 +2822,8 @@ do  -- minimap
         self._expandTween = tween
         tween:Play()
 
-        self.FrameInner.Size = UDim2.fromOffset(self:TargetSize().X, self:TargetSize().Y)
+        local targetSize = self.RealSize2 * self.ScaleFactor
+        self.FrameInner.Size = UDim2.fromOffset(targetSize.X, targetSize.Y)
         self.FrameOuter.Active = expanded
     end
 
@@ -2880,27 +2926,6 @@ do  -- minimap
     end
 
     function Minimap:_updatePlayerDot(player, dot)
-        if player.UserId == LocalPlayer.UserId then
-            dot:setParent(self.PlayerLayerSelf)
-            dot:setColor(Color3.fromRGB(255, 255, 0))
-            return
-        end
-
-        if not self.FriendsCache or DateTime.now().UnixTimestamp - self.FriendsCacheTime > 10 then
-            self.FriendsCache = LocalPlayer:GetFriendsOnline()
-            self.FriendsCacheTime = DateTime.now().UnixTimestamp
-        end
-
-        for k, v in pairs(self.FriendsCache) do
-            if v.VisitorId == player.UserId then
-                dot:setParent(self.PlayerLayerSpecial)
-                dot.InfoText = "Friend"
-                dot:setColor(Color3.fromRGB(19, 165, 214))
-                return
-            end
-        end
-
-        dot:setColor(Color3.fromRGB(255, 255, 255))
     end
 
     function Minimap:plotPlayer(player)
@@ -2960,12 +2985,10 @@ do  -- minimap
 
     function Minimap:_playerConnect(player)
         if not self.Players[player.UserId] then
-            local dot = PlayerDot.new(self.PlayerLayerRandom, player)
+            local dot = PlayerDot.new(player, self.FriendsCache, self.PlayerLayers)
             dot:UpdateSize(self.ScaleFactor)
 
             self.Tooltips:register(dot)
-
-            self:_updatePlayerDot(player, dot)
 
             self.Players[player.UserId] = dot
         end
