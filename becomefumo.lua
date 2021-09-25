@@ -60,6 +60,12 @@ do  -- base gui
     else
         root.Parent = COREGUI
     end
+
+    secondaryRoot = Instance.new("Frame")
+    secondaryRoot.Parent = root
+    secondaryRoot.Size = UDim2.fromScale(1, 1)
+    secondaryRoot.BackgroundTransparency = 1
+    secondaryRoot.BorderSizePixel = 0
 end -- base gui -- globals exposed: root
 
 --
@@ -1016,6 +1022,7 @@ At any time, you can press [0] to close the script and reset everything back to 
 <b>1.5.3</b>
 - Added an announcement about the new character checks. <b>Please read it!</b>
 - (BORING!) Refactor Knowledgebase articles to use multiline strings instead of concatenation
+- The minimap now renders under the tab gui
 - ?
 
 <b>1.5.2</b>
@@ -3018,7 +3025,7 @@ local map = nil
 
 binds:bind("MapVis", function()
     if not map then
-        map = Minimap.new(root)
+        map = Minimap.new(secondaryRoot)
     else
         map.FrameOuter.Visible = not map.FrameOuter.Visible
     end
