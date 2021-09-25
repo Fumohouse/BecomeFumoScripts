@@ -33,7 +33,6 @@ REPLICATED = game:GetService("ReplicatedStorage")
 PLAYERS = game:GetService("Players")
 RUN = game:GetService("RunService")
 HTTP = game:GetService("HttpService")
-WORKSPACE = game.Workspace
 
 LocalPlayer = PLAYERS.LocalPlayer
 
@@ -742,7 +741,7 @@ do  -- characters
         newHum.Parent = char
 
         if resetCam then
-            WORKSPACE.CurrentCamera.CameraSubject = char
+            workspace.CurrentCamera.CameraSubject = char
 
             if not jumpListener then
                 log("connecting jump listener")
@@ -987,6 +986,7 @@ At any time, you can press [0] to close the script and reset everything back to 
 - (BORING!) Code quality improvements to GUI
     - Began moving constants into an object
     - Began putting common GUI components into a static class
+- (BORING!) Get rid of the WORKSPACE global
 
 <b>1.5.3</b>
 - Added an announcement about the new character checks. <b>Please read it!</b>
@@ -3037,10 +3037,10 @@ end)
 
 binds:bind("RaySit", function()
     local pos = INPUT:GetMouseLocation()
-    local unitRay = WORKSPACE.CurrentCamera:ScreenPointToRay(pos.X, pos.Y)
+    local unitRay = workspace.CurrentCamera:ScreenPointToRay(pos.X, pos.Y)
 
     local filter = {}
-    for k, v in pairs(WORKSPACE:GetDescendants()) do
+    for k, v in pairs(workspace:GetDescendants()) do
         if v:IsA("Seat") then
             filter[#filter+1] = v.Parent
         end
@@ -3050,7 +3050,7 @@ binds:bind("RaySit", function()
     params.FilterDescendantsInstances = filter
     params.FilterType = Enum.RaycastFilterType.Whitelist
 
-    local result = WORKSPACE:Raycast(unitRay.Origin, unitRay.Direction * 1000, params)
+    local result = workspace:Raycast(unitRay.Origin, unitRay.Direction * 1000, params)
     if not result then return end
 
     if result.Instance:IsA("Seat") then
