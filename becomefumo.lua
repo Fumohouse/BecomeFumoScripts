@@ -985,6 +985,7 @@ At any time, you can press [0] to close the script and reset everything back to 
 - (BORING!) Get rid of the WORKSPACE global
 - (BORING!) Get rid of stupid layout code in favor of UIListLayout
 - Add category labels to the settings tab
+- Typing nothing in the animations speed field now sets the speed back to 1
 
 <b>1.5.3</b>
 - Added an announcement about the new character checks. <b>Please read it!</b>
@@ -1250,6 +1251,10 @@ do  -- animation UI
     local speed = 1
 
     local function adjustSpeed(target)
+        if speed == target then return end
+
+        log("adjusting speed to "..tostring(num))
+
         for k, v in pairs(activeAnimations) do
             if v then
                 v:AdjustSpeed(target)
@@ -1278,10 +1283,13 @@ do  -- animation UI
     speedField.Position = UDim2.fromScale(0, 0)
 
     speedField.FocusLost:Connect(function()
-        local num = tonumber(speedField.Text)
-        if num then
-            log("adjusting speed to "..tostring(num))
-            adjustSpeed(num)
+        if speedField.Text == "" then
+            adjustSpeed(1)
+        else
+            local num = tonumber(speedField.Text)
+            if num then
+                adjustSpeed(num)
+            end
         end
     end)
 
