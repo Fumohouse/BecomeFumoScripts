@@ -7,7 +7,7 @@ local function log(msg)
     print("[fumo] "..msg)
 end
 
-version = "1.5.3"
+version = "1.5.4"
 
 do  -- double load prevention
     if BF_LOADED then
@@ -72,13 +72,36 @@ end -- base gui -- globals exposed: root
 -- constants
 --
 
-cBackgroundColor = Color3.fromRGB(12, 13, 20)
-cBackgroundColorDark = Color3.fromRGB(4, 4, 7)
-cBackgroundColorLight = Color3.fromRGB(32, 35, 56)
-cForegroundColor = Color3.fromRGB(255, 255, 255)
-cAccentColor = Color3.fromRGB(10, 162, 175)
+cGui = {
+    ["BackgroundColor"] = Color3.fromRGB(12, 13, 20),
+    ["BackgroundColorDark"] = Color3.fromRGB(4, 4, 7),
+    ["BackgroundColorLight"] = Color3.fromRGB(32, 35, 56),
+    ["ForegroundColor"] = Color3.fromRGB(255, 255, 255),
+    ["AccentColor"] = Color3.fromRGB(10, 162, 175),
+    ["Font"] = Enum.Font.Ubuntu
+}
 
-cFont = Enum.Font.Ubuntu
+do  -- gui components
+    Gui = {}
+    Gui.__index = Gui
+
+    -- creates a TextLabel with default font, no background (default color is light)
+    -- and no border
+    function Gui.createText(parent, size)
+        size = size or 12
+
+        local label = Instance.new("TextLabel")
+        label.Parent = parent
+        label.BackgroundColor3 = cGui.BackgroundColorLight
+        label.BackgroundTransparency = 1
+        label.BorderSizePixel = 0
+        label.TextColor3 = cGui.ForegroundColor
+        label.Font = cGui.Font
+        label.TextSize = size
+
+        return label
+    end
+end -- gui components -- globals exposed: Gui
 
 do  -- config & bindings
     local ConfigManager = {}
@@ -320,16 +343,10 @@ do  -- tabcontrol
     end
 
     function TabControl:createTabButton(label, abbrev)
-        local tab = Instance.new("TextLabel")
-        tab.Parent = self.TabContainer
-        tab.Name = label
+        local tab = Gui.createText(self.TabContainer, cTabHeight * 0.75)
         tab.Active = true
         tab.BackgroundTransparency = 0.3
-        tab.BorderSizePixel = 0
-        tab.BackgroundColor3 = cBackgroundColorDark
-        tab.TextColor3 = cForegroundColor
-        tab.TextSize = cTabHeight * 0.75
-        tab.Font = cFont
+        tab.BackgroundColor3 = cGui.BackgroundColorDark
         tab.Text = abbrev
         tab.TextXAlignment = Enum.TextXAlignment.Center
         tab.TextYAlignment = Enum.TextYAlignment.Center
@@ -358,7 +375,7 @@ do  -- tabcontrol
         content.Name = "Content"
         content.BackgroundTransparency = 0.1
         content.BorderSizePixel = 0
-        content.BackgroundColor3 = cBackgroundColorDark
+        content.BackgroundColor3 = cGui.BackgroundColorDark
         content.AnchorPoint = Vector2.new(0, 0.5)
         content.Size = UDim2.new(0, cTabContentWidth, cTabContentHeight, 0)
         content.Position = cTabPosClosed
@@ -391,7 +408,7 @@ do  -- tabcontrol
             if open then
                 goal.Position = cTabPosOpen
                 tabContainerGoal.Position = cTabContainerPosOpen
-                tabGoal.BackgroundColor3 = cBackgroundColorLight
+                tabGoal.BackgroundColor3 = cGui.BackgroundColorLight
 
                 for k, v in pairs(self.Tabs) do
                     if v.Button.Label ~= label then
@@ -401,7 +418,7 @@ do  -- tabcontrol
             else
                 goal.Position = cTabPosClosed
                 tabContainerGoal.Position = cTabContainerPosClosed
-                tabGoal.BackgroundColor3 = cBackgroundColorDark
+                tabGoal.BackgroundColor3 = cGui.BackgroundColorDark
             end
 
             -- if two keys are pressed at once this will prevent the tween from completing when the tab should be closed
@@ -544,7 +561,7 @@ function createScroll()
     scroll.BackgroundTransparency = 1
     scroll.Size = UDim2.fromScale(1, 1)
     scroll.Position = UDim2.fromOffset(0, 0)
-    scroll.ScrollBarImageColor3 = cForegroundColor
+    scroll.ScrollBarImageColor3 = cGui.ForegroundColor
     scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
     scroll.CanvasSize = UDim2.fromScale(1, 0)
     scroll.ScrollingDirection = Enum.ScrollingDirection.Y
@@ -556,13 +573,7 @@ end
 cLabelButtonHeight = 25
 
 function createLabelButton(labelText, cb)
-    local label = Instance.new("TextLabel")
-    label.Name = labelText
-    label.BackgroundTransparency = 1
-    label.BorderSizePixel = 0
-    label.TextColor3 = cForegroundColor
-    label.TextSize = cLabelButtonHeight * 0.75
-    label.Font = cFont
+    local label = Gui.createText(nil, cLabelButtonHeight * 0.75)
     label.Text = labelText
     label.TextXAlignment = Enum.TextXAlignment.Center
     label.TextYAlignment = Enum.TextYAlignment.Center
@@ -580,38 +591,28 @@ end
 cCategoryHeight = 32
 
 function createCategoryLabel(labelText)
-    local label = Instance.new("TextLabel")
-    label.Name = labelText
+    local label = Gui.createText(nil, cCategoryHeight * 0.75)
     label.BackgroundTransparency = 0.9
-    label.BackgroundColor3 = cBackgroundColorDark
-    label.BorderSizePixel = 0
-    label.Font = cFont
-    label.TextSize = cCategoryHeight * 0.75
+    label.BackgroundColor3 = cGui.BackgroundColorDark
     label.TextXAlignment = Enum.TextXAlignment.Center
     label.TextYAlignment = Enum.TextYAlignment.Bottom
     label.AnchorPoint = Vector2.new(0.5, 0)
     label.Size = UDim2.new(1, 0, 0, cCategoryHeight)
-    label.TextColor3 = cForegroundColor
     label.RichText = true
     label.Text = "<b>"..labelText.."</b>"
 
     return label
 end
 
-local cButtonOff = cBackgroundColorLight
-local cButtonOn = cAccentColor
+local cButtonOff = cGui.BackgroundColorLight
+local cButtonOn = cGui.AccentColor
 
 cButtonHeightLarge = 30
 
 function createLabelButtonLarge(labelText, cb)
-    local label = Instance.new("TextLabel")
-    label.Name = labelText
+    local label = Gui.createText(nil, cButtonHeightLarge * 0.8)
     label.BackgroundTransparency = 0.5
     label.BackgroundColor3 = cButtonOff
-    label.BorderSizePixel = 0
-    label.TextColor3 = cForegroundColor
-    label.Font = cFont
-    label.TextSize = cButtonHeightLarge * 0.8
     label.TextXAlignment = Enum.TextXAlignment.Center
     label.TextYAlignment = Enum.TextYAlignment.Center
     label.AnchorPoint = Vector2.new(0.5, 0)
@@ -658,18 +659,11 @@ function createCheckbox(labelText, cb, initial)
     local indicator = Instance.new("Frame")
     indicator.Parent = checkbox
     indicator.BorderSizePixel = 0
-    indicator.BackgroundColor3 = cBackgroundColorLight
+    indicator.BackgroundColor3 = cGui.BackgroundColorLight
     indicator.Size = UDim2.fromOffset(cCheckboxSize, cCheckboxSize)
     indicator.Position = UDim2.fromScale(0, 0)
 
-    local label = Instance.new("TextLabel")
-    label.Parent = checkbox
-    label.Name = labelText
-    label.BackgroundTransparency = 1
-    label.BorderSizePixel = 0
-    label.TextColor3 = cForegroundColor
-    label.Font = cFont
-    label.TextSize = cCheckboxSize * 0.75
+    local label = Gui.createText(checkbox, cCheckboxSize * 0.75)
     label.Text = labelText
     label.TextTruncate = Enum.TextTruncate.AtEnd
     label.TextXAlignment = Enum.TextXAlignment.Left
@@ -684,9 +678,9 @@ function createCheckbox(labelText, cb, initial)
         local goal = {}
 
         if checked then
-            goal.BackgroundColor3 = cAccentColor
+            goal.BackgroundColor3 = cGui.AccentColor
         else
-            goal.BackgroundColor3 = cBackgroundColorLight
+            goal.BackgroundColor3 = cGui.BackgroundColorLight
         end
 
         local tween = TWEEN:Create(indicator, tweenInfo, goal)
@@ -878,21 +872,14 @@ do  -- knowledgebase UI
     docsFrame.Parent = root
     docsFrame.Name = "Knowledgebase"
     docsFrame.Transparency = 1
-    docsFrame.BackgroundColor3 = cBackgroundColorDark
+    docsFrame.BackgroundColor3 = cGui.BackgroundColorDark
     docsFrame.BorderSizePixel = 1
     docsFrame.AnchorPoint = Vector2.new(0.5, 0.5)
     docsFrame.Size = UDim2.fromScale(cDocsWidth, cDocsHeight)
     docsFrame.Position = cDocsPosClosed
 
-    local docsClose = Instance.new("TextLabel")
-    docsClose.Parent = docsFrame
+    local docsClose = Gui.createText(docsFrame, cDocsCloseSize)
     docsClose.Active = true
-    docsClose.Name = "Close"
-    docsClose.BackgroundTransparency = 1
-    docsClose.BorderSizePixel = 0
-    docsClose.TextColor3 = cForegroundColor
-    docsClose.Font = cFont
-    docsClose.TextSize = cDocsCloseSize
     docsClose.TextXAlignment = Enum.TextXAlignment.Center
     docsClose.TextYAlignment = Enum.TextYAlignment.Center
     docsClose.AnchorPoint = Vector2.new(1, 0)
@@ -904,28 +891,14 @@ do  -- knowledgebase UI
     docsContentScroll.Parent = docsFrame
     docsContentScroll.Size = UDim2.fromScale(1, 1)
 
-    local docsTitle = Instance.new("TextLabel")
-    docsTitle.Parent = docsContentScroll
-    docsTitle.Name = "Title"
-    docsTitle.BackgroundTransparency = 1
-    docsTitle.BorderSizePixel = 0
-    docsTitle.TextColor3 = cForegroundColor
-    docsTitle.Font = cFont
-    docsTitle.TextSize = cDocsTitleHeight * 0.9
+    local docsTitle = Gui.createText(docsContentScroll, cDocsTitleHeight * 0.9)
     docsTitle.TextXAlignment = Enum.TextXAlignment.Left
     docsTitle.TextYAlignment = Enum.TextYAlignment.Center
     docsTitle.Size = UDim2.new(1, -cDocsPadding, 0, cDocsTitleHeight)
     docsTitle.Position = UDim2.fromOffset(cDocsPadding, cDocsPadding)
     docsTitle.TextTruncate = Enum.TextTruncate.AtEnd
 
-    local docsContent = Instance.new("TextLabel")
-    docsContent.Parent = docsContentScroll
-    docsContent.Name = "Content"
-    docsContent.BackgroundTransparency = 1
-    docsContent.BorderSizePixel = 0
-    docsContent.TextColor3 = cForegroundColor
-    docsContent.Font = cFont
-    docsContent.TextSize = 18
+    local docsContent = Gui.createText(docsContentScroll, 18)
     docsContent.TextXAlignment = Enum.TextXAlignment.Left
     docsContent.TextYAlignment = Enum.TextYAlignment.Bottom
     docsContent.AutomaticSize = Enum.AutomaticSize.Y
@@ -1019,6 +992,11 @@ At any time, you can press [0] to close the script and reset everything back to 
     addDoc(cAboutInfo)
 
     local cChangelogContent = [[
+<b>1.5.4</b>
+- (BORING!) Code quality improvements to GUI
+    - Began moving constants into an object
+    - Began putting common GUI components into a static class
+
 <b>1.5.3</b>
 - Added an announcement about the new character checks. <b>Please read it!</b>
 - (BORING!) Refactor Knowledgebase articles to use multiline strings instead of concatenation
@@ -1297,11 +1275,11 @@ do  -- animation UI
     local speedField = Instance.new("TextBox")
     speedField.Parent = animationsTab
     speedField.ClearTextOnFocus = false
-    speedField.BackgroundColor3 = cBackgroundColorLight
+    speedField.BackgroundColor3 = cGui.BackgroundColorLight
     speedField.BorderSizePixel = 1
-    speedField.Font = cFont
+    speedField.Font = cGui.Font
     speedField.TextSize = cButtonHeightLarge * 0.8
-    speedField.TextColor3 = cForegroundColor
+    speedField.TextColor3 = cGui.ForegroundColor
     speedField.Text = ""
     speedField.PlaceholderColor3 = Color3.fromRGB(127, 127, 127)
     speedField.PlaceholderText = "Speed"
@@ -1698,14 +1676,11 @@ do  -- waypoints
 end -- waypoints
 
 do  -- hats come alive
-    debugL = Instance.new("TextLabel")
-    debugL.Parent = root
+    debugL = Gui.createText(root, 18)
     debugL.Visible = config.Value.debug
     debugL.AnchorPoint = Vector2.new(0.5, 0)
     debugL.BackgroundTransparency = 0.5
-    debugL.BackgroundColor3 = cBackgroundColor
-    debugL.TextColor3 = cForegroundColor
-    debugL.TextSize = 12
+    debugL.BackgroundColor3 = cGui.BackgroundColor
     debugL.RichText = true
     debugL.Position = UDim2.fromScale(0.5, 0)
     debugL.AutomaticSize = Enum.AutomaticSize.XY
@@ -2319,14 +2294,7 @@ do  -- info
     cInfoLabel = "Info"
     local infoTab = tabControl:createTab(cInfoLabel, "I")
 
-    local infoText = Instance.new("TextLabel")
-    infoText.Parent = infoTab
-    infoText.Name = "Info"
-    infoText.BackgroundTransparency = 1
-    infoText.BorderSizePixel = 0
-    infoText.TextColor3 = cForegroundColor
-    infoText.Font = cFont
-    infoText.TextSize = 18
+    local infoText = Gui.createText(infoTab, 18)
     infoText.TextXAlignment = Enum.TextXAlignment.Center
     infoText.TextYAlignment = Enum.TextYAlignment.Center
     infoText.Size = UDim2.fromScale(1, 1)
@@ -2342,14 +2310,9 @@ do  -- minimap
     TooltipProvider.__index = TooltipProvider
 
     TooltipProvider.createText = function(size)
-        local text = Instance.new("TextLabel")
+        local text = Gui.createText(nil, size)
         text.AutomaticSize = Enum.AutomaticSize.XY
         text.TextWrapped = false
-        text.TextColor3 = cForegroundColor
-        text.BackgroundTransparency = 1
-        text.BorderSizePixel = 0
-        text.Font = cFont
-        text.TextSize = size
         text.RichText = true
 
         return text
@@ -2366,7 +2329,7 @@ do  -- minimap
         tooltipFrame.AnchorPoint = Vector2.new(0, 0)
         tooltipFrame.AutomaticSize = Enum.AutomaticSize.XY
         tooltipFrame.BackgroundTransparency = 0.25
-        tooltipFrame.BackgroundColor3 = cBackgroundColor
+        tooltipFrame.BackgroundColor3 = cGui.BackgroundColor
         tooltipFrame.BorderSizePixel = 0
 
         obj.Frame = tooltipFrame
@@ -2487,15 +2450,9 @@ do  -- minimap
         icon.Size = UDim2.fromOffset(cIconSize, cIconSize)
         icon.BorderSizePixel = 0
 
-        local label = Instance.new("TextLabel")
-        label.Parent = frame
+        local label = Gui.createText(frame)
         label.Position = UDim2.fromScale(1, 1)
-        label.BackgroundTransparency = 1
-        label.BorderSizePixel = 0
         label.AutomaticSize = Enum.AutomaticSize.XY
-        label.Font = cFont
-        label.TextColor3 = cForegroundColor
-        label.TextSize = 12
         label.Visible = false
         label.Text = player.Name
 
@@ -2638,10 +2595,10 @@ do  -- minimap
         mapFrameO.AnchorPoint = Vector2.new(0, 1)
         mapFrameO.Position = UDim2.fromScale(0, 1)
         mapFrameO.Size = UDim2.fromScale(0, 0)
-        mapFrameO.BackgroundColor3 = cBackgroundColor
+        mapFrameO.BackgroundColor3 = cGui.BackgroundColor
         mapFrameO.BackgroundTransparency = 0.5
         mapFrameO.BorderSizePixel = 3
-        mapFrameO.BorderColor3 = cForegroundColor
+        mapFrameO.BorderColor3 = cGui.ForegroundColor
         mapFrameO.ClipsDescendants = true
 
         obj.FrameOuter = mapFrameO
