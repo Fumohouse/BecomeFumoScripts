@@ -996,7 +996,7 @@ do  -- knowledgebase UI
 end -- knowledgebase UI -- globals exposed: addDoc, openPage
 
 do  -- docs content
-    local cAboutContent =[[
+    local cAboutContent = [[
 This script is dedicated to Become Fumo, and it has functions specific to it.
 It provides replacements for some of Become Fumo's default UI components, as they currently lack polish.
 It is intended to work alongside Infinite Yield and DEX, not replace them.
