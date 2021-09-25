@@ -1023,7 +1023,8 @@ At any time, you can press [0] to close the script and reset everything back to 
 - Added an announcement about the new character checks. <b>Please read it!</b>
 - (BORING!) Refactor Knowledgebase articles to use multiline strings instead of concatenation
 - The minimap now renders under the tab gui
-- ?
+- The minimap now scales to display size
+- Tweaked behavior of minimap keybinds
 
 <b>1.5.2</b>
 - Added September to the animations tab
@@ -2564,9 +2565,8 @@ do  -- minimap
         obj.RealSize2 = maxPos - origin
 
         obj.ScaleFactor = 1.2
-
-        local cMapSize = 300
-        obj.cMapSize = cMapSize
+        obj.ScaleFactorSmall = 1.2
+        obj.MapSizeSmall = UDim2.fromOffset(300, 300)
 
         local mapFrameO = Instance.new("Frame")
         mapFrameO.Parent = parent
@@ -2623,8 +2623,6 @@ do  -- minimap
         obj.FriendsCache = nil
         obj.FriendsCacheTime = 0
 
-        obj:updateSize()
-
         obj._expandTween = nil
         obj.Expanded = nil
         obj:setExpanded(false)
@@ -2643,6 +2641,12 @@ do  -- minimap
         mapFrameO.InputEnded:Connect(function(input)
             obj:_inputE(input)
         end)
+
+        obj._lSizeChange = parent:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+            obj:updateSizeO()
+        end)
+
+        obj:updateSizeO()
 
         return obj
     end
@@ -2716,8 +2720,20 @@ do  -- minimap
         return Vector2.new(posMin.X, posMin.Z), Vector2.new(posMax.X, posMax.Z)
     end
 
-    function Minimap:setExpanded(expanded)
-        if expanded == self.Expanded then return end
+    function Minimap:setVisible(visible)
+        if visible == self.FrameOuter.Visible then return end
+
+        self.FrameOuter.Visible = visible
+
+        if not visible then
+            self:setExpanded(false)
+        end
+    end
+
+    function Minimap:setExpanded(expanded, force)
+        if expanded and not self.FrameOuter.Visible then return end
+
+        if not force and expanded == self.Expanded then return end
         self.Expanded = expanded
 
         local tweenInfo = TweenInfo.new(0.5)
@@ -2728,9 +2744,9 @@ do  -- minimap
             goal.Position = UDim2.fromScale(0, 1)
             self.ScaleFactor = 5
         else
-            goal.Size = UDim2.fromOffset(self.cMapSize, self.cMapSize)
+            goal.Size = self.MapSizeSmall
             goal.Position = UDim2.new(0, 100, 1, -100)
-            self.ScaleFactor = 1.2
+            self.ScaleFactor = self.ScaleFactorSmall
         end
 
         for k, v in pairs(self.Terrain) do
@@ -2741,12 +2757,11 @@ do  -- minimap
             if v then v:UpdateSize(self.ScaleFactor) end
         end
 
-        self:updateSize()
-
         local tween = TWEEN:Create(self.FrameOuter, tweenInfo, goal)
         self._expandTween = tween
         tween:Play()
 
+        self.FrameInner.Size = UDim2.fromOffset(self:TargetSize().X, self:TargetSize().Y)
         self.FrameOuter.Active = expanded
     end
 
@@ -2835,8 +2850,13 @@ do  -- minimap
         end
     end
 
-    function Minimap:updateSize()
-        self.FrameInner.Size = UDim2.fromOffset(self:TargetSize().X, self:TargetSize().Y)
+    function Minimap:updateSizeO()
+        local cMapSize169 = 300
+        local parentSize = self.Parent.AbsoluteSize
+        local dim = math.min(cMapSize169 * parentSize.X / 1920, cMapSize169 * parentSize.Y / 1080)
+        self.MapSizeSmall = UDim2.fromOffset(dim, dim)
+        self.ScaleFactorSmall = 1.2 * parentSize.X / 1920
+        self:setExpanded(self.Expanded, true)
     end
 
     function Minimap:mapPosition(pos)
@@ -2980,6 +3000,7 @@ do  -- minimap
     function Minimap:destroy()
         self.FrameOuter:Destroy()
         self.Tooltips.Frame:Destroy()
+        self._lSizeChange:Disconnect()
         self._lConnect:Disconnect()
         self._lDisconnect:Disconnect()
         self._lHeartbeat:Disconnect()
@@ -3027,7 +3048,7 @@ binds:bind("MapVis", function()
     if not map then
         map = Minimap.new(secondaryRoot)
     else
-        map.FrameOuter.Visible = not map.FrameOuter.Visible
+        map:setVisible(not map.FrameOuter.Visible)
     end
 end)
 
