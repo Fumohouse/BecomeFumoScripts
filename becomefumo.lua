@@ -697,10 +697,6 @@ function teleport(pos)
     return origPos
 end
 
---
--- common gui
---
-
 tabControl = TabControl.new(root, binds)
 
 do  -- characters
