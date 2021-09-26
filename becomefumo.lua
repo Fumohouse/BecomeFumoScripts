@@ -124,19 +124,25 @@ do  -- gui components
         return scroll
     end
 
-    -- creates a ScrollingFrame with a vertical UIListLayout inside.
-    function Gui.createListScroll(parent, padding)
-        local scroll = Gui.createScroll(parent)
+    function Gui.createListLayout(parent, horizAlign, padding)
         local listLayout = Instance.new("UIListLayout")
-        listLayout.Parent = scroll
+        listLayout.Parent = parent
 
         if padding then
             listLayout.Padding = UDim2.fromOffset(0, padding).Y
         end
 
-        listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+        listLayout.HorizontalAlignment = horizAlign
         listLayout.FillDirection = Enum.FillDirection.Vertical
         listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+        return listLayout
+    end
+
+    -- creates a ScrollingFrame with a vertical UIListLayout inside.
+    function Gui.createListScroll(parent, padding)
+        local scroll = Gui.createScroll(parent)
+        Gui.createListLayout(scroll, Enum.HorizontalAlignment.Center, padding)
 
         return scroll
     end
@@ -480,6 +486,8 @@ do  -- tabcontrol
         tabContainer.Size = UDim2.fromOffset(cTabWidth, 0)
         tabContainer.Position = cTabContainerPosClosed
 
+        Gui.createListLayout(tabContainer, Enum.HorizontalAlignment.Left)
+
         tabContainer.MouseEnter:Connect(function()
             obj:_setTabsExpanded(true)
         end)
@@ -494,18 +502,6 @@ do  -- tabcontrol
         obj.Tabs = {}
 
         return obj
-    end
-
-    function TabControl:_updateLayout()
-        local idx = 0
-
-        for k, v in pairs(self.TabButtons) do
-            if v then
-                v.Tab.Position = UDim2.new(0, 0, 0.5, idx * cTabHeight)
-
-                idx = idx + 1
-            end
-        end
     end
 
     function TabControl:setTabsVisible(visible)
@@ -529,8 +525,6 @@ do  -- tabcontrol
         tabButtonData.Tab = tab
 
         self.TabButtons[#self.TabButtons + 1] = tabButtonData
-
-        self:_updateLayout()
 
         return tabButtonData
     end
@@ -652,8 +646,6 @@ do  -- tabcontrol
                 break
             end
         end
-
-        self:_updateLayout()
     end
 
     function TabControl:setTabOpen(label, open)
