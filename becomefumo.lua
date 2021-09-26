@@ -992,6 +992,8 @@ At any time, you can press [0] to close the script and reset everything back to 
 - Add category labels to the settings tab
 - Typing nothing in the animations speed field now sets the speed back to 1
 - Added a hotkey (default F1) which will hide all guis except the tab content (i.e. the tab buttons and the map). You can still use tab hotkeys while this is active.
+- A1 has been removed from the main menu, but is still accessible through 3K. Its contents have not changed since 1.5.3.
+- Added a link to announcement A2. <b>Please read it!</b>
 
 <b>1.5.3</b>
 - Added an announcement about the new character checks. <b>Please read it!</b>
@@ -1245,7 +1247,23 @@ Other information about the new checks and the fate of this script will be in th
     cChecksInfo.Content = cChecksContent
 
     addDoc(cChecksInfo)
-end -- docs content -- globals exposed: cChangelogInfo, cChecksInfo
+
+    local cA2Content = [[
+Announcement, 2021/9/26
+
+A1 is still available through the 3K menu.
+
+A2 contains updates on the situation mentioned in A1, and also contains a set of policies that, by continuing to use this script, you are bound by. Please read both.
+A2 is hosted on Google Docs, the link is in this pastebin: <i>https://pastebin.com/ssEg8dRd</i>.
+If you wish to sign the document, please tell me. It may be used during negotiations.
+    ]]
+
+    cA2Info = {}
+    cA2Info.Label = "Update & Policies"
+    cA2Info.Content = cA2Content
+
+    addDoc(cA2Info)
+end -- docs content -- globals exposed: cChangelogInfo, cChecksInfo, cA2Info
 
 do  -- animation UI
     local cSpeedFieldSize = 25
@@ -2976,11 +2994,11 @@ do  -- update info
 end -- update info
 
 do  -- announcements
-    local tabButtonInfo = tabControl:createTabButton("Announcement", "!A1!")
+    local tabButtonInfo = tabControl:createTabButton("Announcement", "!A2!")
 
     tabButtonInfo.Tab.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            openPage(cChecksInfo)
+            openPage(cA2Info)
         end
     end)
 end -- announcements
