@@ -7,7 +7,7 @@ local function log(msg)
     print("[fumo] "..msg)
 end
 
-version = "1.5.4"
+version = "1.5.5"
 
 do  -- double load prevention
     if BF_LOADED then
@@ -975,6 +975,9 @@ At any time, you can press [0] to close the script and reset everything back to 
     addDoc(cAboutInfo)
 
     local cChangelogContent = [[
+<b>1.5.5</b>
+- Added the version of the Drip animation that has a sitting position
+
 <b>1.5.4</b>
 - (BORING!) Code quality improvements to GUI
     - Moved constants into an object
@@ -1417,6 +1420,7 @@ do  -- animations
 
     createAnimationCategory("Misc Default")
     addAnimation("Drip", "rbxassetid://6573833053")
+    addAnimation("Drip (w/ sitting)", "rbxassetid://6565089997")
 
     addAnimation("Walk", "rbxassetid://6235532038")
     addAnimation("Run", "rbxassetid://6235359704")
