@@ -966,6 +966,7 @@ At any time, you can press [0] to close the script and reset everything back to 
 - FutoLurkingAround - Emotional Support
 - LordOfCatgirls - Early user & Welds research
 - gandalf872 - ? & Welds research
+- zorro - hat
     ]]
 
     local cAboutInfo = {}
@@ -976,7 +977,10 @@ At any time, you can press [0] to close the script and reset everything back to 
 
     local cChangelogContent = [[
 <b>1.5.5</b>
-- Added the version of the Drip animation that has a sitting position
+- Added the version of the Drip animation that has blended animations
+- Posted A3, explaining the real situation in full.
+- Updated the Etiquette article, which now contains <i>real policies</i>. The contents differ slightly from A2. Please read it.
+- Updated credits
 
 <b>1.5.4</b>
 - (BORING!) Code quality improvements to GUI
@@ -1114,19 +1118,27 @@ At any time, you can press [0] to close the script and reset everything back to 
     addDoc(cChangelogInfo)
 
     local cEtiquetteContent = [[
-Please try to be polite when using exploits on Become Fumo. This means, please:
-<b><i>DO NOT BREAK THE TRAIN</i></b>
-<b><i>DO NOT BREAK THE TRAIN</i></b>
-<b><i>DO NOT BREAK THE TRAIN</i></b>
-<b><i>DO NOT BREAK THE TRAIN</i></b>
-<b><i>DO NOT BREAK THE TRAIN</i></b>
-<b><i>DO NOT BREAK THE TRAIN</i></b>
-and...
-<b><i>DO NOT HAVE SEX</i></b>
-<b><i>DO NOT HAVE SEX</i></b>
-<b><i>DO NOT HAVE SEX</i></b>
-<b><i>DO NOT HAVE SEX</i></b>
-<b><i>DO NOT HAVE SEX</i></b>
+The policies outlined in this article were first introduced in Announcement A2.
+
+The policies are guided by the following principles:
+- <b>Respect the developers' decisions.</b> Be polite to them, and try to respect their decisions regarding the game.
+- <b>Try to act PG-13 as much as possible.</b> Bypassing the swear filter is discouraged, and using animations to have sex with others is disallowed.
+- <b>Avoid disturbing regular players.</b> Being annoying is not appreciated.
+- <b>Avoid being a disappointment.</b> You know who you are.
+
+Explicit policies are outlined below:
+- <b>Do not depict fumo in inappropriate acts.</b> This covers both usage of animations and chat.
+- <b>Do not take off fumos' clothing, and avoid making them bald.</b> Try to avoid traumatizing people. Removing accessories that are attached to the clothes or hair is ok.
+- <b>Avoid hijacking the train.</b> Generally, this causes unnecessary disruption.
+- <b>Do not attempt to access developer/contributor-only content*, especially while they are online.</b> Self-explanatory. *outside of testing
+- <b>Do not share, or attempt to share, the script with other people.</b> If you have been issued a copy which bypasses the whitelist, <i>do not share it</i>.
+    - Excerpts of the source, or the complete source, may be given to you if you request them from me.
+
+The following policy only affects the 6R tab:
+- <b>Do not give your parts to random players unless they ask.</b>
+
+Restricted access to the script is possible with the violation of any of the above policies and principles. Restriction could last any amount of time, depending on level of infraction.
+<i>Your behavior outside of the usage of this script is also covered by these rules.</i>
     ]]
 
     local cEtiquetteInfo = {}
@@ -1237,7 +1249,7 @@ Other information about the new checks and the fate of this script will be in th
 <i>This script is not dead yet!</i>
     ]]
 
-    cChecksInfo = {}
+    local cChecksInfo = {}
     cChecksInfo.Label = "ReplicatedFirst Scripts"
     cChecksInfo.Content = cChecksContent
 
@@ -1253,12 +1265,40 @@ A2 is hosted on Google Docs, the link is in this pastebin: <i>https://pastebin.c
 If you wish to sign the document, please tell me. It may be used during negotiations.
     ]]
 
-    cA2Info = {}
+    local cA2Info = {}
     cA2Info.Label = "Update & Policies"
     cA2Info.Content = cA2Content
 
     addDoc(cA2Info)
-end -- docs content -- globals exposed: cChangelogInfo, cChecksInfo, cA2Info
+
+    local cA3Content = [[
+Announcement, 2021/9/26
+
+Hello!
+
+scary has responded to A2 and has explained the situation to me. In short, everybody who saw what he said in #fumo (including me) misunderstood the purpose of the checks.
+The new checks <i>actually</i> cover the attachment of players to others <i>using body movers, the exact method I used to orbit parts</i> and saying naughty things.
+The checks do not specifically target unwelding or removal of parts, but they will kill you if you remove anything from Torso (details currently unknown).
+
+The policy changes outlined in A2 have gone into place already, and are available under the once-joking Etiquette article. The wishes by the developers (specifically removal of clothes), while not enforced by a check, are still present.
+He has made the following recommendations to me:
+1. Restrict the giving of parts to friends (specifically, don't give things to people who don't want them)
+2. Restrict the removal of clothes
+
+For the first point, no strict restriction is planned. He suggested restricting to friends, but I don't think that is necessary right now.
+Please read the Etiquette document for details.
+
+For the second point, a blacklist may go into place over time. Please use the features responsibly.
+
+Your signatures in A2 were highly appreciated. Thank you for your help.
+    ]]
+
+    cA3Info = {}
+    cA3Info.Label = "Update Again"
+    cA3Info.Content = cA3Content
+
+    addDoc(cA3Info)
+end -- docs content -- globals exposed: cChangelogInfo, cA3Info
 
 do  -- animation UI
     local cSpeedFieldSize = 25
@@ -2990,11 +3030,11 @@ do  -- update info
 end -- update info
 
 do  -- announcements
-    local tabButtonInfo = tabControl:createTabButton("Announcement", "!A2!")
+    local tabButtonInfo = tabControl:createTabButton("Announcement", "!A3!")
 
     tabButtonInfo.Tab.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            openPage(cA2Info)
+            openPage(cA3Info)
         end
     end)
 end -- announcements
