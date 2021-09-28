@@ -7,7 +7,7 @@ local function log(msg)
     print("[fumo] "..msg)
 end
 
-version = "1.5.5"
+version = "1.5.6"
 
 do  -- double load prevention
     if BF_LOADED then
@@ -944,6 +944,10 @@ do  -- knowledgebase UI
 
     local docsScroll = Gui.createListScroll(docsTab)
 
+    function createKnowledgebaseCategory(name)
+        Gui.createCategoryLabel(docsScroll, name)
+    end
+
     function addDoc(info)
         Gui.createLabelButton(docsScroll, info.Label, function()
             openPage(info)
@@ -952,6 +956,8 @@ do  -- knowledgebase UI
 end -- knowledgebase UI -- globals exposed: addDoc, openPage
 
 do  -- docs content
+    createKnowledgebaseCategory("Meta")
+
     local cAboutContent = [[
 This script is dedicated to Become Fumo, and it has functions specific to it.
 It provides replacements for some of Become Fumo's default UI components, as they currently lack polish.
@@ -976,6 +982,9 @@ At any time, you can press [0] to close the script and reset everything back to 
     addDoc(cAboutInfo)
 
     local cChangelogContent = [[
+<b>1.5.6</b>
+- Added labels to the Knowledgebase
+
 <b>1.5.5</b>
 - Added the version of the Drip animation that has blended animations
 - Posted A3, explaining the real situation in full.
@@ -1147,6 +1156,8 @@ Restricted access to the script is possible with the violation of any of the abo
 
     addDoc(cEtiquetteInfo)
 
+    createKnowledgebaseCategory("Exploit Write-ups")
+
     local cHumanoidContent = [[
 <i>Disclosed by: AyaShameimaruCamera</i>
 <i>Scripting refined by: me</i>
@@ -1217,6 +1228,8 @@ The script still suffers from relative instability and death may occur frequentl
     cDetachInfo.Content = cDetachContent
 
     addDoc(cDetachInfo)
+
+    createKnowledgebaseCategory("Announcements")
 
     local cChecksContent = [[
 Announcement, 2021/9/24
