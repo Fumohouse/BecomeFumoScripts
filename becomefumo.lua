@@ -2334,6 +2334,12 @@ do  -- minimap
         return text
     end
 
+    -- TooltipObject spec (abstract)
+    -- :ShowTooltip (opt) - whether the object should show a tooltip
+    -- :CreateTooltip(frame) - should add content to frame
+    -- TooltipObject (GuiObject) - the object that, when hovered, should cause a tooltip to appear
+    -- :Clicked(input) (opt) - called on click
+
     function TooltipProvider.new(parent)
         local obj = {}
         setmetatable(obj, TooltipProvider)
