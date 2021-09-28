@@ -985,6 +985,7 @@ At any time, you can press [0] to close the script and reset everything back to 
 <b>1.5.6</b>
 - Added labels to the Knowledgebase
 - Scroll now zooms the map in and out while expanded
+- (BORING!) Converted minimap objects to lua classes
 
 <b>1.5.5</b>
 - Added the version of the Drip animation that has blended animations
@@ -2324,7 +2325,7 @@ do  -- minimap
     local TooltipProvider = {}
     TooltipProvider.__index = TooltipProvider
 
-    TooltipProvider.createText = function(size)
+    TooltipProvider.createText = function(size) -- TODO
         local text = Gui.createText(nil, size)
         text.AutomaticSize = Enum.AutomaticSize.XY
         text.TextWrapped = false
@@ -2411,6 +2412,51 @@ do  -- minimap
                 break
             end
         end
+    end
+
+    -- MapObject spec (abstract)
+    -- constructor should contain minimap as first param
+    -- Map - Minimap: the map the object is assigned to
+    -- Root - GuiObject: the parent element of all other components of this MapObject
+    -- UpdateSize(scaleFactor, mapPosition): Causes the MapObject to resize/change appearance based on a new scale factor
+
+    local MapBBox = {}
+    MapBBox.__index = MapBBox
+
+    function MapBBox.new(minimap, cf, size, color, colorB)
+        local obj = {}
+        setmetatable(obj, MapBBox)
+
+        local quad = Instance.new("Frame")
+        quad.AnchorPoint = Vector2.new(0.5, 0.5)
+        quad.BackgroundTransparency = 0.25
+        quad.BackgroundColor3 = color
+        quad.BorderSizePixel = 1
+        quad.BorderColor3 = colorB
+
+        obj.Map = minimap
+        obj.Root = quad
+        obj.CFrame = cf
+        obj.Size = size
+
+        return obj
+    end
+
+    function MapBBox:UpdateSize(scaleFactor)
+        local scaled = self.Size * scaleFactor
+
+        local x, y, z = self.CFrame:ToOrientation()
+
+        if y % (math.pi / 2) > 1e-3 then
+            self.Root.Rotation = -y * 180 / math.pi
+        else
+            scaled = (self.CFrame - self.CFrame.Position):Inverse() * scaled -- if its a multiple of 90deg then just rotate the size instead of rotating the component
+        end
+
+        self.Root.Size = UDim2.fromOffset(scaled.X, scaled.Z)
+
+        local pos2 = self.Map:mapPosition(Vector2.new(self.CFrame.Position.X, self.CFrame.Position.Z))
+        self.Root.Position = UDim2.fromOffset(pos2.X, pos2.Y)
     end
 
     local FriendsCache = {}
@@ -2636,6 +2682,7 @@ do  -- minimap
 
         obj.PlayerLayers = { obj.PlayerLayerRandom, obj.PlayerLayerSpecial, obj.PlayerLayerSelf }
 
+        obj.MapObjects = {}
         obj.Terrain = {}
         obj:_plotAreas()
         obj:_plotTerrain()
@@ -2810,8 +2857,10 @@ do  -- minimap
             self.FrameInner.Position = self.FrameInner.Position - UDim2.fromOffset(distance.X, distance.Y)
         end
 
-        for k, v in pairs(self.Terrain) do
-            v.UpdateSize()
+        for k, v in pairs(self.MapObjects) do
+            if v then
+                v:UpdateSize(self.ScaleFactor)
+            end
         end
 
         for k, v in pairs(self.Players) do
@@ -2937,38 +2986,17 @@ do  -- minimap
         self.Players[player.UserId].Icon.Rotation = -humanRoot.Orientation.Y - 45
     end
 
+    function Minimap:addMapObject(obj, parent)
+        self.MapObjects[#self.MapObjects + 1] = obj
+        obj:UpdateSize(self.ScaleFactor)
+        obj.Root.Parent = parent
+    end
+
     function Minimap:plotBBox(cf, size, color, colorB, parent)
         if not parent then parent = self.TerrainLayer end
 
-        local quad = Instance.new("Frame")
-        quad.Parent = parent
-        quad.AnchorPoint = Vector2.new(0.5, 0.5)
-        quad.BackgroundTransparency = 0.25
-        quad.BackgroundColor3 = color
-        quad.BorderSizePixel = 1
-        quad.BorderColor3 = colorB
-
-        local info = {}
-        info.UpdateSize = function()
-            local scaled = size * self.ScaleFactor
-
-            local x, y, z = cf:ToOrientation()
-
-            if y % (math.pi / 2) > 1e-3 then
-                quad.Rotation = -y * 180 / math.pi
-            else
-                scaled = (cf - cf.Position):Inverse() * scaled -- if its a multiple of 90deg then just rotate the size instead of rotating the component
-            end
-
-            quad.Size = UDim2.fromOffset(scaled.X, scaled.Z)
-
-            local pos2 = self:mapPosition(Vector2.new(cf.Position.X, cf.Position.Z))
-            quad.Position = UDim2.fromOffset(pos2.X, pos2.Y)
-        end
-
-        info.UpdateSize()
-
-        self.Terrain[#self.Terrain + 1] = info
+        local mapObj = MapBBox.new(self, cf, size, color, colorB)
+        self:addMapObject(mapObj, parent)
     end
 
     function Minimap:plotPartQuad(part, color, colorB, parent)
