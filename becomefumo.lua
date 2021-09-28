@@ -984,6 +984,7 @@ At any time, you can press [0] to close the script and reset everything back to 
     local cChangelogContent = [[
 <b>1.5.6</b>
 - Added labels to the Knowledgebase
+- Scroll now zooms the map in and out while expanded
 
 <b>1.5.5</b>
 - Added the version of the Drip animation that has blended animations
@@ -2781,21 +2782,44 @@ do  -- minimap
             self.ScaleFactor = self.ScaleFactorSmall
         end
 
+        local tween = TWEEN:Create(self.FrameOuter, tweenInfo, goal)
+        self._expandTween = tween
+        tween:Play()
+
+        self:updateZoom()
+        self.FrameOuter.Active = expanded
+    end
+
+    -- anchorPoint is in screen coordinates.
+    function Minimap:updateZoom(anchorPoint)
+        local targetSize = self.RealSize2 * self.ScaleFactor
+
+        local offset
+        local origSize
+
+        if anchorPoint then
+            offset = (Vector2.new(anchorPoint.X, anchorPoint.Y) - self.FrameInner.AbsolutePosition) / self.FrameInner.AbsoluteSize
+            origSize = self.FrameInner.AbsoluteSize
+        end
+
+        self.FrameInner.Size = UDim2.fromOffset(targetSize.X, targetSize.Y)
+
+        if anchorPoint then
+            local offsetLocal = offset * self.FrameInner.AbsoluteSize
+            local distance = offsetLocal - offset * origSize
+            self.FrameInner.Position = self.FrameInner.Position - UDim2.fromOffset(distance.X, distance.Y)
+        end
+
         for k, v in pairs(self.Terrain) do
             v.UpdateSize()
         end
 
         for k, v in pairs(self.Players) do
-            if v then v:UpdateSize(self.ScaleFactor) end
+            if v then
+                v:UpdateSize(self.ScaleFactor)
+                self:plotPlayer(v.Player)
+            end
         end
-
-        local tween = TWEEN:Create(self.FrameOuter, tweenInfo, goal)
-        self._expandTween = tween
-        tween:Play()
-
-        local targetSize = self.RealSize2 * self.ScaleFactor
-        self.FrameInner.Size = UDim2.fromOffset(targetSize.X, targetSize.Y)
-        self.FrameOuter.Active = expanded
     end
 
     function Minimap:_findZone(name)
@@ -2896,9 +2920,6 @@ do  -- minimap
         return (pos - self.WorldOrigin) * self.ScaleFactor
     end
 
-    function Minimap:_updatePlayerDot(player, dot)
-    end
-
     function Minimap:plotPlayer(player)
         local cIconSize = 20
 
@@ -2987,10 +3008,17 @@ do  -- minimap
         end
     end
 
+    function Minimap:_zoom(position)
+        self.ScaleFactor = math.min(math.max(self.ScaleFactor + 0.5 * position.Z, 0.2), 16)
+        self:updateZoom(position)
+    end
+
     function Minimap:_inputB(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 and self.Expanded then
             self._dragStart = input.Position
             self._dragPosOrig = self.FrameInner.Position
+        elseif input.UserInputType == Enum.UserInputType.MouseWheel and self.Expanded then
+            self:_zoom(input.Position)
         end
     end
 
@@ -2998,6 +3026,8 @@ do  -- minimap
         if input.UserInputType == Enum.UserInputType.MouseMovement and self._dragStart then
             local offset = input.Position - self._dragStart
             self.FrameInner.Position = self._dragPosOrig + UDim2.fromOffset(offset.X, offset.Y)
+        elseif input.UserInputType == Enum.UserInputType.MouseWheel and self.Expanded then
+            self:_zoom(input.Position)
         end
     end
 
