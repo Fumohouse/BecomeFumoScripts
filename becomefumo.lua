@@ -2536,6 +2536,11 @@ do  -- minimap
         self.Seat:Sit(hum)
     end
 
+    function MapSeat:UpdateSize(scaleFactor)
+        self.Root.Visible = scaleFactor > 2
+        MapBBox.UpdateSize(self, scaleFactor)
+    end
+
     local FriendsCache = {}
     FriendsCache.__index = FriendsCache
 
