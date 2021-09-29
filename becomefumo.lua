@@ -698,12 +698,15 @@ end -- tabcontrol -- globals exposed: TabControl
 
 function teleport(pos)
     local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-    if hum.SeatPart then
+
+    if hum and hum.SeatPart then
         hum.Sit = false
         wait()
     end
 
     local root = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+
     local origPos = root.CFrame
     root.CFrame = pos
 
@@ -987,6 +990,11 @@ At any time, you can press [0] to close the script and reset everything back to 
 - (BORING!) Converted minimap objects to lua classes
 - Added seats to the map
 - <b>The RaySit function has now been removed.</b> Please use the minimap in its place (RaySit didn't work so well anyway)
+- Attempt to improve reliability of tooltips
+- Added waypoints to the map
+- <b>The tab 5W has now been removed, and is now empty.</b> Please use the minimap in its place.
+- To avoid clutter, some waypoints have been removed. Just walk to them.
+- A3 has been removed from the main tab control
 
 <b>1.5.5</b>
 - Added the version of the Drip animation that has blended animations
@@ -1309,12 +1317,12 @@ For the second point, a blacklist may go into place over time. Please use the fe
 Your signatures in A2 were highly appreciated. Thank you for your help.
     ]]
 
-    cA3Info = {}
+    local cA3Info = {}
     cA3Info.Label = "Update Again"
     cA3Info.Content = cA3Content
 
     addDoc(cA3Info)
-end -- docs content -- globals exposed: cChangelogInfo, cA3Info
+end -- docs content -- globals exposed: cChangelogInfo
 
 do  -- animation UI
     local cSpeedFieldSize = 25
@@ -1484,243 +1492,9 @@ do  -- animations
     addAnimation("Fall", "rbxassetid://6235205527")
 end -- animations
 
-do  -- waypoints UI
-    local waypointsTab = tabControl:createTab("Waypoints", "5W", "TabWaypoints")
-
-    local waypointsScroll = Gui.createListScroll(waypointsTab)
-
-    function createWaypointCategory(name)
-        Gui.createCategoryLabel(waypointsScroll, name)
-    end
-
-    function createWaypointButton(info)
-        Gui.createLabelButtonLarge(waypointsScroll, info.Name, function()
-            teleport(info.CFrame)
-        end)
-    end
-end -- waypoints UI -- globals exposed: createWaypointButton, createWaypointCategory
-
-do  -- waypoints
-    createWaypointCategory("Spawns")
-    local cSpawnOffset = Vector3.new(0, 1, 0)
-
-    local cSpawn1 = {}
-    cSpawn1.Name = "Spawn (Cave)"
-    cSpawn1.CFrame = CFrame.new(37.4692039, 19.4567928, 38.4004898, 1, 0, 0, 0, 1, 0, 0, 0, 1) + cSpawnOffset
-    createWaypointButton(cSpawn1)
-
-    local cSpawn2 = {}
-    cSpawn2.Name = "Spawn (Large Hill)"
-    cSpawn2.CFrame = CFrame.new(-46.0499954, 14.253479, -43.9750061, 1, 0, 0, 0, 1, 0, 0, 0, 1) + cSpawnOffset
-    createWaypointButton(cSpawn2)
-
-    local cSpawn3 = {}
-    cSpawn3.Name = "Spawn (Ground)"
-    cSpawn3.CFrame = CFrame.new(-0.0499948636, -4.746521, -4.97500801, 1, 0, 0, 0, 1, 0, 0, 0, 1) + cSpawnOffset
-    createWaypointButton(cSpawn3)
-
-    -----
-    createWaypointCategory("Items")
-
-    local cBurger = {}
-    cBurger.Name = "Burger/Soda"
-    cBurger.CFrame = CFrame.new(-12.6373434, -2.39721942, -104.279655, 0.999609232, -9.48658307e-09, -0.0279524103, 9.50391588e-09, 1, 4.87206442e-10, 0.0279524103, -7.5267359e-10, 0.999609232)
-    createWaypointButton(cBurger)
-
-    local cBun = {}
-    cBun.Name = "Japari Bun (Rock)"
-    cBun.CFrame = CFrame.new(44.2933311, 2.69040394, -174.404465, -0.926118135, 2.03467754e-09, -0.377233654, -1.18587207e-09, 1, 8.30502511e-09, 0.377233654, 8.13878565e-09, -0.926118135)
-    createWaypointButton(cBun)
-
-    local cShrimp = {}
-    cShrimp.Name = "Shrimp Fry"
-    cShrimp.CFrame = CFrame.new(23.7285004, -3.39721847, -38.656456, -0.999925613, 1.10185701e-08, 0.0121939164, 1.07577787e-08, 1, -2.14526548e-08, -0.0121939164, -2.13198827e-08, -0.999925613)
-    createWaypointButton(cShrimp)
-
-    local cIceCream = {}
-    cIceCream.Name = "Ice Cream"
-    cIceCream.CFrame = CFrame.new(47.6086464, -2.35769129, 86.1823273, -0.999982059, 1.08832019e-08, 0.00585500291, 1.07577787e-08, 1, -2.14526548e-08, -0.00585500291, -2.13892744e-08, -0.999982059)
-    createWaypointButton(cIceCream)
-
-    local cBike = {}
-    cBike.Name = "Bike"
-    cBike.CFrame = CFrame.new(41.1308136, -3.39721847, 70.4393082, 0.999999881, -4.17922266e-08, 0.000145394108, 4.18030872e-08, 1, -7.49089111e-08, -0.000145394108, 7.49150004e-08, 0.999999881)
-    createWaypointButton(cBike)
-
-    local cFishingRod = {}
-    cFishingRod.Name = "Fishing Rod"
-    cFishingRod.CFrame = CFrame.new(-50.5187149, 1.6041007, -120.919296, 0.998044968, 5.13549168e-08, -0.0625005439, -5.57155957e-08, 1, -6.80274113e-08, 0.0625005439, 7.13766752e-08, 0.998044968)
-    createWaypointButton(cFishingRod)
-
-    local cBaseball = {}
-    cBaseball.Name = "Baseball Equipment"
-    cBaseball.CFrame = CFrame.new(63.9862785, 1.61707997, -113.393738, 0.852416873, -1.00618301e-07, 0.522862673, 9.67299414e-08, 1, 3.47396458e-08, -0.522862673, 2.09638351e-08, 0.852416873)
-    createWaypointButton(cBaseball)
-
-    local cRifle = {}
-    cRifle.Name = "LunarTech Rifle"
-    cRifle.CFrame = CFrame.new(-76.0725632, -3.39721847, -122.150734, 0.00984575041, 1.867169e-08, -0.999951541, -1.71646324e-08, 1, 1.85035862e-08, 0.999951541, 1.69816179e-08, 0.00984575041)
-    createWaypointButton(cRifle)
-
-    local cGauntlet = {}
-    cGauntlet.Name = "Buster Gauntlets"
-    cGauntlet.CFrame = CFrame.new(3.52978015, 8.10278034, -103.847221, -0.999056339, -9.71976277e-08, 0.0434325524, -9.49071506e-08, 1, 5.47984236e-08, -0.0434325524, 5.06246529e-08, -0.999056339)
-    createWaypointButton(cGauntlet)
-
-    local cTrolldier = {}
-    cTrolldier.Name = "Trolldier Set"
-    cTrolldier.CFrame = CFrame.new(-57.4301414, 36.6266022, -77.7773438, 0.0280102566, 2.76124923e-09, 0.999607563, -8.18409589e-08, 1, -4.69047745e-10, -0.999607563, -8.17956973e-08, 0.0280102566)
-    createWaypointButton(cTrolldier)
-
-    local cSoulEdge = {}
-    cSoulEdge.Name = "Soul Edge"
-    cSoulEdge.CFrame = CFrame.new(62.3707314, 22.2510509, 45.5647964, -0.0124317836, 7.14263138e-08, -0.999922097, 3.7549458e-10, 1, 7.14271877e-08, 0.999922097, 5.12501597e-10, -0.0124317836)
-    createWaypointButton(cSoulEdge)
-
-    local cChair = {}
-    cChair.Name = "Chair"
-    cChair.CFrame = CFrame.new(-14.3926878, -3.39721847, -127.052185, -0.998602152, -1.55643036e-08, 0.0528521165, -2.24233379e-08, 1, -1.29184926e-07, -0.0528521165, -1.30189534e-07, -0.998602152)
-    createWaypointButton(cChair)
-
-    local cGigasword = {}
-    cGigasword.Name = "Gigasword"
-    cGigasword.CFrame = CFrame.new(-54.6563225, 22.4595356, -172.48053, 0.320373297, 5.91488103e-08, 0.947291434, 1.88988629e-08, 1, -6.88315112e-08, -0.947291434, 3.99545073e-08, 0.320373297)
-    createWaypointButton(cGigasword)
-
-    -----
-    createWaypointCategory("Other (Expansion 0)")
-
-    local cFire1 = {}
-    cFire1.Name = "Campfire (Cave)"
-    cFire1.CFrame = CFrame.new(50.5005188, -3.27936959, 45.8245049, 0.511625528, -1.06045634e-08, 0.859208643, 3.62333026e-08, 1, -9.23321064e-09, -0.859208643, 3.58559191e-08, 0.511625528)
-    createWaypointButton(cFire1)
-
-    local cFire2 = {}
-    cFire2.Name = "Campfire (Ground)"
-    cFire2.CFrame = CFrame.new(-35.0969467, -3.39721847, -5.80594683, -0.782029748, 2.27397319e-08, -0.623240769, 3.63110004e-08, 1, -9.07598174e-09, 0.623240769, -2.97281399e-08, -0.782029748)
-    createWaypointButton(cFire2)
-
-    local cFire3 = {}
-    cFire3.Name = "Campfire (Poolside)"
-    cFire3.CFrame = CFrame.new(49.8565903, 1.61707997, -102.113022, 0.53096503, -5.22703569e-09, -0.847393513, 5.28910675e-08, 1, 2.69724456e-08, 0.847393513, -5.9140973e-08, 0.53096503)
-    createWaypointButton(cFire3)
-
-    local cMikoBorgar = {}
-    cMikoBorgar.Name = "Miko Borgar (Door)"
-    cMikoBorgar.CFrame = CFrame.new(-1.05410039, -3.39721847, -82.1947021, 0.998766482, -2.69013523e-08, -0.0496555455, 3.06295682e-08, 1, 7.43202406e-08, 0.0496555455, -7.57493979e-08, 0.998766482)
-    createWaypointButton(cMikoBorgar)
-
-    local cPond = {}
-    cPond.Name = "Pond"
-    cPond.CFrame = CFrame.new(-51.4066544, -2.45410466, -103.242828, -0.937839568, 3.27229159e-08, 0.347069085, 3.4841225e-08, 1, -1.36675046e-10, -0.347069085, 1.19641328e-08, -0.937839568)
-    createWaypointButton(cPond)
-
-    local cPool1 = {}
-    cPool1.Name = "Pool (Steps)"
-    cPool1.CFrame = CFrame.new(69.1763077, -3.39721847, -45.1866875, 0.99876368, -2.64645528e-09, -0.0496931486, -1.14304344e-09, 1, -7.62298313e-08, 0.0496931486, 7.61923999e-08, 0.99876368)
-    createWaypointButton(cPool1)
-
-    local cPool2 = {}
-    cPool2.Name = "Pool (Benches)"
-    cPool2.CFrame = CFrame.new(30.9888954, -3.39721847, -80.3704605, -0.715499997, -5.40728564e-08, -0.698610604, -1.14304344e-09, 1, -7.62298313e-08, 0.698610604, -5.37439142e-08, -0.715499997)
-    createWaypointButton(cPool2)
-
-    local cCirno = {}
-    cCirno.Name = "Cirno Statues"
-    cCirno.CFrame = CFrame.new(49.1739616, -3.39721847, -8.75012016, -0.543244958, -6.46215383e-08, -0.839574218, -1.14304521e-09, 1, -7.62298455e-08, 0.839574218, -4.04518019e-08, -0.543244958)
-    createWaypointButton(cCirno)
-
-    local cTreehouse = {}
-    cTreehouse.Name = "Treehouse"
-    cTreehouse.CFrame = CFrame.new(31.4564857, 35.6251411, 50.0041885, 0.715494156, 5.91811222e-08, 0.69861877, 3.8019552e-09, 1, -8.86053471e-08, -0.69861877, 6.60527633e-08, 0.715494156)
-    createWaypointButton(cTreehouse)
-
-    local cBouncyCastle = {}
-    cBouncyCastle.Name = "Bouncy Castle"
-    cBouncyCastle.CFrame = CFrame.new(0.475164026, -3.39721847, 23.8564453, -0.99950707, 9.88343851e-10, 0.0313819498, -1.32396899e-10, 1, -3.57108298e-08, -0.0313819498, -3.56973651e-08, -0.99950707)
-    createWaypointButton(cBouncyCastle)
-
-    local cSlide1 = {}
-    cSlide1.Name = "Slide (Small Hill)"
-    cSlide1.CFrame = CFrame.new(-50.6221809, 9.94405937, 56.1536865, 0.997613728, 2.3075911e-08, -0.0690322742, -2.23911307e-08, 1, 1.06936717e-08, 0.0690322742, -9.12244946e-09, 0.997613728)
-    createWaypointButton(cSlide1)
-
-    local cSlide2 = {}
-    cSlide2.Name = "Slide (Poolside)"
-    cSlide2.CFrame = CFrame.new(40.0324783, 6.6087389, -39.532444, 0.999875724, -1.93160812e-08, -0.0157229118, 1.95169676e-08, 1, 1.26231088e-08, 0.0157229118, -1.29284112e-08, 0.999875724)
-    createWaypointButton(cSlide2)
-
-    local cFunkyRoom = {}
-    cFunkyRoom.Name = "Funky Room"
-    cFunkyRoom.CFrame = CFrame.new(-68.484436, -3.39721847, 60.7482109, -2.32830644e-10, -3.11954729e-08, -0.999997795, 5.44967769e-08, 1, -3.11955013e-08, 0.999997795, -5.44967342e-08, -2.32830644e-10)
-    createWaypointButton(cFunkyRoom)
-
-    local cGamerShack = {}
-    cGamerShack.Name = "Gamer Shack"
-    cGamerShack.CFrame = CFrame.new(-50.2287025, -3.39721847, -3.56329846, 0.0125501379, -7.96809871e-08, 0.999920964, -4.29299334e-08, 1, 8.02261013e-08, -0.999920964, -4.39333938e-08, 0.0125501379)
-    createWaypointButton(cGamerShack)
-
-    local cSuwako = {}
-    cSuwako.Name = "Suwako Room"
-    cSuwako.CFrame = CFrame.new(-61.846508, -3.39721847, -66.5909882, 0.00312713091, -3.28514393e-09, -0.999995053, 7.25480831e-08, 1, -3.05829273e-09, 0.999995053, -7.25381568e-08, 0.00312713091)
-    createWaypointButton(cSuwako)
-
-    local cLobster = {}
-    cLobster.Name = "Lobster"
-    cLobster.CFrame = CFrame.new(5.77875519, -12.7361145, -63.4011688, 0.999820292, 1.11183072e-08, -0.0189436078, -9.94847138e-09, 1, 6.18481266e-08, 0.0189436078, -6.16485281e-08, 0.999820292)
-    createWaypointButton(cLobster)
-
-    local cMMP = {}
-    cMMP.Name = "Memento Mori Portal"
-    cMMP.CFrame = CFrame.new(2.64911199, -12.7361145, -92.2972336, -0.00299006794, -7.72914319e-08, 0.99999553, 5.85626445e-08, 1, 7.74668862e-08, -0.99999553, 5.8794015e-08, -0.00299006794)
-    createWaypointButton(cMMP)
-
-    -----
-    createWaypointCategory("Other (Expansion 1)")
-
-    local cSavanna1 = {}
-    cSavanna1.Name = "Savanna"
-    cSavanna1.CFrame = CFrame.new(37.7001686, -3.40405059, -137.407516, 0.999959052, 4.18167581e-08, 0.00899411179, -4.13985326e-08, 1, -4.66871946e-08, -0.00899411179, 4.63129659e-08, 0.999959052)
-    createWaypointButton(cSavanna1)
-
-    local cSavanna2 = {}
-    cSavanna2.Name = "Savanna (Treetop)"
-    cSavanna2.CFrame = CFrame.new(35.8279114, 26.9120026, -182.731674, 0.701667905, 3.67231046e-08, 0.71250397, -9.58126307e-08, 1, 4.28145697e-08, -0.71250397, -9.83084973e-08, 0.701667905)
-    createWaypointButton(cSavanna2)
-
-    local cBlueDoor = {}
-    cBlueDoor.Name = "Blue Door"
-    cBlueDoor.CFrame = CFrame.new(-33.5249329, -3.39721847, -211.964386, -0.999284327, 2.38968401e-08, 0.037821576, 2.54846189e-08, 1, 4.14982999e-08, -0.037821576, 4.24324718e-08, -0.999284327)
-    createWaypointButton(cBlueDoor)
-
-    local cTrain = {}
-    cTrain.Name = "Train Station"
-    cTrain.CFrame = CFrame.new(-54.2110176, 6.25, -161.287369, -0.999873161, 7.6191661e-08, 0.0159097109, 7.52258629e-08, 1, -6.13025932e-08, -0.0159097109, -6.0098003e-08, -0.999873161)
-    createWaypointButton(cTrain)
-
-    -----
-    createWaypointCategory("Other (Expansion 2)")
-
-    local cFountain = {}
-    cFountain.Name = "Fountain"
-    cFountain.CFrame = CFrame.new(35.8924446, -2.35769129, 96.6178894, -0.0536103845, -2.98055269e-08, -0.998561919, -6.42211972e-08, 1, -2.64005671e-08, 0.998561919, 6.27135108e-08, -0.0536103845)
-    createWaypointButton(cFountain)
-
-    local cRatcade = {}
-    cRatcade.Name = "Ratcade"
-    cRatcade.CFrame = CFrame.new(3.75609636, -3.39721847, 89.8193359, 0.0222254563, 5.80779727e-08, 0.999752939, 3.18127285e-08, 1, -5.87995359e-08, -0.999752939, 3.31117072e-08, 0.0222254563)
-    createWaypointButton(cRatcade)
-
-    local cPicnic = {}
-    cPicnic.Name = "Ratcade (Picnic Tables)"
-    cPicnic.CFrame = CFrame.new(-51.8626671, -3.39721847, 101.30365, 0.739765823, 1.6030107e-08, 0.672863305, 3.18127285e-08, 1, -5.87995359e-08, -0.672863305, 6.49035243e-08, 0.739765823)
-    createWaypointButton(cPicnic)
-
-    local cUfo = {}
-    cUfo.Name = "Inside UFO Catcher"
-    cUfo.CFrame = CFrame.new(-37.7735367, -0.92603755, 78.7536469, -0.999979138, -6.31962678e-08, 0.00645794719, -6.36200426e-08, 1, -6.5419826e-08, -0.00645794719, -6.5829326e-08, -0.999979138)
-    createWaypointButton(cUfo)
-end -- waypoints
+do  -- ?
+    local unknownTab = tabControl:createTab("?", "5?", "TabWaypoints")
+end -- ?
 
 do  -- hats come alive
     debugL = Gui.createText(root, 18)
@@ -2365,6 +2139,8 @@ do  -- minimap
         tooltipFrame.BackgroundColor3 = cGui.BackgroundColor
         tooltipFrame.BorderSizePixel = 0
 
+        obj.Focus = nil
+
         obj.Frame = tooltipFrame
 
         obj.Instances = {}
@@ -2387,25 +2163,36 @@ do  -- minimap
 
         local pos = INPUT:GetMouseLocation()
 
-        self.Frame:ClearAllChildren()
-        obj:CreateTooltip(self)
+        if self.Focus ~= obj then
+            self.Frame:ClearAllChildren()
+            obj:CreateTooltip(self)
+        end
+
         self.Frame.Position = UDim2.fromOffset(pos.X, pos.Y)
 
+        self.Focus = obj
         self.Frame.Visible = true
     end
 
     function TooltipProvider:_mouseLeave(obj)
         self.Frame:ClearAllChildren()
         self.Frame.Visible = false
+        self.Focus = nil
     end
 
     function TooltipProvider:register(obj)
         if not obj.TooltipObject or not obj.CreateTooltip then return end
 
+        obj.TooltipObject.Active = true
+
         local info = {}
         info.Object = obj
 
         info.lEnter = obj.TooltipObject.MouseEnter:Connect(function()
+            self:_mouseEnter(obj)
+        end)
+
+        info.lMove = obj.TooltipObject.MouseMoved:Connect(function()
             self:_mouseEnter(obj)
         end)
 
@@ -2428,6 +2215,7 @@ do  -- minimap
         for k, v in pairs(self.Instances) do
             if v.Object == obj then
                 v.lEnter:Disconnect()
+                v.lMove:Disconnect()
                 v.lLeave:Disconnect()
                 if v.lClicked then
                     v.lClicked:Disconnect()
@@ -2444,7 +2232,7 @@ do  -- minimap
     -- constructor should contain minimap as first param
     -- Map - Minimap: the map the object is assigned to
     -- Root - GuiObject: the parent element of all other components of this MapObject
-    -- UpdateSize(scaleFactor, mapPosition): Causes the MapObject to resize/change appearance based on a new scale factor
+    -- UpdateSize(scaleFactor): Causes the MapObject to resize/change appearance based on a new scale factor
 
     local MapBBox = {}
     MapBBox.__index = MapBBox
@@ -2686,7 +2474,7 @@ do  -- minimap
 
         if not self.IsLocal then
             local tpText = tp:createText(cInfoHeight)
-            tpText.Text = "<i>Click to teleport</i>"
+            tpText.Text = "<i>Click to teleport!</i>"
         end
     end
 
@@ -2698,6 +2486,53 @@ do  -- minimap
         if root then
             teleport(root.CFrame)
         end
+    end
+
+    local Waypoint = {}
+    Waypoint.__index = Waypoint
+
+    function Waypoint.new(minimap, name, loc, color)
+        local obj = {}
+        setmetatable(obj, Waypoint)
+
+        local icon = Instance.new("ImageLabel")
+        icon.AnchorPoint = Vector2.new(0.5, 0.5)
+        icon.Image = "rbxassetid://7596158422"
+        icon.ImageColor3 = color
+        icon.Size = UDim2.fromOffset(25, 25)
+        icon.BackgroundTransparency = 1
+        icon.BorderSizePixel = 0
+
+        obj.Map = minimap
+        obj.Root = icon
+
+        obj.Name = name
+        obj.CFrame = loc
+
+        obj.TooltipObject = icon
+
+        return obj
+    end
+
+    function Waypoint:UpdateSize(scaleFactor)
+        local pos2 = self.Map:mapPosition(Vector2.new(self.CFrame.Position.X, self.CFrame.Position.Z))
+        self.Root.Position = UDim2.fromOffset(pos2.X, pos2.Y)
+
+        self.Root.Visible = scaleFactor > 2
+    end
+
+    function Waypoint:Clicked(input)
+        teleport(self.CFrame)
+    end
+
+    function Waypoint:CreateTooltip(tp)
+        Gui.createListLayout(tp.Frame, Enum.HorizontalAlignment.Left)
+
+        local name = tp:createText(24)
+        name.Text = "<b>"..self.Name.."</b>"
+
+        local info = tp:createText(15)
+        info.Text = "<i>Click to teleport!</i>"
     end
 
     local cEpsilon = 1e-7
@@ -2752,12 +2587,14 @@ do  -- minimap
         obj.PlayerLayerRandom = obj:createLayer()
         obj.PlayerLayerSpecial = obj:createLayer()
         obj.PlayerLayerSelf = obj:createLayer()
+        obj.WaypointLayer = obj:createLayer()
 
         obj.PlayerLayers = { obj.PlayerLayerRandom, obj.PlayerLayerSpecial, obj.PlayerLayerSelf }
 
         obj.MapObjects = {}
         obj:_plotAreas()
         obj:_plotTerrain()
+        obj:_plotWaypoints()
 
         obj.Players = {}
         obj.PlayerPositions = {}
@@ -3039,6 +2876,62 @@ do  -- minimap
         end
     end
 
+    function Minimap:_plotWaypoints()
+        local cItemColor = Color3.fromRGB(61, 161, 255)
+
+        self:plotWaypoint("Burger/Soda", CFrame.new(-12.6373434, -2.39721942, -104.279655, 0.999609232, -9.48658307e-09, -0.0279524103, 9.50391588e-09, 1, 4.87206442e-10, 0.0279524103, -7.5267359e-10, 0.999609232), cItemColor)
+        self:plotWaypoint("Japari Bun (Rock)", CFrame.new(44.2933311, 2.69040394, -174.404465, -0.926118135, 2.03467754e-09, -0.377233654, -1.18587207e-09, 1, 8.30502511e-09, 0.377233654, 8.13878565e-09, -0.926118135), cItemColor)
+        self:plotWaypoint("Shrimp Fry", CFrame.new(23.7285004, -3.39721847, -38.656456, -0.999925613, 1.10185701e-08, 0.0121939164, 1.07577787e-08, 1, -2.14526548e-08, -0.0121939164, -2.13198827e-08, -0.999925613), cItemColor)
+        self:plotWaypoint("Ice Cream", CFrame.new(47.6086464, -2.35769129, 86.1823273, -0.999982059, 1.08832019e-08, 0.00585500291, 1.07577787e-08, 1, -2.14526548e-08, -0.00585500291, -2.13892744e-08, -0.999982059), cItemColor)
+        self:plotWaypoint("Bike", CFrame.new(41.1308136, -3.39721847, 70.4393082, 0.999999881, -4.17922266e-08, 0.000145394108, 4.18030872e-08, 1, -7.49089111e-08, -0.000145394108, 7.49150004e-08, 0.999999881), cItemColor)
+        self:plotWaypoint("Fishing Rod", CFrame.new(-50.5187149, 1.6041007, -120.919296, 0.998044968, 5.13549168e-08, -0.0625005439, -5.57155957e-08, 1, -6.80274113e-08, 0.0625005439, 7.13766752e-08, 0.998044968), cItemColor)
+        self:plotWaypoint("Baseball", CFrame.new(63.9862785, 1.61707997, -113.393738, 0.852416873, -1.00618301e-07, 0.522862673, 9.67299414e-08, 1, 3.47396458e-08, -0.522862673, 2.09638351e-08, 0.852416873), cItemColor)
+        self:plotWaypoint("LunarTech Rifle", CFrame.new(-76.0725632, -3.39721847, -122.150734, 0.00984575041, 1.867169e-08, -0.999951541, -1.71646324e-08, 1, 1.85035862e-08, 0.999951541, 1.69816179e-08, 0.00984575041), cItemColor)
+        self:plotWaypoint("Buster Gauntlets", CFrame.new(3.52978015, 8.10278034, -103.847221, -0.999056339, -9.71976277e-08, 0.0434325524, -9.49071506e-08, 1, 5.47984236e-08, -0.0434325524, 5.06246529e-08, -0.999056339), cItemColor)
+        self:plotWaypoint("Trolldier Set", CFrame.new(-57.4301414, 36.6266022, -77.7773438, 0.0280102566, 2.76124923e-09, 0.999607563, -8.18409589e-08, 1, -4.69047745e-10, -0.999607563, -8.17956973e-08, 0.0280102566), cItemColor)
+        self:plotWaypoint("Soul Edge", CFrame.new(62.3707314, 22.2510509, 45.5647964, -0.0124317836, 7.14263138e-08, -0.999922097, 3.7549458e-10, 1, 7.14271877e-08, 0.999922097, 5.12501597e-10, -0.0124317836), cItemColor)
+        self:plotWaypoint("Chair", CFrame.new(-14.3926878, -3.39721847, -127.052185, -0.998602152, -1.55643036e-08, 0.0528521165, -2.24233379e-08, 1, -1.29184926e-07, -0.0528521165, -1.30189534e-07, -0.998602152), cItemColor)
+        self:plotWaypoint("Gigasword", CFrame.new(-54.6563225, 22.4595356, -172.48053, 0.320373297, 5.91488103e-08, 0.947291434, 1.88988629e-08, 1, -6.88315112e-08, -0.947291434, 3.99545073e-08, 0.320373297), cItemColor)
+        self:plotWaypoint("Totsugeki", CFrame.new(-15.5478992, -3.39721918, 110.352875, 0.99858731, 6.11212769e-08, -0.0531353056, -6.31656292e-08, 1, -3.67950932e-08, 0.0531353056, 4.00994402e-08, 0.99858731), cItemColor)
+
+        local cE0Color = Color3.fromRGB(61, 255, 122)
+
+        self:plotWaypoint("Campfire (Cave)", CFrame.new(50.5005188, -3.27936959, 45.8245049, 0.511625528, -1.06045634e-08, 0.859208643, 3.62333026e-08, 1, -9.23321064e-09, -0.859208643, 3.58559191e-08, 0.511625528), cE0Color)
+        self:plotWaypoint("Campfire (Ground) & Gamer Shack", CFrame.new(-35.0969467, -3.39721847, -5.80594683, -0.782029748, 2.27397319e-08, -0.623240769, 3.63110004e-08, 1, -9.07598174e-09, 0.623240769, -2.97281399e-08, -0.782029748), cE0Color)
+        self:plotWaypoint("Campfire (Poolside)", CFrame.new(49.8565903, 1.61707997, -102.113022, 0.53096503, -5.22703569e-09, -0.847393513, 5.28910675e-08, 1, 2.69724456e-08, 0.847393513, -5.9140973e-08, 0.53096503), cE0Color)
+        self:plotWaypoint("Miko Borgar (Door)", CFrame.new(-1.05410039, -3.39721847, -82.1947021, 0.998766482, -2.69013523e-08, -0.0496555455, 3.06295682e-08, 1, 7.43202406e-08, 0.0496555455, -7.57493979e-08, 0.998766482), cE0Color)
+        self:plotWaypoint("Pond", CFrame.new(-51.4066544, -2.45410466, -103.242828, -0.937839568, 3.27229159e-08, 0.347069085, 3.4841225e-08, 1, -1.36675046e-10, -0.347069085, 1.19641328e-08, -0.937839568), cE0Color)
+        self:plotWaypoint("Pool (Benches)", CFrame.new(30.9888954, -3.39721847, -80.3704605, -0.715499997, -5.40728564e-08, -0.698610604, -1.14304344e-09, 1, -7.62298313e-08, 0.698610604, -5.37439142e-08, -0.715499997), cE0Color)
+        self:plotWaypoint("Cirno Statues", CFrame.new(49.1739616, -3.39721847, -8.75012016, -0.543244958, -6.46215383e-08, -0.839574218, -1.14304521e-09, 1, -7.62298455e-08, 0.839574218, -4.04518019e-08, -0.543244958), cE0Color)
+        self:plotWaypoint("Treehouse", CFrame.new(31.4564857, 35.6251411, 50.0041885, 0.715494156, 5.91811222e-08, 0.69861877, 3.8019552e-09, 1, -8.86053471e-08, -0.69861877, 6.60527633e-08, 0.715494156), cE0Color)
+        self:plotWaypoint("Bouncy Castle", CFrame.new(0.475164026, -3.39721847, 23.8564453, -0.99950707, 9.88343851e-10, 0.0313819498, -1.32396899e-10, 1, -3.57108298e-08, -0.0313819498, -3.56973651e-08, -0.99950707), cE0Color)
+        self:plotWaypoint("Slide (Small Hill)", CFrame.new(-50.6221809, 9.94405937, 56.1536865, 0.997613728, 2.3075911e-08, -0.0690322742, -2.23911307e-08, 1, 1.06936717e-08, 0.0690322742, -9.12244946e-09, 0.997613728), cE0Color)
+        self:plotWaypoint("Slide (Poolside)", CFrame.new(40.0324783, 6.6087389, -39.532444, 0.999875724, -1.93160812e-08, -0.0157229118, 1.95169676e-08, 1, 1.26231088e-08, 0.0157229118, -1.29284112e-08, 0.999875724), cE0Color)
+        self:plotWaypoint("Funky Room", CFrame.new(-68.484436, -3.39721847, 60.7482109, -2.32830644e-10, -3.11954729e-08, -0.999997795, 5.44967769e-08, 1, -3.11955013e-08, 0.999997795, -5.44967342e-08, -2.32830644e-10), cE0Color)
+        self:plotWaypoint("Suwako Room", CFrame.new(-61.846508, -3.39721847, -66.5909882, 0.00312713091, -3.28514393e-09, -0.999995053, 7.25480831e-08, 1, -3.05829273e-09, 0.999995053, -7.25381568e-08, 0.00312713091), cE0Color)
+        self:plotWaypoint("Lobster", CFrame.new(5.77875519, -12.7361145, -63.4011688, 0.999820292, 1.11183072e-08, -0.0189436078, -9.94847138e-09, 1, 6.18481266e-08, 0.0189436078, -6.16485281e-08, 0.999820292), cE0Color)
+        self:plotWaypoint("Izakaya", CFrame.new(-6.60881424, -3.277318, -45.8185806, -0.0179589726, -3.68412358e-08, 0.99983871, -8.20734258e-10, 1, 3.68324358e-08, -0.99983871, -1.59129168e-10, -0.0179589726), cE0Color)
+
+        local cE1Color = Color3.fromRGB(255, 196, 61)
+
+        self:plotWaypoint("Savanna", CFrame.new(37.7001686, -3.40405059, -137.407516, 0.999959052, 4.18167581e-08, 0.00899411179, -4.13985326e-08, 1, -4.66871946e-08, -0.00899411179, 4.63129659e-08, 0.999959052), cE1Color)
+        self:plotWaypoint("Blue Door", CFrame.new(-33.5249329, -3.39721847, -211.964386, -0.999284327, 2.38968401e-08, 0.037821576, 2.54846189e-08, 1, 4.14982999e-08, -0.037821576, 4.24324718e-08, -0.999284327), cE1Color)
+        self:plotWaypoint("Train Station", CFrame.new(-54.2110176, 6.25, -161.287369, -0.999873161, 7.6191661e-08, 0.0159097109, 7.52258629e-08, 1, -6.13025932e-08, -0.0159097109, -6.0098003e-08, -0.999873161), cE1Color)
+
+        local cE2Color = Color3.fromRGB(242, 255, 61)
+
+        self:plotWaypoint("Fountain", CFrame.new(35.8924446, -2.35769129, 96.6178894, -0.0536103845, -2.98055269e-08, -0.998561919, -6.42211972e-08, 1, -2.64005671e-08, 0.998561919, 6.27135108e-08, -0.0536103845), cE2Color)
+        self:plotWaypoint("Ratcade", CFrame.new(3.75609636, -3.39721847, 89.8193359, 0.0222254563, 5.80779727e-08, 0.999752939, 3.18127285e-08, 1, -5.87995359e-08, -0.999752939, 3.31117072e-08, 0.0222254563), cE2Color)
+        self:plotWaypoint("Inside UFO Catcher", CFrame.new(-37.7735367, -0.92603755, 78.7536469, -0.999979138, -6.31962678e-08, 0.00645794719, -6.36200426e-08, 1, -6.5419826e-08, -0.00645794719, -6.5829326e-08, -0.999979138), cE2Color)
+        self:plotWaypoint("Beach Portal", CFrame.new(67.0926361, -2.81909084, 99.9620361, -0.34926942, 1.66901373e-08, -0.937022328, 5.79714232e-08, 1, -3.79660969e-09, 0.937022328, -5.56465594e-08, -0.34926942), cE2Color)
+    end
+
+    function Minimap:plotWaypoint(name, loc, color)
+        local waypointObj = Waypoint.new(self, name, loc, color)
+        self:addMapObject(waypointObj, self.WaypointLayer)
+        self.Tooltips:register(waypointObj)
+    end
+
     function Minimap:updateSizeO()
         local cMapSize169 = 300
         local parentSize = self.Parent.AbsoluteSize
@@ -3184,6 +3077,7 @@ do  -- update info
 end -- update info
 
 do  -- announcements
+    --[[
     local tabButtonInfo = tabControl:createTabButton("Announcement", "!A3!")
 
     tabButtonInfo.Tab.InputBegan:Connect(function(input)
@@ -3191,6 +3085,7 @@ do  -- announcements
             openPage(cA3Info)
         end
     end)
+    ]]
 end -- announcements
 
 local guiVisible = true
