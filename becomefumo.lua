@@ -2201,11 +2201,30 @@ do  -- welds
         end
     end
 
-    lCharacter = LocalPlayer.CharacterAdded:Connect(function(char)
+    local function setChar(char)
         updateChar(char)
+
+        --[[
+        lCharacterChild = char.ChildAdded:Connect(function(child)
+            if child:IsA("Tool") then
+                updateChar(char)
+            end
+        end)
+
+        lCharacterChildR = char.DescendantRemoving:Connect(function(inst)
+            if not inst:IsA("Weld") and not inst:IsA("Motor6D") then
+                updateChar(char)
+            end
+        end)
+        ]]
+    end
+
+    lCharacter = LocalPlayer.CharacterAdded:Connect(function(char)
+        setChar(char)
     end)
-    if LocalPlayer.Character then updateChar(LocalPlayer.Character) end
-end -- welds -- globals exposed: lCharacter
+
+    if LocalPlayer.Character then setChar(LocalPlayer.Character) end
+end -- welds -- globals exposed: lCharacter, lCharacterChild, lCharacterChildR
 
 do  -- settings
     local settingsTab = tabControl:createTab("Settings", "7S", "TabSettings")
@@ -3199,6 +3218,8 @@ binds:bind("Exit", function()
     toggleButton.Visible = true -- reenable the default character selector
     settings.Visible = true -- reenable the default settings
     lCharacter:Disconnect()
+    -- if lCharacterChild then lCharacterChild:Disconnect() end
+    -- if lCharacterChildR then lCharacterChildR:Disconnect() end
     disconnectJump()
     stopAllAnimations()
 
