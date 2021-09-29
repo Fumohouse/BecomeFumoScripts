@@ -986,6 +986,7 @@ At any time, you can press [0] to close the script and reset everything back to 
 - Added labels to the Knowledgebase
 - Scroll now zooms the map in and out while expanded
 - (BORING!) Converted minimap objects to lua classes
+- Added seats to the map
 
 <b>1.5.5</b>
 - Added the version of the Drip animation that has blended animations
@@ -2325,18 +2326,9 @@ do  -- minimap
     local TooltipProvider = {}
     TooltipProvider.__index = TooltipProvider
 
-    TooltipProvider.createText = function(size) -- TODO
-        local text = Gui.createText(nil, size)
-        text.AutomaticSize = Enum.AutomaticSize.XY
-        text.TextWrapped = false
-        text.RichText = true
-
-        return text
-    end
-
     -- TooltipObject spec (abstract)
     -- :ShowTooltip (opt) - whether the object should show a tooltip
-    -- :CreateTooltip(frame) - should add content to frame
+    -- :CreateTooltip(tp) - create the tooltip
     -- TooltipObject (GuiObject) - the object that, when hovered, should cause a tooltip to appear
     -- :Clicked(input) (opt) - called on click
 
@@ -2362,13 +2354,22 @@ do  -- minimap
         return obj
     end
 
+    function TooltipProvider:createText(size)
+        local text = Gui.createText(self.Frame, size)
+        text.AutomaticSize = Enum.AutomaticSize.XY
+        text.TextWrapped = false
+        text.RichText = true
+
+        return text
+    end
+
     function TooltipProvider:_mouseEnter(obj)
         if obj.ShowTooltip and not obj:ShowTooltip() then return end
 
         local pos = INPUT:GetMouseLocation()
 
         self.Frame:ClearAllChildren()
-        obj:CreateTooltip(self.Frame)
+        obj:CreateTooltip(self)
         self.Frame.Position = UDim2.fromOffset(pos.X, pos.Y)
 
         self.Frame.Visible = true
@@ -2463,6 +2464,57 @@ do  -- minimap
 
         local pos2 = self.Map:mapPosition(Vector2.new(self.CFrame.Position.X, self.CFrame.Position.Z))
         self.Root.Position = UDim2.fromOffset(pos2.X, pos2.Y)
+    end
+
+    local MapSeat = setmetatable({}, { __index = MapBBox });
+    MapSeat.__index = MapSeat
+
+    function MapSeat.new(minimap, seat)
+        local cSeatColor = Color3.fromRGB(38, 38, 38)
+        local cSeatColorB = Color3.fromRGB(0, 0, 0)
+
+        local obj = setmetatable(MapBBox.new(minimap, seat.CFrame, seat.Size, cSeatColor, cSeatColorB), MapSeat)
+
+        obj.Seat = seat
+        obj.TooltipObject = obj.Root
+
+        return obj
+    end
+
+    function MapSeat:ShowTooltip()
+        return self.Map.ScaleFactor > 2
+    end
+
+    function MapSeat:CreateTooltip(tp)
+        Gui.createListLayout(tp.Frame, Enum.HorizontalAlignment.Left)
+
+        local headerText = tp:createText(24)
+        headerText.Text = "<b>Seat</b>"
+
+        local infoText = tp:createText(15)
+
+        if LocalPlayer.Character and self.Seat.Occupant == LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+            infoText.Text = "Seat is occupied by you"
+        elseif self.Seat.Occupant then
+            infoText.Text = "Seat is occupied by "..self.Seat.Occupant.Parent.Name
+        else
+            infoText.Text = "<i>Click to sit!</i>"
+        end
+    end
+
+    function MapSeat:Clicked()
+        if self.Seat.Occupant then return end
+
+        local char = LocalPlayer.Character
+        if not char then return end
+
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum.SeatPart then
+            hum.Sit = false
+            wait()
+        end
+
+        self.Seat:Sit(hum)
     end
 
     local FriendsCache = {}
@@ -2590,20 +2642,16 @@ do  -- minimap
         return self.Scale > 2
     end
 
-    function PlayerDot:CreateTooltip(frame)
-        local y = 0
+    function PlayerDot:CreateTooltip(tp)
         local cUsernameHeight = 24
         local cInfoHeight = 15
 
-        local usernameText = TooltipProvider.createText(cUsernameHeight)
-        usernameText.Parent = frame
+        Gui.createListLayout(tp.Frame, Enum.HorizontalAlignment.Left)
+
+        local usernameText = tp:createText(cUsernameHeight)
         usernameText.Text = "<b>"..self.Player.Name.."</b>"
 
-        y = y + cUsernameHeight
-
-        local infoText = TooltipProvider.createText(cInfoHeight)
-        infoText.Parent = frame
-        infoText.Position = UDim2.fromOffset(0, y)
+        local infoText = tp:createText(cInfoHeight)
         if self.InfoText then
             infoText.Text = self.InfoText
         elseif self.IsLocal then
@@ -2612,15 +2660,9 @@ do  -- minimap
             infoText.Text = "Random"
         end
 
-        y = y + cInfoHeight
-
         if not self.IsLocal then
-            local tpText = TooltipProvider.createText(cInfoHeight)
-            tpText.Parent = frame
-            tpText.Position = UDim2.fromOffset(0, y)
+            local tpText = tp:createText(cInfoHeight)
             tpText.Text = "<i>Click to teleport</i>"
-
-            y = y + cInfoHeight
         end
     end
 
@@ -2682,6 +2724,7 @@ do  -- minimap
 
         obj.AreaLayer = obj:createLayer()
         obj.TerrainLayer = obj:createLayer()
+        obj.SeatLayer = obj:createLayer()
         obj.PlayerLayerRandom = obj:createLayer()
         obj.PlayerLayerSpecial = obj:createLayer()
         obj.PlayerLayerSelf = obj:createLayer()
@@ -2689,7 +2732,6 @@ do  -- minimap
         obj.PlayerLayers = { obj.PlayerLayerRandom, obj.PlayerLayerSpecial, obj.PlayerLayerSelf }
 
         obj.MapObjects = {}
-        obj.Terrain = {}
         obj:_plotAreas()
         obj:_plotTerrain()
 
@@ -2950,6 +2992,17 @@ do  -- minimap
             if v:IsA("Model") and (v.Name == "Bench" or v.Name == "log") then
                 local cf, size = v:GetBoundingBox()
                 self:plotBBox(cf, size, cBench, cBenchB)
+            end
+        end
+
+        -- ALL SEATS!!!
+        for k, list in pairs({ features, workspace.ActiveZone:GetDescendants(), REPLICATED.Zones:GetDescendants() }) do
+            for k, v in pairs(list) do
+                if v:IsA("Seat") then
+                    local seatObj = MapSeat.new(self, v)
+                    self:addMapObject(seatObj, self.SeatLayer)
+                    self.Tooltips:register(seatObj)
+                end
             end
         end
 
