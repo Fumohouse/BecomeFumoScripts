@@ -297,7 +297,6 @@ do  -- config & bindings
                 ["HideGui"] = Enum.KeyCode.F1.Name,
                 ["MapVis"] = Enum.KeyCode.N.Name,
                 ["MapView"] = Enum.KeyCode.M.Name,
-                ["RaySit"] = Enum.KeyCode.E.Name,
                 ["Exit"] = Enum.KeyCode.Zero.Name
             },
             ["orbitTp"] = false,
@@ -987,6 +986,7 @@ At any time, you can press [0] to close the script and reset everything back to 
 - Scroll now zooms the map in and out while expanded
 - (BORING!) Converted minimap objects to lua classes
 - Added seats to the map
+- <b>The RaySit function has now been removed.</b> Please use the minimap in its place (RaySit didn't work so well anyway)
 
 <b>1.5.5</b>
 - Added the version of the Drip animation that has blended animations
@@ -2278,7 +2278,7 @@ do  -- settings
 
     createSettingsCategory("Keybinds")
 
-    local cBinds = { "TabCharacters", "TabOptions", "TabDocs", "TabAnims", "TabWaypoints", "TabWelds", "TabSettings", "HideGui", "MapVis", "MapView", "RaySit", "Exit" }
+    local cBinds = { "TabCharacters", "TabOptions", "TabDocs", "TabAnims", "TabWaypoints", "TabWelds", "TabSettings", "HideGui", "MapVis", "MapView", "Exit" }
 
     for k, v in pairs(cBinds) do
         addBind(v)
@@ -3191,36 +3191,6 @@ end)
 binds:bind("MapView", function()
     if map then
         map:setExpanded(not map.Expanded)
-    end
-end)
-
-binds:bind("RaySit", function()
-    local pos = INPUT:GetMouseLocation()
-    local unitRay = workspace.CurrentCamera:ScreenPointToRay(pos.X, pos.Y)
-
-    local filter = {}
-    for k, v in pairs(workspace:GetDescendants()) do
-        if v:IsA("Seat") then
-            filter[#filter+1] = v.Parent
-        end
-    end
-
-    local params = RaycastParams.new()
-    params.FilterDescendantsInstances = filter
-    params.FilterType = Enum.RaycastFilterType.Whitelist
-
-    local result = workspace:Raycast(unitRay.Origin, unitRay.Direction * 1000, params)
-    if not result then return end
-
-    if result.Instance:IsA("Seat") then
-        local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-
-        if hum.SeatPart then
-            hum.Sit = false
-            wait()
-        end
-
-        result.Instance:Sit(hum)
     end
 end)
 
