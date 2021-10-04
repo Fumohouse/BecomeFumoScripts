@@ -995,6 +995,7 @@ At any time, you can press [0] to close the script and reset everything back to 
 - <b>The tab 5W has now been removed, and is now empty.</b> Please use the minimap in its place.
 - To avoid clutter, some waypoints have been removed. Just walk to them.
 - A3 has been removed from the main tab control
+- Added the Spooky emote to 4A
 
 <b>1.5.5</b>
 - Added the version of the Drip animation that has blended animations
@@ -1472,6 +1473,7 @@ do  -- animations
     addAnimation("Swag", "rbxassetid://6659873025")
     addAnimation("Penguin", "rbxassetid://6898226631")
     addAnimation("September", "rbxassetid://7532444804")
+    addAnimation("Spooky", "rbxassetid://7640665121")
 
     createAnimationCategory("Arcade")
     addAnimation("Taiko", "rbxassetid://7162205569")
