@@ -61,10 +61,10 @@ do  -- base gui
     end
 
     secondaryRoot = Instance.new("Frame")
-    secondaryRoot.Parent = root
     secondaryRoot.Size = UDim2.fromScale(1, 1)
     secondaryRoot.BackgroundTransparency = 1
     secondaryRoot.BorderSizePixel = 0
+    secondaryRoot.Parent = root
 end -- base gui -- globals exposed: root
 
 --
@@ -96,13 +96,13 @@ do  -- gui components
         size = size or 12
 
         local label = Instance.new("TextLabel")
-        label.Parent = parent
         label.BackgroundColor3 = cGui.BackgroundColorLight
         label.BackgroundTransparency = 1
         label.BorderSizePixel = 0
         label.TextColor3 = cGui.ForegroundColor
         label.Font = cGui.Font
         label.TextSize = size
+        label.Parent = parent
 
         return label
     end
@@ -110,7 +110,6 @@ do  -- gui components
     -- creates a ScrollingFrame which takes up the entire parent by default
     function Gui.createScroll(parent)
         local scroll = Instance.new("ScrollingFrame")
-        scroll.Parent = parent
         scroll.BorderSizePixel = 0
         scroll.BackgroundTransparency = 1
         scroll.Size = UDim2.fromScale(1, 1)
@@ -120,13 +119,13 @@ do  -- gui components
         scroll.CanvasSize = UDim2.fromScale(1, 0)
         scroll.ScrollingDirection = Enum.ScrollingDirection.Y
         scroll.ScrollBarThickness = 3
+        scroll.Parent = parent
 
         return scroll
     end
 
     function Gui.createListLayout(parent, horizAlign, vertAlign, padding)
         local listLayout = Instance.new("UIListLayout")
-        listLayout.Parent = parent
 
         if padding then
             listLayout.Padding = UDim2.fromOffset(0, padding).Y
@@ -136,6 +135,8 @@ do  -- gui components
         listLayout.VerticalAlignment = vertAlign or Enum.VerticalAlignment.Top
         listLayout.FillDirection = Enum.FillDirection.Vertical
         listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+        listLayout.Parent = parent
 
         return listLayout
     end
@@ -222,17 +223,17 @@ do  -- gui components
         local cSpacing = 5
 
         local checkbox = Instance.new("Frame")
-        checkbox.Parent = parent
         checkbox.BorderSizePixel = 0
         checkbox.BackgroundTransparency = 1
         checkbox.Size = UDim2.new(1, 0, 0, cGui.CheckboxSize)
+        checkbox.Parent = parent
 
         local indicator = Instance.new("Frame")
-        indicator.Parent = checkbox
         indicator.BorderSizePixel = 0
         indicator.BackgroundColor3 = cGui.BackgroundColorLight
         indicator.Size = UDim2.fromOffset(cGui.CheckboxSize, cGui.CheckboxSize)
         indicator.Position = UDim2.fromScale(0, 0)
+        indicator.Parent = checkbox
 
         local label = Gui.createText(checkbox, cGui.CheckboxSize * 0.75)
         label.Text = labelText
@@ -479,13 +480,13 @@ do  -- tabcontrol
         obj.Binds = binds
 
         local tabContainer = Instance.new("Frame")
-        tabContainer.Parent = parent
         tabContainer.BackgroundTransparency = 1
         tabContainer.BorderSizePixel = 0
         tabContainer.AnchorPoint = Vector2.new(0, 0.5)
         tabContainer.AutomaticSize = Enum.AutomaticSize.Y
         tabContainer.Size = UDim2.fromOffset(cTabWidth, 0)
         tabContainer.Position = cTabContainerPosClosed
+        tabContainer.Parent = parent
 
         Gui.createListLayout(tabContainer, Enum.HorizontalAlignment.Left)
 
@@ -535,7 +536,6 @@ do  -- tabcontrol
 
         -- tab content
         local content = Instance.new("Frame")
-        content.Parent = self.Parent
         content.Active = true
         content.Name = "Content"
         content.BackgroundTransparency = 0.1
@@ -544,6 +544,7 @@ do  -- tabcontrol
         content.AnchorPoint = Vector2.new(0, 0.5)
         content.Size = UDim2.new(0, cTabContentWidth, cTabContentHeight, 0)
         content.Position = cTabPosClosed
+        content.Parent = self.Parent
 
         -- functions (open/close)
         local isOpen = false
@@ -865,7 +866,6 @@ do  -- knowledgebase UI
     local cDocsCloseSize = 20
 
     local docsFrame = Instance.new("Frame")
-    docsFrame.Parent = root
     docsFrame.Name = "Knowledgebase"
     docsFrame.Transparency = 1
     docsFrame.BackgroundColor3 = cGui.BackgroundColorDark
@@ -873,6 +873,7 @@ do  -- knowledgebase UI
     docsFrame.AnchorPoint = Vector2.new(0.5, 0.5)
     docsFrame.Size = UDim2.fromScale(cDocsWidth, cDocsHeight)
     docsFrame.Position = cDocsPosClosed
+    docsFrame.Parent = root
 
     local docsClose = Gui.createText(docsFrame, cDocsCloseSize)
     docsClose.Active = true
@@ -1000,6 +1001,7 @@ At any time, you can press [0] to close the script and reset everything back to 
 - <b>Replace Humanoid is now disabled by default.</b> The game will automatically kick you if you ever delete your humanoid, so the feature has been hidden.
 - (BORING!) Simplify 2O tab layout
 - (Performance) Set tab content to invisible once they are offscreen
+- (Performance) Instance.Parent is now set <i>last</i> instead of <i>first</i>. Oops!
 
 <b>1.5.5</b>
 - Added the version of the Drip animation that has blended animations
@@ -1356,7 +1358,6 @@ do  -- animation UI
     local animationsTab = tabControl:createTab("Animations", "4A", "TabAnims")
 
     local speedField = Instance.new("TextBox")
-    speedField.Parent = animationsTab
     speedField.ClearTextOnFocus = false
     speedField.BackgroundColor3 = cGui.BackgroundColorLight
     speedField.BorderSizePixel = 1
@@ -1370,6 +1371,7 @@ do  -- animation UI
     speedField.TextYAlignment = Enum.TextYAlignment.Center
     speedField.Size = UDim2.new(1, 0, 0, cSpeedFieldSize)
     speedField.Position = UDim2.fromScale(0, 0)
+    speedField.Parent = animationsTab
 
     speedField.FocusLost:Connect(function()
         if speedField.Text == "" then
@@ -1590,21 +1592,21 @@ do  -- hats come alive
             part.CanTouch = true
 
             local pos = Instance.new("BodyPosition")
-            pos.Parent = part
             pos.P = 500000
             pos.D = 1000
             pos.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
             pos.Position = part.Position
+            pos.Parent = part
 
             local gyro = Instance.new("BodyGyro")
-            gyro.Parent = part
             gyro.P = 500000
             gyro.D = 1000
             gyro.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+            gyro.Parent = part
 
             local antiG = Instance.new("BodyForce")
-            antiG.Parent = part
             antiG.Force = Vector3.new(0, part:GetMass() * workspace.Gravity, 0)
+            antiG.Parent = part
 
             -- add offsets of welds until a common part is reached
             local checkWeld = weld
@@ -2139,12 +2141,12 @@ do  -- minimap
         obj.Parent = parent
 
         local tooltipFrame = Instance.new("Frame")
-        tooltipFrame.Parent = parent
         tooltipFrame.AnchorPoint = Vector2.new(0, 0)
         tooltipFrame.AutomaticSize = Enum.AutomaticSize.XY
         tooltipFrame.BackgroundTransparency = 0.25
         tooltipFrame.BackgroundColor3 = cGui.BackgroundColor
         tooltipFrame.BorderSizePixel = 0
+        tooltipFrame.Parent = parent
 
         obj.Focus = nil
 
@@ -2368,25 +2370,25 @@ do  -- minimap
         local cIconSize = 20
 
         local frame = Instance.new("Frame")
-        frame.Parent = parent
         frame.AnchorPoint = Vector2.new(0.5, 0.5)
         frame.BackgroundTransparency = 1
         frame.BorderSizePixel = 0
         frame.Size = UDim2.fromOffset(cIconSize, cIconSize)
+        frame.Parent = parent
 
         local dot = Instance.new("Frame")
-        dot.Parent = frame
         dot.AnchorPoint = Vector2.new(0.5, 0.5)
         dot.Size = UDim2.fromOffset(5, 5)
         dot.Position = UDim2.fromScale(0.5, 0.5)
         dot.BorderSizePixel = 0
+        dot.Parent = frame
 
         local icon = Instance.new("ImageLabel")
-        icon.Parent = frame
         icon.Image = "rbxassetid://7480141029"
         icon.BackgroundTransparency = 1
         icon.Size = UDim2.fromOffset(cIconSize, cIconSize)
         icon.BorderSizePixel = 0
+        icon.Parent = frame
 
         local label = Gui.createText(frame)
         label.Position = UDim2.fromScale(1, 1)
@@ -2566,7 +2568,6 @@ do  -- minimap
         obj.MapSizeSmall = UDim2.fromOffset(300, 300)
 
         local mapFrameO = Instance.new("Frame")
-        mapFrameO.Parent = parent
         mapFrameO.AnchorPoint = Vector2.new(0, 1)
         mapFrameO.Position = UDim2.fromScale(0, 1)
         mapFrameO.Size = UDim2.fromScale(0, 0)
@@ -2575,14 +2576,15 @@ do  -- minimap
         mapFrameO.BorderSizePixel = 3
         mapFrameO.BorderColor3 = cGui.ForegroundColor
         mapFrameO.ClipsDescendants = true
+        mapFrameO.Parent = parent
 
         obj.FrameOuter = mapFrameO
 
         local mapFrameI = Instance.new("Frame")
-        mapFrameI.Parent = mapFrameO
         mapFrameI.BackgroundTransparency = 1
         mapFrameI.BorderSizePixel = 0
         mapFrameI.Position = UDim2.fromScale(0, 0)
+        mapFrameI.Parent = mapFrameO
 
         obj.FrameInner = mapFrameI
 
@@ -2653,10 +2655,10 @@ do  -- minimap
 
     function Minimap:createLayer()
         local layer = Instance.new("Frame")
-        layer.Parent = self.FrameInner
         layer.Size = UDim2.fromScale(1, 1)
         layer.BorderSizePixel = 0
         layer.BackgroundTransparency = 1
+        layer.Parent = self.FrameInner
 
         return layer
     end
