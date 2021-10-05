@@ -3143,9 +3143,7 @@ binds:bind("Exit", function()
 
     lCharacter3:Disconnect()
 
-    pcall(function()
-        map:destroy()
-    end)
+    map:destroy()
 
     getgenv().BF_LOADED = false
 end)
