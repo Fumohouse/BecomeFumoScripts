@@ -7,7 +7,7 @@ local function log(msg)
     print("[fumo] "..msg)
 end
 
-version = "1.5.6"
+version = "1.5.7"
 
 do  -- double load prevention
     if BF_LOADED then
@@ -986,6 +986,10 @@ At any time, you can press [0] to close the script and reset everything back to 
     addDoc(cAboutInfo)
 
     local cChangelogContent = [[
+<b>1.5.7</b>
+- Fix error when closing script with map not loaded
+- Fix bugs with right click to flash in 6R
+
 <b>1.5.6</b>
 - Added labels to the Knowledgebase
 - Scroll now zooms the map in and out while expanded
@@ -1869,7 +1873,7 @@ do  -- welds
 
     local weldsScroll = Gui.createListScroll(weldsTab, 2)
 
-    local savedLocation = nil
+    local savedLocation
     local inProgress = 0
 
     local function deleteWeld(weld, cb)
@@ -1919,7 +1923,9 @@ do  -- welds
     end
 
     local function addWeld(weld)
-        local label = nil
+        local label
+        local tween
+
         local labelInfo = Gui.createLabelButtonLarge(weldsScroll, weld.Name, function(setActive, type)
             if not weld.Parent then return end
 
@@ -1936,16 +1942,20 @@ do  -- welds
 
                 if label then label:Destroy() end
             elseif type == Enum.UserInputType.MouseButton2 then
+                if tween then return end
+
                 local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, 5, true)
                 local goal = {}
                 goal.Transparency = 1
-                local tween = TWEEN:Create(weld.Part1, tweenInfo, goal)
+                tween = TWEEN:Create(weld.Part1, tweenInfo, goal)
 
                 setActive(true)
                 tween:Play()
 
                 tween.Completed:Wait()
                 setActive(false)
+
+                tween = nil
             else
                 makeAlive(weld, function(p)
                     removeWeldButton(p)
@@ -3143,7 +3153,9 @@ binds:bind("Exit", function()
 
     lCharacter3:Disconnect()
 
-    map:destroy()
+    if map then
+        map:destroy()
+    end
 
     getgenv().BF_LOADED = false
 end)
