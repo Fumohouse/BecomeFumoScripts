@@ -554,6 +554,10 @@ do  -- tabcontrol
         local function setOpen(open, shouldTween)
             if isOpen == open then return end
 
+            if open then
+                content.Visible = true
+            end
+
             -- check if other tabs are open
             local othersOpen = false
 
@@ -594,7 +598,12 @@ do  -- tabcontrol
                 tween:Play()
 
                 tween.Completed:Connect(function()
+                    tween:Destroy()
                     tween = nil
+
+                    if not open then
+                        content.Visible = false
+                    end
                 end)
             else
                 content.Position = goal.Position
@@ -990,6 +999,7 @@ At any time, you can press [0] to close the script and reset everything back to 
 - Added the Spooky emote to 4A
 - <b>Replace Humanoid is now disabled by default.</b> The game will automatically kick you if you ever delete your humanoid, so the feature has been hidden.
 - (BORING!) Simplify 2O tab layout
+- (Performance) Set tab content to invisible once they are offscreen
 
 <b>1.5.5</b>
 - Added the version of the Drip animation that has blended animations
