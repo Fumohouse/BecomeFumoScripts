@@ -124,7 +124,7 @@ do  -- gui components
         return scroll
     end
 
-    function Gui.createListLayout(parent, horizAlign, padding)
+    function Gui.createListLayout(parent, horizAlign, vertAlign, padding)
         local listLayout = Instance.new("UIListLayout")
         listLayout.Parent = parent
 
@@ -132,7 +132,8 @@ do  -- gui components
             listLayout.Padding = UDim2.fromOffset(0, padding).Y
         end
 
-        listLayout.HorizontalAlignment = horizAlign
+        listLayout.HorizontalAlignment = horizAlign or Enum.HorizontalAlignment.Center
+        listLayout.VerticalAlignment = vertAlign or Enum.VerticalAlignment.Top
         listLayout.FillDirection = Enum.FillDirection.Vertical
         listLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
@@ -142,7 +143,7 @@ do  -- gui components
     -- creates a ScrollingFrame with a vertical UIListLayout inside.
     function Gui.createListScroll(parent, padding)
         local scroll = Gui.createScroll(parent)
-        Gui.createListLayout(scroll, Enum.HorizontalAlignment.Center, padding)
+        Gui.createListLayout(scroll, Enum.HorizontalAlignment.Center, Enum.VerticalAlignment.Top, padding)
 
         return scroll
     end
@@ -815,29 +816,13 @@ do  -- options
 
     local optionsTab = tabControl:createTab("Options", "2O", "TabOptions")
 
-    local optionsFrame = Instance.new("Frame")
-    optionsFrame.Parent = optionsTab
-    optionsFrame.Name = "Options"
-    optionsFrame.BackgroundTransparency = 1
-    optionsFrame.BorderSizePixel = 0
-    optionsFrame.AnchorPoint = Vector2.new(0.5, 0.5)
-    optionsFrame.AutomaticSize = Enum.AutomaticSize.Y
-    optionsFrame.Size = UDim2.fromScale(1, 0)
-    optionsFrame.Position = UDim2.fromScale(0.5, 0.5)
-
-    local optionButtonCount = 0
+    Gui.createListLayout(optionsTab, Enum.HorizontalAlignment.Center, Enum.VerticalAlignment.Center, cOptionSpacing)
 
     local function createOptionsButton(labelText, cb)
-        local labelInfo = Gui.createLabelButtonLarge(optionsFrame, labelText, function()
+        Gui.createLabelButtonLarge(optionsTab, labelText, function()
             tabControl:closeAllTabs()
             cb()
         end)
-
-        local label = labelInfo.Label
-
-        label.Position = UDim2.new(0.5, 0, 0, optionButtonCount * (cGui.ButtonHeightLarge + cOptionSpacing))
-
-        optionButtonCount = optionButtonCount + 1
     end
 
     createOptionsButton("Toggle Anti-Grief", function()
@@ -1004,6 +989,7 @@ At any time, you can press [0] to close the script and reset everything back to 
 - A3 has been removed from the main tab control
 - Added the Spooky emote to 4A
 - <b>Replace Humanoid is now disabled by default.</b> The game will automatically kick you if you ever delete your humanoid, so the feature has been hidden.
+- (BORING!) Simplify 2O tab layout
 
 <b>1.5.5</b>
 - Added the version of the Drip animation that has blended animations
