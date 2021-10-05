@@ -300,7 +300,8 @@ do  -- config & bindings
                 ["Exit"] = Enum.KeyCode.Zero.Name
             },
             ["orbitTp"] = false,
-            ["debug"] = false
+            ["debug"] = false,
+            ["replaceHumanoid"] = false
         }
 
         obj.UseFs = true
@@ -716,8 +717,6 @@ end
 tabControl = TabControl.new(root, binds)
 
 do  -- characters
-    -- constants
-
     local cCharacters = {}
 
     for k, v in pairs(LocalPlayer.PlayerGui.MainGui.MainFrame.ScrollingFrame:GetChildren()) do -- steal from the gui instead of the replicated list, which does not include badge chars
@@ -733,14 +732,20 @@ do  -- characters
     local charactersTab = tabControl:createTab("Characters", "1C", "TabCharacters")
 
     local characterScroll = Gui.createListScroll(charactersTab)
-    characterScroll.Size = characterScroll.Size - UDim2.fromOffset(0, cGui.CheckboxSize + cGui.LabelButtonHeight)
-    characterScroll.Position = characterScroll.Position + UDim2.fromOffset(0, cGui.CheckboxSize + cGui.LabelButtonHeight)
+
+    -- RIP
+    if config.Value.replaceHumanoid then
+        characterScroll.Size = characterScroll.Size - UDim2.fromOffset(0, cGui.CheckboxSize + cGui.LabelButtonHeight)
+        characterScroll.Position = characterScroll.Position + UDim2.fromOffset(0, cGui.CheckboxSize + cGui.LabelButtonHeight)
+    end
 
     local shouldReplaceHumanoid = false
 
-    local humanoidCheckbox = Gui.createCheckbox(charactersTab, "Replace Humanoid", function(checked)
-        shouldReplaceHumanoid = checked
-    end)
+    if config.Value.replaceHumanoid then
+        local humanoidCheckbox = Gui.createCheckbox(charactersTab, "Replace Humanoid", function(checked)
+            shouldReplaceHumanoid = checked
+        end)
+    end
 
     local jumpListener = nil
 
@@ -774,11 +779,13 @@ do  -- characters
         end
     end
 
-    local replaceNowButton, _ = Gui.createLabelButton(charactersTab, "Replace Humanoid Now", function()
-        replaceHumanoid(LocalPlayer.Character, true)
-    end)
+    if config.Value.replaceHumanoid then
+        local replaceNowButton, _ = Gui.createLabelButton(charactersTab, "Replace Humanoid Now", function()
+            replaceHumanoid(LocalPlayer.Character, true)
+        end)
 
-    replaceNowButton.Position = UDim2.fromOffset(0, cGui.CheckboxSize)
+        replaceNowButton.Position = UDim2.fromOffset(0, cGui.CheckboxSize)
+    end
 
     local waitingForSwitch = false
 
@@ -996,6 +1003,7 @@ At any time, you can press [0] to close the script and reset everything back to 
 - To avoid clutter, some waypoints have been removed. Just walk to them.
 - A3 has been removed from the main tab control
 - Added the Spooky emote to 4A
+- <b>Replace Humanoid is now disabled by default.</b> The game will automatically kick you if you ever delete your humanoid, so the feature has been hidden.
 
 <b>1.5.5</b>
 - Added the version of the Drip animation that has blended animations
@@ -1171,6 +1179,7 @@ Restricted access to the script is possible with the violation of any of the abo
     createKnowledgebaseCategory("Exploit Write-ups")
 
     local cHumanoidContent = [[
+<b>The functions mentioned in this article are no longer supported. It is preserved for historical purposes.</b>
 <i>Disclosed by: AyaShameimaruCamera</i>
 <i>Scripting refined by: me</i>
 
