@@ -989,6 +989,7 @@ At any time, you can press [0] to close the script and reset everything back to 
 <b>1.5.7</b>
 - Fix error when closing script with map not loaded
 - Fix bugs with right click to flash in 6R
+- (BORING!) Fix logic of finding total weld offset
 
 <b>1.5.6</b>
 - Added labels to the Knowledgebase
@@ -1538,16 +1539,6 @@ do  -- hats come alive
     local mousePos
     local draggedAway
 
-    local function checkCommonWeld(partName)
-        for k, v in pairs(commonWelds) do
-            if v == partName then
-                return true
-            end
-        end
-
-        return false
-    end
-
     local savedLocation = nil
     local inProgress = 0
     local awaitingStart = 0
@@ -1616,15 +1607,13 @@ do  -- hats come alive
             local checkWeld = weld
             local totalOffset = weld.C0 * weld.C1:Inverse()
 
-            while not checkCommonWeld(checkWeld.Part0.Name) do
+            while not table.find(commonWelds, checkWeld.Part0.Name) do
                 for k, desc in pairs(LocalPlayer.Character:GetDescendants()) do
                     if desc:IsA("Weld") and desc.Part1 == checkWeld.Part0 then
                         totalOffset = desc.C0 * desc.C1:Inverse() * totalOffset
                         checkWeld = desc
                     end
                 end
-
-                break
             end
 
             local partInfo = {}
