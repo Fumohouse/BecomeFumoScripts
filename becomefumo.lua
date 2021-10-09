@@ -835,6 +835,15 @@ do  -- options
         end)
     end
 
+    local function openGui(name)
+        if _G.GlobalDebounce then return end
+
+        _G.GlobalDebounce = true
+        REPLICATED.ClientUIEvents.OpenClose:Fire(name, true)
+        wait(0.6)
+        _G.GlobalDebounce = false
+    end
+
     createOptionsButton("Toggle Anti-Grief", function()
         if _G.GlobalDebounce then return end
 
@@ -845,12 +854,11 @@ do  -- options
     end)
 
     createOptionsButton("Day/Night Settings", function()
-        if _G.GlobalDebounce then return end
+        openGui("DayNightSetting")
+    end)
 
-        _G.GlobalDebounce = true
-        REPLICATED.ClientUIEvents.OpenClose:Fire("DayNightSetting", true)
-        wait(0.6)
-        _G.GlobalDebounce = false
+    createOptionsButton("Block Players", function()
+        openGui("UserSettings")
     end)
 end -- options
 
@@ -990,6 +998,7 @@ At any time, you can press [0] to close the script and reset everything back to 
 - Fix error when closing script with map not loaded
 - Fix bugs with right click to flash in 6R
 - (BORING!) Fix logic of finding total weld offset
+- Added the new block setting to the 2O menu
 
 <b>1.5.6</b>
 - Added labels to the Knowledgebase
