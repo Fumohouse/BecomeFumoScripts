@@ -3,15 +3,17 @@
     variables beginning with c are constant and should not change
 ]]
 
-local function log(msg)
-    print("[fumo] "..msg)
+local BFS = getgenv().BFS
+
+if not BFS then
+    error("BFS core components are not loaded!")
 end
 
 version = "1.5.7"
 
 do  -- double load prevention
     if BF_LOADED then
-        log("already loaded!")
+        BFS.log("already loaded!")
         return
     end
 
@@ -20,6 +22,10 @@ do  -- double load prevention
     end)
 
     if not game:IsLoaded() then game.Loaded:Wait() end
+
+    BFS.bindToExit("Free BF_LOADED", function()
+        getgenv().BF_LOADED = false
+    end)
 end -- double load prevention
 
 --
@@ -36,673 +42,25 @@ HTTP = game:GetService("HttpService")
 
 LocalPlayer = PLAYERS.LocalPlayer
 
-do  -- base gui
-    function randomString()
-        local str = ""
-
-        for i = 1, math.random(10, 20) do
-            str = str..string.char(math.random(32, 126))
-        end
-
-        return str
-    end
-
-    root = Instance.new("ScreenGui")
-    root.Name = randomString()
-
-    if syn and syn.protect_gui then
-        syn.protect_gui(root)
-        root.Parent = COREGUI
-    elseif get_hidden_gui or gethui then
-        local hiddenUI = get_hidden_gui or gethui
-        root.Parent = hiddenUI()
-    else
-        root.Parent = COREGUI
-    end
-
-    secondaryRoot = Instance.new("Frame")
-    secondaryRoot.Size = UDim2.fromScale(1, 1)
-    secondaryRoot.BackgroundTransparency = 1
-    secondaryRoot.BorderSizePixel = 0
-    secondaryRoot.Parent = root
-end -- base gui -- globals exposed: root
-
---
--- constants
---
-
-cGui = {
-    ["BackgroundColor"] = Color3.fromRGB(12, 13, 20),
-    ["BackgroundColorDark"] = Color3.fromRGB(4, 4, 7),
-    ["BackgroundColorLight"] = Color3.fromRGB(32, 35, 56),
-    ["ForegroundColor"] = Color3.fromRGB(255, 255, 255),
-    ["AccentColor"] = Color3.fromRGB(10, 162, 175),
-    ["Font"] = Enum.Font.Ubuntu,
-
-    ["LabelButtonHeight"] = 25,
-    ["ButtonHeightLarge"] = 30,
-    ["CategoryHeight"] = 32,
-
-    ["CheckboxSize"] = 25
-}
-
-do  -- gui components
-    Gui = {}
-    Gui.__index = Gui
-
-    -- creates a TextLabel with default font, no background (default color is light)
-    -- and no border
-    function Gui.createText(parent, size)
-        size = size or 12
-
-        local label = Instance.new("TextLabel")
-        label.BackgroundColor3 = cGui.BackgroundColorLight
-        label.BackgroundTransparency = 1
-        label.BorderSizePixel = 0
-        label.TextColor3 = cGui.ForegroundColor
-        label.Font = cGui.Font
-        label.TextSize = size
-        label.Parent = parent
-
-        return label
-    end
-
-    -- creates a ScrollingFrame which takes up the entire parent by default
-    function Gui.createScroll(parent)
-        local scroll = Instance.new("ScrollingFrame")
-        scroll.BorderSizePixel = 0
-        scroll.BackgroundTransparency = 1
-        scroll.Size = UDim2.fromScale(1, 1)
-        scroll.Position = UDim2.fromOffset(0, 0)
-        scroll.ScrollBarImageColor3 = cGui.ForegroundColor
-        scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-        scroll.CanvasSize = UDim2.fromScale(1, 0)
-        scroll.ScrollingDirection = Enum.ScrollingDirection.Y
-        scroll.ScrollBarThickness = 3
-        scroll.Parent = parent
-
-        return scroll
-    end
-
-    function Gui.createListLayout(parent, horizAlign, vertAlign, padding)
-        local listLayout = Instance.new("UIListLayout")
-
-        if padding then
-            listLayout.Padding = UDim2.fromOffset(0, padding).Y
-        end
-
-        listLayout.HorizontalAlignment = horizAlign or Enum.HorizontalAlignment.Center
-        listLayout.VerticalAlignment = vertAlign or Enum.VerticalAlignment.Top
-        listLayout.FillDirection = Enum.FillDirection.Vertical
-        listLayout.SortOrder = Enum.SortOrder.LayoutOrder
-
-        listLayout.Parent = parent
-
-        return listLayout
-    end
-
-    -- creates a ScrollingFrame with a vertical UIListLayout inside.
-    function Gui.createListScroll(parent, padding)
-        local scroll = Gui.createScroll(parent)
-        Gui.createListLayout(scroll, Enum.HorizontalAlignment.Center, Enum.VerticalAlignment.Top, padding)
-
-        return scroll
-    end
-
-    -- creates a TextLabel with callback for MouseButton1, no background
-    function Gui.createLabelButton(parent, labelText, cb)
-        local label = Gui.createText(parent, cGui.LabelButtonHeight * 0.75)
-        label.Text = labelText
-        label.TextXAlignment = Enum.TextXAlignment.Center
-        label.TextYAlignment = Enum.TextYAlignment.Center
-        label.Size = UDim2.new(1, 0, 0, cGui.LabelButtonHeight)
-
-        label.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                cb()
-            end
-        end)
-
-        return label
-    end
-
-    -- creates a bold, centered TextLabel intended to be used as a category label for ScrollingFrames
-    function Gui.createCategoryLabel(parent, labelText)
-        local label = Gui.createText(parent, cGui.CategoryHeight * 0.75)
-        label.BackgroundTransparency = 0.9
-        label.BackgroundColor3 = cGui.BackgroundColorDark
-        label.TextXAlignment = Enum.TextXAlignment.Center
-        label.TextYAlignment = Enum.TextYAlignment.Bottom
-        label.AnchorPoint = Vector2.new(0.5, 0)
-        label.Size = UDim2.new(1, 0, 0, cGui.CategoryHeight)
-        label.RichText = true
-        label.Text = "<b>"..labelText.."</b>"
-
-        return label
-    end
-
-    -- creates a larger TextLabel with a background color and on/off state
-    function Gui.createLabelButtonLarge(parent, labelText, cb)
-        local label = Gui.createText(parent, cGui.ButtonHeightLarge * 0.8)
-        label.BackgroundTransparency = 0.5
-        label.BackgroundColor3 = cGui.BackgroundColorLight
-        label.TextXAlignment = Enum.TextXAlignment.Center
-        label.TextYAlignment = Enum.TextYAlignment.Center
-        label.AnchorPoint = Vector2.new(0.5, 0)
-        label.Size = UDim2.new(0.95, 0, 0, cGui.ButtonHeightLarge)
-        label.Text = labelText
-
-        local labelInfo = {}
-        labelInfo.Label = label
-        labelInfo.SetActive = function(active)
-            local tweenInfo = TweenInfo.new(0.15)
-            local goal = {}
-
-            if active then
-                goal.BackgroundColor3 = cGui.AccentColor
-            else
-                goal.BackgroundColor3 = cGui.BackgroundColorLight
-            end
-
-            local tween = TWEEN:Create(label, tweenInfo, goal)
-
-            tween:Play()
-        end
-
-        label.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.MouseButton2 or input.UserInputType == Enum.UserInputType.MouseButton3 then
-                cb(labelInfo.SetActive, input.UserInputType)
-            end
-        end)
-
-        return labelInfo
-    end
-
-    -- creates a checkbox component, with callback and initial value options
-    function Gui.createCheckbox(parent, labelText, cb, initial)
-        local cSpacing = 5
-
-        local checkbox = Instance.new("Frame")
-        checkbox.BorderSizePixel = 0
-        checkbox.BackgroundTransparency = 1
-        checkbox.Size = UDim2.new(1, 0, 0, cGui.CheckboxSize)
-        checkbox.Parent = parent
-
-        local indicator = Instance.new("Frame")
-        indicator.BorderSizePixel = 0
-        indicator.BackgroundColor3 = cGui.BackgroundColorLight
-        indicator.Size = UDim2.fromOffset(cGui.CheckboxSize, cGui.CheckboxSize)
-        indicator.Position = UDim2.fromScale(0, 0)
-        indicator.Parent = checkbox
-
-        local label = Gui.createText(checkbox, cGui.CheckboxSize * 0.75)
-        label.Text = labelText
-        label.TextTruncate = Enum.TextTruncate.AtEnd
-        label.TextXAlignment = Enum.TextXAlignment.Left
-        label.TextYAlignment = Enum.TextYAlignment.Center
-        label.Size = UDim2.new(1, -(cGui.CheckboxSize + cSpacing), 0, cGui.CheckboxSize)
-        label.Position = UDim2.fromOffset(cGui.CheckboxSize + cSpacing, 0)
-
-        local checked = initial
-
-        local function updateColor()
-            local tweenInfo = TweenInfo.new(0.15)
-            local goal = {}
-
-            if checked then
-                goal.BackgroundColor3 = cGui.AccentColor
-            else
-                goal.BackgroundColor3 = cGui.BackgroundColorLight
-            end
-
-            local tween = TWEEN:Create(indicator, tweenInfo, goal)
-
-            tween:Play()
-        end
-
-        updateColor()
-
-        checkbox.InputBegan:Connect(function(input)
-            if input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
-
-            checked = not checked
-
-            updateColor()
-
-            cb(checked)
-        end)
-
-        return checkbox
-    end
-end -- gui components -- globals exposed: Gui
-
-do  -- config & bindings
-    local ConfigManager = {}
-    ConfigManager.__index = ConfigManager
-
-    function ConfigManager.new()
-        local obj = {}
-        setmetatable(obj, ConfigManager)
-
-        obj.Filename = "fumo.json"
-        obj.Value = nil
-        obj.Default = {
-            ["version"] = nil, -- for version check
-            ["keybinds"] = {
-                ["TabCharacters"] = Enum.KeyCode.One.Name,
-                ["TabOptions"] = Enum.KeyCode.Two.Name,
-                ["TabDocs"] = Enum.KeyCode.Three.Name,
-                ["TabAnims"] = Enum.KeyCode.Four.Name,
-                ["TabWaypoints"] = Enum.KeyCode.Five.Name,
-                ["TabWelds"] = Enum.KeyCode.Six.Name,
-                ["TabSettings"] = Enum.KeyCode.Seven.Name,
-                ["HideGui"] = Enum.KeyCode.F1.Name,
-                ["MapVis"] = Enum.KeyCode.N.Name,
-                ["MapView"] = Enum.KeyCode.M.Name,
-                ["Exit"] = Enum.KeyCode.Zero.Name
-            },
-            ["orbitTp"] = false,
-            ["debug"] = false,
-            ["replaceHumanoid"] = false
-        }
-
-        obj.UseFs = true
-
-        if not writefile then
-            log("WARNING: No file write access. Config will not save or load.")
-            obj.UseFs = false
-        end
-
-        obj:load()
-        obj:checkMissingKeys()
-
-        return obj
-    end
-
-    function ConfigManager:checkMissingKeys()
-        local shouldSave = false
-
-        -- recursively check if anything is missing.
-        local function checkTable(t, default)
-            for k, v in pairs(default) do
-                if t[k] == nil then
-                    t[k] = v
-                    shouldSave = true
-                elseif type(v) == "table" then
-                    checkTable(t[k], v)
-                end
-            end
-        end
-
-        checkTable(self.Value, self.Default)
-
-        if shouldSave then self:save() end
-    end
-
-    function ConfigManager:setDefault()
-        self.Value = self.Default
-        self:save()
-    end
-
-    function ConfigManager:save()
-        if not self.UseFs then return end
-
-        local str = HTTP:JSONEncode(self.Value)
-        writefile(self.Filename, str)
-    end
-
-    function ConfigManager:load()
-        if not self.UseFs then self.Value = self.Default return end
-
-        if not pcall(function() readfile(self.Filename) end) then
-            log("Creating new config file.")
-            self:setDefault()
-        else
-            local success = pcall(function()
-                self.Value = HTTP:JSONDecode(readfile(self.Filename))
-            end)
-
-            if not success then
-                log("WARNING: Config data is invalid. Restoring defaults...")
-                self:setDefault()
-            end
-        end
-    end
-
-    config = ConfigManager.new()
-
-    local KeybindManager = {}
-    KeybindManager.__index = KeybindManager
-
-    function KeybindManager.new(configManager)
-        local obj = {}
-        setmetatable(obj, KeybindManager)
-
-        obj.Config = configManager
-        obj.Keybinds = configManager.Value.keybinds
-
-        obj._lKeyPress = INPUT.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.Keyboard and not
-                INPUT:GetFocusedTextBox() then
-                obj:_keyPress(input.KeyCode)
-            end
-        end)
-
-        obj.Bindings = {}
-
-        obj.Disabled = false
-
-        return obj
-    end
-
-    function KeybindManager:rebind(name, key)
-        self.Keybinds[name] = key.Name
-        self.Config:save()
-    end
-
-    function KeybindManager:unbind(name)
-        self.Keybinds[name] = -1
-        self.Config:save()
-    end
-
-    function KeybindManager:bind(name, del)
-        if self.Bindings[name] then
-            log("WARNING: Binding the same action twice is unsupported!")
-        end
-
-        self.Bindings[name] = del
-    end
-
-    function KeybindManager:_keyPress(code)
-        if self.Disabled then return end
-
-        for k, v in pairs(self.Keybinds) do
-            if v == code.Name then
-                local del = self.Bindings[k]
-                if del then del() end
-
-                return
-            end
-        end
-    end
-
-    function KeybindManager:destroy()
-        self._lKeyPress:Disconnect()
-    end
-
-    binds = KeybindManager.new(config)
-end -- config & bindings -- globals exposed: config, binds
-
 do  -- disable stuff
     local mainGui = LocalPlayer:FindFirstChild("PlayerGui"):FindFirstChild("MainGui")
-    toggleButton = mainGui:FindFirstChild("MainFrame"):FindFirstChild("ToggleButton")
+    local toggleButton = mainGui:FindFirstChild("MainFrame"):FindFirstChild("ToggleButton")
     toggleButton.Visible = false -- disable the default character selector
 
-    settings = mainGui:FindFirstChild("SettingsFrame")
+    local settings = mainGui:FindFirstChild("SettingsFrame")
     settings.Visible = false -- disable the default settings
-end -- disable stuff -- globals exposed: toggleButton & settings
 
-do  -- tabcontrol
-    --
-    -- constants
-    --
+    BFS.bindToExit("Re-enable GUI", function()
+        toggleButton.Visible = true -- reenable the default character selector
+        settings.Visible = true -- reenable the default settings
+    end)
+end -- disable stuff
 
-    cTabContentWidth = 250
-    cTabContentHeight = 750 / 1080
-
-    cTabWidth = 175
-    cTabHeight = 30
-
-    cTabWidthSmall = 45
-
-    cTabSize = UDim2.fromOffset(cTabWidth, cTabHeight)
-    cTabSizeSmall = UDim2.fromOffset(cTabWidthSmall, cTabHeight)
-
-    cTabPosOpen = UDim2.fromScale(0, 0.5)
-    cTabPosClosed = UDim2.new(0, -cTabContentWidth, 0.5, 0)
-
-    cTabContainerPosOpen = UDim2.new(0, cTabContentWidth, 0.5, 0)
-    cTabContainerPosClosed = UDim2.fromScale(0, 0.5)
-
-    --
-    -- class def
-    --
-
-    TabControl = {}
-
-    TabControl.__index = TabControl
-
-    function TabControl.new(parent, binds)
-        local obj = {}
-        setmetatable(obj, TabControl)
-
-        obj.Parent = parent
-        obj.Binds = binds
-
-        local tabContainer = Instance.new("Frame")
-        tabContainer.BackgroundTransparency = 1
-        tabContainer.BorderSizePixel = 0
-        tabContainer.AnchorPoint = Vector2.new(0, 0.5)
-        tabContainer.AutomaticSize = Enum.AutomaticSize.Y
-        tabContainer.Size = UDim2.fromOffset(cTabWidth, 0)
-        tabContainer.Position = cTabContainerPosClosed
-        tabContainer.Parent = parent
-
-        Gui.createListLayout(tabContainer, Enum.HorizontalAlignment.Left)
-
-        tabContainer.MouseEnter:Connect(function()
-            obj:_setTabsExpanded(true)
-        end)
-
-        tabContainer.MouseLeave:Connect(function()
-            obj:_setTabsExpanded(false)
-        end)
-
-        obj.TabContainer = tabContainer
-
-        obj.TabButtons = {}
-        obj.Tabs = {}
-
-        return obj
-    end
-
-    function TabControl:setTabsVisible(visible)
-        self.TabContainer.Visible = visible
-    end
-
-    function TabControl:createTabButton(label, abbrev)
-        local tab = Gui.createText(self.TabContainer, cTabHeight * 0.75)
-        tab.Active = true
-        tab.BackgroundTransparency = 0.3
-        tab.BackgroundColor3 = cGui.BackgroundColorDark
-        tab.Text = abbrev
-        tab.TextXAlignment = Enum.TextXAlignment.Center
-        tab.TextYAlignment = Enum.TextYAlignment.Center
-        tab.AnchorPoint = Vector2.new(0, 0.5)
-        tab.Size = cTabSizeSmall
-
-        local tabButtonData = {}
-        tabButtonData.Label = label
-        tabButtonData.Abbrev = abbrev
-        tabButtonData.Tab = tab
-
-        self.TabButtons[#self.TabButtons + 1] = tabButtonData
-
-        return tabButtonData
-    end
-
-    function TabControl:createTab(label, abbrev, bindName)
-        local tabButtonData = self:createTabButton(label, abbrev)
-
-        -- tab content
-        local content = Instance.new("Frame")
-        content.Active = true
-        content.Name = "Content"
-        content.BackgroundTransparency = 0.1
-        content.BorderSizePixel = 0
-        content.BackgroundColor3 = cGui.BackgroundColorDark
-        content.AnchorPoint = Vector2.new(0, 0.5)
-        content.Size = UDim2.new(0, cTabContentWidth, cTabContentHeight, 0)
-        content.Position = cTabPosClosed
-        content.Parent = self.Parent
-
-        -- functions (open/close)
-        local isOpen = false
-        local tween = nil
-
-        local function getOpen() return isOpen end
-
-        local function setOpen(open, shouldTween)
-            if isOpen == open then return end
-
-            if open then
-                content.Visible = true
-            end
-
-            -- check if other tabs are open
-            local othersOpen = false
-
-            for k, v in pairs(self.Tabs) do
-                if v.Button.Label ~= label and v.GetOpen() then
-                    othersOpen = true
-                    break
-                end
-            end
-
-            -- tween
-            local tweenInfo = TweenInfo.new(0.15)
-            local goal = {}
-            local tabGoal = {}
-            local tabContainerGoal = {}
-
-            if open then
-                goal.Position = cTabPosOpen
-                tabContainerGoal.Position = cTabContainerPosOpen
-                tabGoal.BackgroundColor3 = cGui.BackgroundColorLight
-
-                for k, v in pairs(self.Tabs) do
-                    if v.Button.Label ~= label then
-                        v.SetOpen(false, false)
-                    end
-                end
-            else
-                goal.Position = cTabPosClosed
-                tabContainerGoal.Position = cTabContainerPosClosed
-                tabGoal.BackgroundColor3 = cGui.BackgroundColorDark
-            end
-
-            -- if two keys are pressed at once this will prevent the tween from completing when the tab should be closed
-            if tween then tween:Cancel() end
-
-            if shouldTween and not othersOpen then
-                tween = TWEEN:Create(content, tweenInfo, goal)
-                tween:Play()
-
-                tween.Completed:Connect(function()
-                    tween:Destroy()
-                    tween = nil
-
-                    if not open then
-                        content.Visible = false
-                    end
-                end)
-            else
-                content.Position = goal.Position
-            end
-
-            local tabContainerTween = TWEEN:Create(self.TabContainer, tweenInfo, tabContainerGoal)
-            tabContainerTween:Play()
-
-            local tabTween = TWEEN:Create(tabButtonData.Tab, tweenInfo, tabGoal)
-            tabTween:Play()
-
-            isOpen = open
-        end
-
-        tabButtonData.Tab.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                setOpen(not isOpen, true)
-            end
-        end)
-
-        local tabData = {}
-        tabData.Button = tabButtonData
-        tabData.GetOpen = getOpen
-        tabData.SetOpen = setOpen
-        tabData.IsButton = false
-
-        self.Tabs[#self.Tabs + 1] = tabData
-
-        if bindName then
-            self.Binds:bind(bindName, function()
-                setOpen(not isOpen, true)
-            end)
-        end
-
-        return content
-    end
-
-    function TabControl:closeAllTabs()
-        for k, v in pairs(self.Tabs) do
-            v.SetOpen(false, true)
-        end
-    end
-
-    function TabControl:removeTabButton(info)
-        info.Tab:Destroy()
-
-        for k, v in pairs(self.TabButtons) do
-            if v == info then
-                self.TabButtons[k] = nil
-                break
-            end
-        end
-    end
-
-    function TabControl:setTabOpen(label, open)
-        for k, v in pairs(self.Tabs) do
-            if v.Button.Label == label then
-                if open == nil then
-                    open = not v.GetOpen()
-                end
-
-                v.SetOpen(open, true)
-                break
-            end
-        end
-    end
-
-    function TabControl:_setTabsExpanded(expanded)
-        local tweenInfo = TweenInfo.new(0.15)
-
-        local goal = {}
-        local tabContainerGoal = {}
-
-        if expanded then
-            goal.Size = cTabSize
-            tabContainerGoal.Size = UDim2.fromOffset(cTabWidth, 0)
-        else
-            goal.Size = cTabSizeSmall
-            tabContainerGoal.Size = UDim2.fromOffset(cTabWidthSmall, 0)
-        end
-
-        for k, v in pairs(self.TabButtons) do
-            if v then
-                if expanded then
-                    v.Tab.Text = v.Label
-                else
-                    v.Tab.Text = v.Abbrev
-                end
-
-                local tween = TWEEN:Create(v.Tab, tweenInfo, goal)
-                tween:Play()
-            end
-        end
-
-        local tabContainerTween = TWEEN:Create(self.TabContainer, tweenInfo, tabContainerGoal)
-        tabContainerTween:Play()
-    end
-end -- tabcontrol -- globals exposed: TabControl
+secondaryRoot = Instance.new("Frame")
+secondaryRoot.Size = UDim2.fromScale(1, 1)
+secondaryRoot.BackgroundTransparency = 1
+secondaryRoot.BorderSizePixel = 0
+secondaryRoot.Parent = BFS.Root
 
 --
 -- random functions
@@ -725,8 +83,6 @@ function teleport(pos)
     return origPos
 end
 
-tabControl = TabControl.new(root, binds)
-
 do  -- characters
     local cCharacters = {}
 
@@ -740,20 +96,20 @@ do  -- characters
 
     -- interface
 
-    local charactersTab = tabControl:createTab("Characters", "1C", "TabCharacters")
+    local charactersTab = BFS.TabControl:createTab("Characters", "1C", "TabCharacters")
 
-    local characterScroll = Gui.createListScroll(charactersTab)
+    local characterScroll = BFS.UI.createListScroll(charactersTab)
 
     -- RIP
-    if config.Value.replaceHumanoid then
-        characterScroll.Size = characterScroll.Size - UDim2.fromOffset(0, cGui.CheckboxSize + cGui.LabelButtonHeight)
-        characterScroll.Position = characterScroll.Position + UDim2.fromOffset(0, cGui.CheckboxSize + cGui.LabelButtonHeight)
+    if BFS.Config.Value.replaceHumanoid then
+        characterScroll.Size = characterScroll.Size - UDim2.fromOffset(0, BFS.UIConsts.CheckboxSize + BFS.UIConsts.LabelButtonHeight)
+        characterScroll.Position = characterScroll.Position + UDim2.fromOffset(0, BFS.UIConsts.CheckboxSize + BFS.UIConsts.LabelButtonHeight)
     end
 
     local shouldReplaceHumanoid = false
 
-    if config.Value.replaceHumanoid then
-        local humanoidCheckbox = Gui.createCheckbox(charactersTab, "Replace Humanoid", function(checked)
+    if BFS.Config.Value.replaceHumanoid then
+        BFS.UI.createCheckbox(charactersTab, "Replace Humanoid", function(checked)
             shouldReplaceHumanoid = checked
         end)
     end
@@ -770,7 +126,8 @@ do  -- characters
             workspace.CurrentCamera.CameraSubject = char
 
             if not jumpListener then
-                log("connecting jump listener")
+                BFS.log("connecting jump listener")
+
                 jumpListener = INPUT.InputBegan:Connect(function(input)
                     if not INPUT:GetFocusedTextBox() and
                         input.UserInputType == Enum.UserInputType.Keyboard and
@@ -782,20 +139,22 @@ do  -- characters
         end
     end
 
-    function disconnectJump()
+    local function disconnectJump()
         if jumpListener then
-            log("disconnecting jump listener")
+            BFS.log("disconnecting jump listener")
             jumpListener:Disconnect()
             jumpListener = nil
         end
     end
 
-    if config.Value.replaceHumanoid then
-        local replaceNowButton, _ = Gui.createLabelButton(charactersTab, "Replace Humanoid Now", function()
+    BFS.bindToExit("Disconnect Jump", disconnectJump)
+
+    if BFS.Config.Value.replaceHumanoid then
+        local replaceNowButton, _ = BFS.UI.createLabelButton(charactersTab, "Replace Humanoid Now", function()
             replaceHumanoid(LocalPlayer.Character, true)
         end)
 
-        replaceNowButton.Position = UDim2.fromOffset(0, cGui.CheckboxSize)
+        replaceNowButton.Position = UDim2.fromOffset(0, BFS.UIConsts.CheckboxSize)
     end
 
     local waitingForSwitch = false
@@ -815,22 +174,22 @@ do  -- characters
     end
 
     for k, name in pairs(cCharacters) do
-        Gui.createLabelButton(characterScroll, name, function()
+        BFS.UI.createLabelButton(characterScroll, name, function()
             switchCharacter(name)
         end)
     end
-end -- characters -- globals exposed: disconnectJump
+end -- characters
 
 do  -- options
     local cOptionSpacing = 5
 
-    local optionsTab = tabControl:createTab("Options", "2O", "TabOptions")
+    local optionsTab = BFS.TabControl:createTab("Options", "2O", "TabOptions")
 
-    Gui.createListLayout(optionsTab, Enum.HorizontalAlignment.Center, Enum.VerticalAlignment.Center, cOptionSpacing)
+    BFS.UI.createListLayout(optionsTab, Enum.HorizontalAlignment.Center, Enum.VerticalAlignment.Center, cOptionSpacing)
 
     local function createOptionsButton(labelText, cb)
-        Gui.createLabelButtonLarge(optionsTab, labelText, function()
-            tabControl:closeAllTabs()
+        BFS.UI.createLabelButtonLarge(optionsTab, labelText, function()
+            BFS.TabControl:closeAllTabs()
             cb()
         end)
     end
@@ -876,14 +235,14 @@ do  -- knowledgebase UI
     local docsFrame = Instance.new("Frame")
     docsFrame.Name = "Knowledgebase"
     docsFrame.Transparency = 1
-    docsFrame.BackgroundColor3 = cGui.BackgroundColorDark
+    docsFrame.BackgroundColor3 = BFS.UIConsts.BackgroundColorDark
     docsFrame.BorderSizePixel = 1
     docsFrame.AnchorPoint = Vector2.new(0.5, 0.5)
     docsFrame.Size = UDim2.fromScale(cDocsWidth, cDocsHeight)
     docsFrame.Position = cDocsPosClosed
-    docsFrame.Parent = root
+    docsFrame.Parent = BFS.Root
 
-    local docsClose = Gui.createText(docsFrame, cDocsCloseSize)
+    local docsClose = BFS.UI.createText(docsFrame, cDocsCloseSize)
     docsClose.Active = true
     docsClose.TextXAlignment = Enum.TextXAlignment.Center
     docsClose.TextYAlignment = Enum.TextYAlignment.Center
@@ -892,16 +251,16 @@ do  -- knowledgebase UI
     docsClose.Position = UDim2.fromScale(1, 0)
     docsClose.Text = "x"
 
-    local docsContentScroll = Gui.createScroll(docsFrame)
+    local docsContentScroll = BFS.UI.createScroll(docsFrame)
 
-    local docsTitle = Gui.createText(docsContentScroll, cDocsTitleHeight * 0.9)
+    local docsTitle = BFS.UI.createText(docsContentScroll, cDocsTitleHeight * 0.9)
     docsTitle.TextXAlignment = Enum.TextXAlignment.Left
     docsTitle.TextYAlignment = Enum.TextYAlignment.Center
     docsTitle.Size = UDim2.new(1, -cDocsPadding, 0, cDocsTitleHeight)
     docsTitle.Position = UDim2.fromOffset(cDocsPadding, cDocsPadding)
     docsTitle.TextTruncate = Enum.TextTruncate.AtEnd
 
-    local docsContent = Gui.createText(docsContentScroll, 18)
+    local docsContent = BFS.UI.createText(docsContentScroll, 18)
     docsContent.TextXAlignment = Enum.TextXAlignment.Left
     docsContent.TextYAlignment = Enum.TextYAlignment.Bottom
     docsContent.AutomaticSize = Enum.AutomaticSize.Y
@@ -952,16 +311,16 @@ do  -- knowledgebase UI
         end
     end)
 
-    local docsTab = tabControl:createTab("Knowledgebase", "3K", "TabDocs")
+    local docsTab = BFS.TabControl:createTab("Knowledgebase", "3K", "TabDocs")
 
-    local docsScroll = Gui.createListScroll(docsTab)
+    local docsScroll = BFS.UI.createListScroll(docsTab)
 
     function createKnowledgebaseCategory(name)
-        Gui.createCategoryLabel(docsScroll, name)
+        BFS.UI.createCategoryLabel(docsScroll, name)
     end
 
     function addDoc(info)
-        Gui.createLabelButton(docsScroll, info.Label, function()
+        BFS.UI.createLabelButton(docsScroll, info.Label, function()
             openPage(info)
         end)
     end
@@ -1358,9 +717,9 @@ do  -- animation UI
     local function adjustSpeed(target)
         if speed == target then return end
 
-        log("adjusting speed to "..tostring(num))
+        BFS.log("adjusting speed to "..tostring(target))
 
-        for k, v in pairs(activeAnimations) do
+        for _, v in pairs(activeAnimations) do
             if v then
                 v:AdjustSpeed(target)
             end
@@ -1369,15 +728,15 @@ do  -- animation UI
         speed = target
     end
 
-    local animationsTab = tabControl:createTab("Animations", "4A", "TabAnims")
+    local animationsTab = BFS.TabControl:createTab("Animations", "4A", "TabAnims")
 
     local speedField = Instance.new("TextBox")
     speedField.ClearTextOnFocus = false
-    speedField.BackgroundColor3 = cGui.BackgroundColorLight
+    speedField.BackgroundColor3 = BFS.UIConsts.BackgroundColorLight
     speedField.BorderSizePixel = 1
-    speedField.Font = cGui.Font
-    speedField.TextSize = cGui.ButtonHeightLarge * 0.8
-    speedField.TextColor3 = cGui.ForegroundColor
+    speedField.Font = BFS.UIConsts.Font
+    speedField.TextSize = BFS.UIConsts.ButtonHeightLarge * 0.8
+    speedField.TextColor3 = BFS.UIConsts.ForegroundColor
     speedField.Text = ""
     speedField.PlaceholderColor3 = Color3.fromRGB(127, 127, 127)
     speedField.PlaceholderText = "Speed"
@@ -1398,7 +757,7 @@ do  -- animation UI
         end
     end)
 
-    local animationsScroll = Gui.createListScroll(animationsTab)
+    local animationsScroll = BFS.UI.createListScroll(animationsTab)
     animationsScroll.Size = animationsScroll.Size - UDim2.fromOffset(0, cSpeedFieldSize + cSpeedFieldPadding)
     animationsScroll.Position = animationsScroll.Position + UDim2.fromOffset(0, cSpeedFieldSize + cSpeedFieldPadding)
 
@@ -1412,13 +771,15 @@ do  -- animation UI
         end
     end
 
-    function stopAllAnimations()
+    local function stopAllAnimations()
         for k, v in pairs(activeAnimations) do
             if v then
                 stopAnimation(k)
             end
         end
     end
+
+    BFS.bindToExit("Stop All Animations", stopAllAnimations)
 
     local function playAnimation(id, cb)
         stopAnimation(id)
@@ -1443,13 +804,13 @@ do  -- animation UI
     end
 
     function createAnimationCategory(name)
-        Gui.createCategoryLabel(animationsScroll, name)
+        BFS.UI.createCategoryLabel(animationsScroll, name)
     end
 
     function createAnimationButton(info)
         local active = false
 
-        Gui.createLabelButtonLarge(animationsScroll, info.Name, function(setActive)
+        BFS.UI.createLabelButtonLarge(animationsScroll, info.Name, function(setActive)
             active = not active
 
             if active then
@@ -1465,10 +826,14 @@ do  -- animation UI
         end)
     end
 
-    lCharacter3 = LocalPlayer.CharacterAdded:Connect(function(char)
+    local lCharacter = LocalPlayer.CharacterAdded:Connect(function(char)
         stopAllAnimations()
     end)
-end -- animation UI -- globals exposed: createAnimationButton, createAnimationCategory, stopAllAnimations, lCharacter3
+
+    BFS.bindToExit("Animations: Unbind CharacterAdded", function()
+        lCharacter:Disconnect()
+    end)
+end -- animation UI -- globals exposed: createAnimationButton, createAnimationCategory, lCharacter3
 
 do  -- animations
     local function addAnimation(name, id)
@@ -1516,15 +881,15 @@ do  -- animations
 end -- animations
 
 do  -- ?
-    local unknownTab = tabControl:createTab("?", "5?", "TabWaypoints")
+    local unknownTab = BFS.TabControl:createTab("?", "5?", "TabWaypoints")
 end -- ?
 
 do  -- hats come alive
-    debugL = Gui.createText(root, 18)
-    debugL.Visible = config.Value.debug
+    debugL = BFS.UI.createText(BFS.Root, 18)
+    debugL.Visible = BFS.Config.Value.debug
     debugL.AnchorPoint = Vector2.new(0.5, 0)
     debugL.BackgroundTransparency = 0.5
-    debugL.BackgroundColor3 = cGui.BackgroundColor
+    debugL.BackgroundColor3 = BFS.UIConsts.BackgroundColor
     debugL.RichText = true
     debugL.Position = UDim2.fromScale(0.5, 0)
     debugL.AutomaticSize = Enum.AutomaticSize.XY
@@ -1557,7 +922,7 @@ do  -- hats come alive
             local part = weld.Part1
 
             local humanRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            local shouldTp = config.Value.orbitTp
+            local shouldTp = BFS.Config.Value.orbitTp
 
             for k, v in pairs(part:GetDescendants()) do
                 if v:IsA("Weld") then
@@ -1777,7 +1142,7 @@ do  -- hats come alive
         return debugReport
     end
 
-    lInputB = INPUT.InputBegan:Connect(function(input, handled)
+    local lInputB = INPUT.InputBegan:Connect(function(input, handled)
         if not handled and input.UserInputType == Enum.UserInputType.MouseButton3 then
             draggedAway = tpTarget
             resetTpTarget()
@@ -1785,20 +1150,20 @@ do  -- hats come alive
         end
     end)
 
-    lInputC = INPUT.InputChanged:Connect(function(input, handled)
+    local lInputC = INPUT.InputChanged:Connect(function(input, handled)
         if not handled and input.UserInputType == Enum.UserInputType.MouseMovement and mousePos then
             mousePos = input.Position
         end
     end)
 
-    lInputE = INPUT.InputEnded:Connect(function(input, handled)
+    local lInputE = INPUT.InputEnded:Connect(function(input, handled)
         if not handled and input.UserInputType == Enum.UserInputType.MouseButton3 then
             mousePos = nil
             draggedAway = nil
         end
     end)
 
-    lStepped = RUN.Stepped:Connect(function(t, dT)
+    local lStepped = RUN.Stepped:Connect(function(t, dT)
         local idx = 0
         local raycastPos
 
@@ -1852,7 +1217,7 @@ do  -- hats come alive
         debugL.Text = debugStr
     end)
 
-    lHeartbeat = RUN.Heartbeat:Connect(function()
+    local lHeartbeat = RUN.Heartbeat:Connect(function()
         for k, info in pairs(parts) do
             if info then
                 info.Part.Velocity = Vector3.new(0, 35, 0)
@@ -1860,16 +1225,27 @@ do  -- hats come alive
         end
     end)
 
-    lCharacter2 = LocalPlayer.CharacterAdded:Connect(function(char)
+    local lCharacter = LocalPlayer.CharacterAdded:Connect(function(char)
         parts = {}
         resetTpTarget()
     end)
-end -- hats come alive -- globals exposed: makeAlive, lHeartbeat, lStepped, lInputB, lInputC, lInputE, lCharacter2, debugL
+
+    BFS.bindToExit("HCA: Clean up", function()
+        debugL:Destroy()
+
+        lHeartbeat:Disconnect()
+        lStepped:Disconnect()
+        lInputB:Disconnect()
+        lInputC:Disconnect()
+        lInputE:Disconnect()
+        lCharacter:Disconnect()
+    end)
+end -- hats come alive -- globals exposed: makeAlive, debugL
 
 do  -- welds
-    local weldsTab = tabControl:createTab("Remove Welds", "6R", "TabWelds")
+    local weldsTab = BFS.TabControl:createTab("Remove Welds", "6R", "TabWelds")
 
-    local weldsScroll = Gui.createListScroll(weldsTab, 2)
+    local weldsScroll = BFS.UI.createListScroll(weldsTab, 2)
 
     local savedLocation
     local inProgress = 0
@@ -1924,7 +1300,7 @@ do  -- welds
         local label
         local tween
 
-        local labelInfo = Gui.createLabelButtonLarge(weldsScroll, weld.Name, function(setActive, type)
+        local labelInfo = BFS.UI.createLabelButtonLarge(weldsScroll, weld.Name, function(setActive, type)
             if not weld.Parent then return end
 
             if type == Enum.UserInputType.MouseButton1 then
@@ -1994,36 +1370,26 @@ do  -- welds
 
     local function setChar(char)
         updateChar(char)
-
-        --[[
-        lCharacterChild = char.ChildAdded:Connect(function(child)
-            if child:IsA("Tool") then
-                updateChar(char)
-            end
-        end)
-
-        lCharacterChildR = char.DescendantRemoving:Connect(function(inst)
-            if not inst:IsA("Weld") and not inst:IsA("Motor6D") then
-                updateChar(char)
-            end
-        end)
-        ]]
     end
 
-    lCharacter = LocalPlayer.CharacterAdded:Connect(function(char)
+    local lCharacter = LocalPlayer.CharacterAdded:Connect(function(char)
         setChar(char)
     end)
 
+    BFS.bindToExit("Welds: Unbind CharacterAdded", function()
+        lCharacter:Disconnect()
+    end)
+
     if LocalPlayer.Character then setChar(LocalPlayer.Character) end
-end -- welds -- globals exposed: lCharacter, lCharacterChild, lCharacterChildR
+end -- welds
 
 do  -- settings
-    local settingsTab = tabControl:createTab("Settings", "7S", "TabSettings")
+    local settingsTab = BFS.TabControl:createTab("Settings", "7S", "TabSettings")
 
-    local settingsScroll = Gui.createListScroll(settingsTab)
+    local settingsScroll = BFS.UI.createListScroll(settingsTab)
 
     local function createSettingsCategory(name)
-        Gui.createCategoryLabel(settingsScroll, name)
+        BFS.UI.createCategoryLabel(settingsScroll, name)
     end
 
     local currentlyBinding = nil
@@ -2034,7 +1400,7 @@ do  -- settings
         local label = nil
 
         local function getName()
-            local bindText = binds.Keybinds[name]
+            local bindText = BFS.Binds.Keybinds[name]
             if bindText == -1 then bindText = "NONE" end
 
             return name.." ("..bindText..")"
@@ -2048,11 +1414,11 @@ do  -- settings
             labelInfo.SetActive(false)
 
             wait(0.2)
-            binds.Disabled = false
+            BFS.Binds.Disabled = false
             currentlyBinding = nil
         end
 
-        labelInfo = Gui.createLabelButtonLarge(settingsScroll, getName(), function(setActive, type)
+        labelInfo = BFS.UI.createLabelButtonLarge(settingsScroll, getName(), function(setActive, type)
             if type == Enum.UserInputType.MouseButton1 then
                 if currentlyBinding then
                     if currentlyBinding == name then
@@ -2064,7 +1430,7 @@ do  -- settings
                     listener = INPUT.InputBegan:Connect(function(input)
                         if input.UserInputType == Enum.UserInputType.Keyboard and
                             not INPUT:GetFocusedTextBox() then
-                            binds:rebind(name, input.KeyCode)
+                            BFS.Binds:rebind(name, input.KeyCode)
 
                             stopBinding()
                             setActive(false)
@@ -2074,11 +1440,11 @@ do  -- settings
                     setActive(true)
 
                     label.Text = "press a key..."
-                    binds.Disabled = true
+                    BFS.Binds.Disabled = true
                     currentlyBinding = name
                 end
             elseif type == Enum.UserInputType.MouseButton2 then
-                binds:unbind(name)
+                BFS.Binds:unbind(name)
                 label.Text = getName()
             end
         end)
@@ -2095,12 +1461,12 @@ do  -- settings
     end
 
     local function addCheckbox(label, field, cb)
-        Gui.createCheckbox(settingsScroll, label, function(checked)
-            config.Value[field] = checked
-            config:save()
+        BFS.UI.createCheckbox(settingsScroll, label, function(checked)
+            BFS.Config.Value[field] = checked
+            BFS.Config:save()
 
             if cb then cb(checked) end
-        end, config.Value[field])
+        end, BFS.Config.Value[field])
     end
 
     createSettingsCategory("Weld Options")
@@ -2119,9 +1485,9 @@ do  -- info
     cInfoText = cInfoText.."Thank you, "..LocalPlayer.Name.."!"
 
     cInfoLabel = "Info"
-    local infoTab = tabControl:createTab(cInfoLabel, "I")
+    local infoTab = BFS.TabControl:createTab(cInfoLabel, "I")
 
-    local infoText = Gui.createText(infoTab, 18)
+    local infoText = BFS.UI.createText(infoTab, 18)
     infoText.TextXAlignment = Enum.TextXAlignment.Center
     infoText.TextYAlignment = Enum.TextYAlignment.Center
     infoText.Size = UDim2.fromScale(1, 1)
@@ -2152,7 +1518,7 @@ do  -- minimap
         tooltipFrame.AnchorPoint = Vector2.new(0, 0)
         tooltipFrame.AutomaticSize = Enum.AutomaticSize.XY
         tooltipFrame.BackgroundTransparency = 0.25
-        tooltipFrame.BackgroundColor3 = cGui.BackgroundColor
+        tooltipFrame.BackgroundColor3 = BFS.UIConsts.BackgroundColor
         tooltipFrame.BorderSizePixel = 0
         tooltipFrame.Parent = parent
 
@@ -2167,7 +1533,7 @@ do  -- minimap
     end
 
     function TooltipProvider:createText(size)
-        local text = Gui.createText(self.Frame, size)
+        local text = BFS.UI.createText(self.Frame, size)
         text.AutomaticSize = Enum.AutomaticSize.XY
         text.TextWrapped = false
         text.RichText = true
@@ -2310,7 +1676,7 @@ do  -- minimap
     end
 
     function MapSeat:CreateTooltip(tp)
-        Gui.createListLayout(tp.Frame, Enum.HorizontalAlignment.Left)
+        BFS.UI.createListLayout(tp.Frame, Enum.HorizontalAlignment.Left)
 
         local headerText = tp:createText(24)
         headerText.Text = "<b>Seat</b>"
@@ -2382,7 +1748,6 @@ do  -- minimap
         frame.BackgroundTransparency = 1
         frame.BorderSizePixel = 0
         frame.Size = UDim2.fromOffset(cIconSize, cIconSize)
-        frame.Parent = parent
 
         local dot = Instance.new("Frame")
         dot.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -2398,7 +1763,7 @@ do  -- minimap
         icon.BorderSizePixel = 0
         icon.Parent = frame
 
-        local label = Gui.createText(frame)
+        local label = BFS.UI.createText(frame)
         label.Position = UDim2.fromScale(1, 1)
         label.AutomaticSize = Enum.AutomaticSize.XY
         label.Visible = false
@@ -2475,7 +1840,7 @@ do  -- minimap
         local cUsernameHeight = 24
         local cInfoHeight = 15
 
-        Gui.createListLayout(tp.Frame, Enum.HorizontalAlignment.Left)
+        BFS.UI.createListLayout(tp.Frame, Enum.HorizontalAlignment.Left)
 
         local usernameText = tp:createText(cUsernameHeight)
         usernameText.Text = "<b>"..self.Player.Name.."</b>"
@@ -2543,7 +1908,7 @@ do  -- minimap
     end
 
     function Waypoint:CreateTooltip(tp)
-        Gui.createListLayout(tp.Frame, Enum.HorizontalAlignment.Left)
+        BFS.UI.createListLayout(tp.Frame, Enum.HorizontalAlignment.Left)
 
         local name = tp:createText(24)
         name.Text = "<b>"..self.Name.."</b>"
@@ -2579,10 +1944,10 @@ do  -- minimap
         mapFrameO.AnchorPoint = Vector2.new(0, 1)
         mapFrameO.Position = UDim2.fromScale(0, 1)
         mapFrameO.Size = UDim2.fromScale(0, 0)
-        mapFrameO.BackgroundColor3 = cGui.BackgroundColor
+        mapFrameO.BackgroundColor3 = BFS.UIConsts.BackgroundColor
         mapFrameO.BackgroundTransparency = 0.5
         mapFrameO.BorderSizePixel = 3
-        mapFrameO.BorderColor3 = cGui.ForegroundColor
+        mapFrameO.BorderColor3 = BFS.UIConsts.ForegroundColor
         mapFrameO.ClipsDescendants = true
         mapFrameO.Parent = parent
 
@@ -2804,7 +2169,7 @@ do  -- minimap
         local active = workspace.ActiveZone:FindFirstChild(name)
         if active then return active end
 
-        log("WARNING: Did you delete any zones? Failed to find "..name.."!")
+        BFS.log("WARNING: Did you delete any zones? Failed to find "..name.."!")
     end
 
     function Minimap:_plotAreas()
@@ -3069,14 +2434,14 @@ do  -- minimap
 end -- minimap -- globals exposed: Minimap
 
 do  -- update info
-    if config.Value.version ~= version then
-        local tabButtonInfo = tabControl:createTabButton("Update Info", "!")
+    if BFS.Config.Value.version ~= version then
+        local tabButtonInfo = BFS.TabControl:createTabButton("Update Info", "!")
 
         tabButtonInfo.Tab.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 then
                 openPage(cChangelogInfo)
 
-                tabControl:removeTabButton(tabButtonInfo)
+                BFS.TabControl:removeTabButton(tabButtonInfo)
             end
         end)
 
@@ -3088,14 +2453,14 @@ do  -- update info
         local tween = TWEEN:Create(tabButtonInfo.Tab, tweenInfo, goal)
         tween:Play()
 
-        config.Value.version = version
-        config:save()
+        BFS.Config.Value.version = version
+        BFS.Config:save()
     end
 end -- update info
 
 do  -- announcements
     --[[
-    local tabButtonInfo = tabControl:createTabButton("Announcement", "!A3!")
+    local tabButtonInfo = BFS.TabControl:createTabButton("Announcement", "!A3!")
 
     tabButtonInfo.Tab.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -3107,53 +2472,28 @@ end -- announcements
 
 local guiVisible = true
 
-binds:bind("HideGui", function()
+BFS.Binds:bind("HideGui", function()
     guiVisible = not guiVisible
 
-    tabControl:setTabsVisible(guiVisible)
+    BFS.TabControl:setTabsVisible(guiVisible)
     secondaryRoot.Visible = guiVisible
 end)
 
 local map = nil
 
-binds:bind("MapVis", function()
+BFS.Binds:bind("MapVis", function()
     if not map then
         map = Minimap.new(secondaryRoot)
+        BFS.bindToExit("Destroy Map", function()
+            map:destroy()
+        end)
     elseif guiVisible then
         map:setVisible(not map.FrameOuter.Visible)
     end
 end)
 
-binds:bind("MapView", function()
+BFS.Binds:bind("MapView", function()
     if map then
         map:setExpanded(not map.Expanded)
     end
-end)
-
-binds:bind("Exit", function()
-    root:Destroy()
-    toggleButton.Visible = true -- reenable the default character selector
-    settings.Visible = true -- reenable the default settings
-    lCharacter:Disconnect()
-    -- if lCharacterChild then lCharacterChild:Disconnect() end
-    -- if lCharacterChildR then lCharacterChildR:Disconnect() end
-    disconnectJump()
-    stopAllAnimations()
-
-    binds:destroy()
-
-    lHeartbeat:Disconnect()
-    lStepped:Disconnect()
-    lInputB:Disconnect()
-    lInputC:Disconnect()
-    lInputE:Disconnect()
-    lCharacter2:Disconnect()
-
-    lCharacter3:Disconnect()
-
-    if map then
-        map:destroy()
-    end
-
-    getgenv().BF_LOADED = false
 end)
