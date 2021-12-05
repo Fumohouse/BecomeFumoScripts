@@ -6,7 +6,8 @@
 local BFS = getgenv().BFS
 
 if not BFS then
-    error("BFS core components are not loaded!")
+    loadstring(game:HttpGet(("https://gist.githubusercontent.com/kyoseki/07f37b493f46895e67339e85c223423c/raw/4779212b7dd49d508705700a31d7ea1b3e262013/gui.lua"), true))()
+    BFS = getgenv().BFS
 end
 
 local cDefaultConfig = {
