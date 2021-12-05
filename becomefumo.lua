@@ -9,7 +9,7 @@ if not BFS then
     error("BFS core components are not loaded!")
 end
 
-version = "1.5.7"
+version = "1.5.8"
 
 do  -- double load prevention
     if BF_LOADED then
@@ -32,15 +32,13 @@ end -- double load prevention
 -- services
 --
 
-COREGUI = game:GetService("CoreGui")
-TWEEN = game:GetService("TweenService")
-INPUT = game:GetService("UserInputService")
-REPLICATED = game:GetService("ReplicatedStorage")
-PLAYERS = game:GetService("Players")
-RUN = game:GetService("RunService")
-HTTP = game:GetService("HttpService")
+local TweenService = game:GetService("TweenService")
+local UserInput = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 
-LocalPlayer = PLAYERS.LocalPlayer
+local LocalPlayer = Players.LocalPlayer
 
 do  -- disable stuff
     local mainGui = LocalPlayer:FindFirstChild("PlayerGui"):FindFirstChild("MainGui")
@@ -56,7 +54,7 @@ do  -- disable stuff
     end)
 end -- disable stuff
 
-secondaryRoot = Instance.new("Frame")
+local secondaryRoot = Instance.new("Frame")
 secondaryRoot.Size = UDim2.fromScale(1, 1)
 secondaryRoot.BackgroundTransparency = 1
 secondaryRoot.BorderSizePixel = 0
@@ -67,18 +65,16 @@ secondaryRoot.Parent = BFS.Root
 --
 
 function teleport(pos)
-    local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+    local char = LocalPlayer.Character
+    local hum = char:FindFirstChildOfClass("Humanoid")
 
     if hum and hum.SeatPart then
         hum.Sit = false
         wait()
     end
 
-    local root = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not root then return end
-
-    local origPos = root.CFrame
-    root.CFrame = pos
+    local origPos = char:GetPrimaryPartCFrame()
+    char:SetPrimaryPartCFrame(pos)
 
     return origPos
 end
@@ -86,7 +82,7 @@ end
 do  -- characters
     local cCharacters = {}
 
-    for k, v in pairs(LocalPlayer.PlayerGui.MainGui.MainFrame.ScrollingFrame:GetChildren()) do -- steal from the gui instead of the replicated list, which does not include badge chars
+    for _, v in pairs(LocalPlayer.PlayerGui.MainGui.MainFrame.ScrollingFrame:GetChildren()) do -- steal from the gui instead of the replicated list, which does not include badge chars
         if v:IsA("TextButton") then
             cCharacters[#cCharacters + 1] = v.Name
         end
@@ -128,8 +124,8 @@ do  -- characters
             if not jumpListener then
                 BFS.log("connecting jump listener")
 
-                jumpListener = INPUT.InputBegan:Connect(function(input)
-                    if not INPUT:GetFocusedTextBox() and
+                jumpListener = UserInput.InputBegan:Connect(function(input)
+                    if not UserInput:GetFocusedTextBox() and
                         input.UserInputType == Enum.UserInputType.Keyboard and
                         input.KeyCode == Enum.KeyCode.Space then
                             newHum.Jump = true
@@ -162,7 +158,7 @@ do  -- characters
     local function switchCharacter(name)
         disconnectJump()
 
-        REPLICATED.ChangeChar:FireServer(name)
+        ReplicatedStorage.ChangeChar:FireServer(name)
 
         if waitingForSwitch or not shouldReplaceHumanoid then return end
         waitingForSwitch = true
@@ -173,7 +169,7 @@ do  -- characters
         waitingForSwitch = false
     end
 
-    for k, name in pairs(cCharacters) do
+    for _, name in pairs(cCharacters) do
         BFS.UI.createLabelButton(characterScroll, name, function()
             switchCharacter(name)
         end)
@@ -198,7 +194,7 @@ do  -- options
         if _G.GlobalDebounce then return end
 
         _G.GlobalDebounce = true
-        REPLICATED.ClientUIEvents.OpenClose:Fire(name, true)
+        ReplicatedStorage.ClientUIEvents.OpenClose:Fire(name, true)
         wait(0.6)
         _G.GlobalDebounce = false
     end
@@ -207,7 +203,7 @@ do  -- options
         if _G.GlobalDebounce then return end
 
         _G.GlobalDebounce = true
-        REPLICATED.UIRemotes.SetColl:FireServer()
+        ReplicatedStorage.UIRemotes.SetColl:FireServer()
         wait(1)
         _G.GlobalDebounce = false
     end)
@@ -285,7 +281,7 @@ do  -- knowledgebase UI
             goal.Transparency = 1
         end
 
-        local tween = TWEEN:Create(docsFrame, tweenInfo, goal)
+        local tween = TweenService:Create(docsFrame, tweenInfo, goal)
 
         tween:Play()
 
@@ -353,6 +349,10 @@ At any time, you can press [0] to close the script and reset everything back to 
     addDoc(cAboutInfo)
 
     local cChangelogContent = [[
+<b>1.5.8</b>
+- The GUI has been split into another file, which is publicly accessible.
+- (BORING!) Various code quality and conventions improvements
+
 <b>1.5.7</b>
 - Fix error when closing script with map not loaded
 - Fix bugs with right click to flash in 6R
@@ -924,14 +924,14 @@ do  -- hats come alive
             local humanRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
             local shouldTp = BFS.Config.Value.orbitTp
 
-            for k, v in pairs(part:GetDescendants()) do
+            for _, v in pairs(part:GetDescendants()) do
                 if v:IsA("Weld") then
                     makeAlive(v, cb)
                     if cb then cb(v) end
                 end
             end
 
-            for k, v in pairs(LocalPlayer.Character:GetDescendants()) do
+            for _, v in pairs(LocalPlayer.Character:GetDescendants()) do
                 if v ~= weld and v:IsA("Weld") and v.Part1 == weld.Part1 then
                     v:Destroy()
                     if cb then cb(v) end
@@ -951,7 +951,7 @@ do  -- hats come alive
                 awaitingStart = awaitingStart - 1
 
                 while awaitingStart > 1 do
-                    RUN.Stepped:Wait()
+                    RunService.Stepped:Wait()
                 end
 
                 LocalPlayer.CameraMode = Enum.CameraMode.LockFirstPerson
@@ -982,7 +982,7 @@ do  -- hats come alive
             local totalOffset = weld.C0 * weld.C1:Inverse()
 
             while not table.find(commonWelds, checkWeld.Part0.Name) do
-                for k, desc in pairs(LocalPlayer.Character:GetDescendants()) do
+                for _, desc in pairs(LocalPlayer.Character:GetDescendants()) do
                     if desc:IsA("Weld") and desc.Part1 == checkWeld.Part0 then
                         totalOffset = desc.C0 * desc.C1:Inverse() * totalOffset
                         checkWeld = desc
@@ -1000,7 +1000,7 @@ do  -- hats come alive
 
             parts[#parts+1] = partInfo
 
-            local lTouch = part.Touched:Connect(function(otherPart)
+            part.Touched:Connect(function(otherPart)
                 local hum = otherPart.Parent:FindFirstChildOfClass("Humanoid")
 
                 if not hum then
@@ -1067,7 +1067,7 @@ do  -- hats come alive
                 else
                     targetPart = tpTarget.Torso.Torso
 
-                    for k, v in pairs(parts) do
+                    for _, v in pairs(parts) do
                         if v and v.Part.Name == info.TargetName then
                             targetPart = v.Part
                         end
@@ -1142,7 +1142,7 @@ do  -- hats come alive
         return debugReport
     end
 
-    local lInputB = INPUT.InputBegan:Connect(function(input, handled)
+    local lInputB = UserInput.InputBegan:Connect(function(input, handled)
         if not handled and input.UserInputType == Enum.UserInputType.MouseButton3 then
             draggedAway = tpTarget
             resetTpTarget()
@@ -1150,20 +1150,20 @@ do  -- hats come alive
         end
     end)
 
-    local lInputC = INPUT.InputChanged:Connect(function(input, handled)
+    local lInputC = UserInput.InputChanged:Connect(function(input, handled)
         if not handled and input.UserInputType == Enum.UserInputType.MouseMovement and mousePos then
             mousePos = input.Position
         end
     end)
 
-    local lInputE = INPUT.InputEnded:Connect(function(input, handled)
+    local lInputE = UserInput.InputEnded:Connect(function(input, handled)
         if not handled and input.UserInputType == Enum.UserInputType.MouseButton3 then
             mousePos = nil
             draggedAway = nil
         end
     end)
 
-    local lStepped = RUN.Stepped:Connect(function(t, dT)
+    local lStepped = RunService.Stepped:Connect(function(t, dT)
         local idx = 0
         local raycastPos
 
@@ -1191,7 +1191,7 @@ do  -- hats come alive
             debugStr = "Not tracking anybody"
         end
 
-        for k, info in pairs(parts) do
+        for _, info in pairs(parts) do
             if info then
                 info.Part.Anchored = false
                 local report = updatePart(info, raycastPos, t, dT, idx)
@@ -1217,8 +1217,8 @@ do  -- hats come alive
         debugL.Text = debugStr
     end)
 
-    local lHeartbeat = RUN.Heartbeat:Connect(function()
-        for k, info in pairs(parts) do
+    local lHeartbeat = RunService.Heartbeat:Connect(function()
+        for _, info in pairs(parts) do
             if info then
                 info.Part.Velocity = Vector3.new(0, 35, 0)
             end
@@ -1253,7 +1253,7 @@ do  -- welds
     local function deleteWeld(weld, cb)
         inProgress = inProgress + 1
 
-        for k, v in pairs(weld.Part1:GetChildren()) do -- destroying parts in this loop causes death.
+        for _, v in pairs(weld.Part1:GetChildren()) do -- destroying parts in this loop causes death.
             -- notify caller that something other than the weld was destroyed,
             -- mostly so welds that were deleted in this operation are also removed from the list
             cb(v)
@@ -1289,7 +1289,7 @@ do  -- welds
     local labels = {}
 
     local function removeWeldButton(weld)
-        for k, l in pairs(labels) do
+        for _, l in pairs(labels) do
             if l and l.Weld == weld then
                 l.Label:Destroy()
             end
@@ -1307,7 +1307,7 @@ do  -- welds
                 setActive(true)
 
                 deleteWeld(weld, function(p)
-                    for k, l in pairs(labels) do
+                    for _, l in pairs(labels) do
                         if l and l.Weld == p or l.Weld.Part0 == p or l.Weld.Part1 == p then
                             l.Label:Destroy()
                         end
@@ -1321,7 +1321,7 @@ do  -- welds
                 local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, 5, true)
                 local goal = {}
                 goal.Transparency = 1
-                tween = TWEEN:Create(weld.Part1, tweenInfo, goal)
+                tween = TweenService:Create(weld.Part1, tweenInfo, goal)
 
                 setActive(true)
                 tween:Play()
@@ -1355,13 +1355,13 @@ do  -- welds
     end
 
     local function updateChar(char)
-        for k, l in pairs(labels) do
+        for _, l in pairs(labels) do
             l.Label:Destroy()
         end
 
         labels = {}
 
-        for k, v in pairs(char:GetDescendants()) do
+        for _, v in pairs(char:GetDescendants()) do
             if v:IsA("Weld") or v:IsA("Motor6D") then
                 addWeld(v)
             end
@@ -1427,9 +1427,9 @@ do  -- settings
                         return
                     end
                 else
-                    listener = INPUT.InputBegan:Connect(function(input)
+                    listener = UserInput.InputBegan:Connect(function(input)
                         if input.UserInputType == Enum.UserInputType.Keyboard and
-                            not INPUT:GetFocusedTextBox() then
+                            not UserInput:GetFocusedTextBox() then
                             BFS.Binds:rebind(name, input.KeyCode)
 
                             stopBinding()
@@ -1456,7 +1456,7 @@ do  -- settings
 
     local cBinds = { "TabCharacters", "TabOptions", "TabDocs", "TabAnims", "TabWaypoints", "TabWelds", "TabSettings", "HideGui", "MapVis", "MapView", "Exit" }
 
-    for k, v in pairs(cBinds) do
+    for _, v in pairs(cBinds) do
         addBind(v)
     end
 
@@ -1509,10 +1509,9 @@ do  -- minimap
     -- :Clicked(input) (opt) - called on click
 
     function TooltipProvider.new(parent)
-        local obj = {}
-        setmetatable(obj, TooltipProvider)
+        local self = setmetatable({}, TooltipProvider)
 
-        obj.Parent = parent
+        self.Parent = parent
 
         local tooltipFrame = Instance.new("Frame")
         tooltipFrame.AnchorPoint = Vector2.new(0, 0)
@@ -1522,14 +1521,14 @@ do  -- minimap
         tooltipFrame.BorderSizePixel = 0
         tooltipFrame.Parent = parent
 
-        obj.Focus = nil
+        self.Focus = nil
 
-        obj.Frame = tooltipFrame
+        self.Frame = tooltipFrame
 
-        obj.Instances = {}
-        obj.Scale = 1
+        self.Instances = {}
+        self.Scale = 1
 
-        return obj
+        return self
     end
 
     function TooltipProvider:createText(size)
@@ -1544,7 +1543,7 @@ do  -- minimap
     function TooltipProvider:_mouseEnter(obj)
         if obj.ShowTooltip and not obj:ShowTooltip() then return end
 
-        local pos = INPUT:GetMouseLocation()
+        local pos = UserInput:GetMouseLocation()
 
         if self.Focus ~= obj then
             self.Frame:ClearAllChildren()
@@ -1621,8 +1620,7 @@ do  -- minimap
     MapBBox.__index = MapBBox
 
     function MapBBox.new(minimap, cf, size, color, colorB)
-        local obj = {}
-        setmetatable(obj, MapBBox)
+        local self = setmetatable({}, MapBBox)
 
         local quad = Instance.new("Frame")
         quad.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -1631,12 +1629,12 @@ do  -- minimap
         quad.BorderSizePixel = 1
         quad.BorderColor3 = colorB
 
-        obj.Map = minimap
-        obj.Root = quad
-        obj.CFrame = cf
-        obj.Size = size
+        self.Map = minimap
+        self.Root = quad
+        self.CFrame = cf
+        self.Size = size
 
-        return obj
+        return self
     end
 
     function MapBBox:UpdateSize(scaleFactor)
@@ -1663,12 +1661,12 @@ do  -- minimap
         local cSeatColor = Color3.fromRGB(38, 38, 38)
         local cSeatColorB = Color3.fromRGB(0, 0, 0)
 
-        local obj = setmetatable(MapBBox.new(minimap, seat.CFrame, seat.Size, cSeatColor, cSeatColorB), MapSeat)
+        local self = setmetatable(MapBBox.new(minimap, seat.CFrame, seat.Size, cSeatColor, cSeatColorB), MapSeat)
 
-        obj.Seat = seat
-        obj.TooltipObject = obj.Root
+        self.Seat = seat
+        self.TooltipObject = self.Root
 
-        return obj
+        return self
     end
 
     function MapSeat:ShowTooltip()
@@ -1716,15 +1714,14 @@ do  -- minimap
     FriendsCache.__index = FriendsCache
 
     function FriendsCache.new()
-        local obj = {}
-        setmetatable(obj, FriendsCache)
+        local self = setmetatable({}, FriendsCache)
 
-        obj.Value = nil
-        obj.LastCollected = 0
+        self.Value = nil
+        self.LastCollected = 0
 
-        obj:update()
+        self:update()
 
-        return obj
+        return self
     end
 
     function FriendsCache:update()
@@ -1738,8 +1735,7 @@ do  -- minimap
     PlayerDot.__index = PlayerDot
 
     function PlayerDot.new(player, cache, layers)
-        local obj = {}
-        setmetatable(obj, PlayerDot)
+        local self = setmetatable({}, PlayerDot)
 
         local cIconSize = 20
 
@@ -1769,24 +1765,24 @@ do  -- minimap
         label.Visible = false
         label.Text = player.Name
 
-        obj.TooltipObject = frame
-        obj.Frame = frame
-        obj.Dot = dot
-        obj.Icon = icon
-        obj.Label = label
+        self.TooltipObject = frame
+        self.Frame = frame
+        self.Dot = dot
+        self.Icon = icon
+        self.Label = label
 
-        obj.Player = player
-        obj.IsLocal = player == LocalPlayer
+        self.Player = player
+        self.IsLocal = player == LocalPlayer
 
-        obj.FriendsCache = cache
+        self.FriendsCache = cache
 
-        obj.Layers = layers
+        self.Layers = layers
 
-        obj.InfoText = nil
+        self.InfoText = nil
 
-        obj:update()
+        self:update()
 
-        return obj
+        return self
     end
 
     function PlayerDot:update()
@@ -1796,7 +1792,7 @@ do  -- minimap
             return
         end
 
-        for k, v in pairs(self.FriendsCache.Value) do
+        for _, v in pairs(self.FriendsCache.Value) do
             if v.VisitorId == self.Player.UserId then
                 self:setParent(self.Layers[2])
                 self.InfoText = "Friend"
@@ -1874,8 +1870,7 @@ do  -- minimap
     Waypoint.__index = Waypoint
 
     function Waypoint.new(minimap, name, loc, color)
-        local obj = {}
-        setmetatable(obj, Waypoint)
+        local self = setmetatable({}, Waypoint)
 
         local icon = Instance.new("ImageLabel")
         icon.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -1885,15 +1880,15 @@ do  -- minimap
         icon.BackgroundTransparency = 1
         icon.BorderSizePixel = 0
 
-        obj.Map = minimap
-        obj.Root = icon
+        self.Map = minimap
+        self.Root = icon
 
-        obj.Name = name
-        obj.CFrame = loc
+        self.Name = name
+        self.CFrame = loc
 
-        obj.TooltipObject = icon
+        self.TooltipObject = icon
 
-        return obj
+        return self
     end
 
     function Waypoint:UpdateSize(scaleFactor)
@@ -1927,18 +1922,17 @@ do  -- minimap
     Minimap.__index = Minimap
 
     function Minimap.new(parent)
-        local obj = {}
-        setmetatable(obj, Minimap)
+        local self = setmetatable({}, Minimap)
 
-        obj.Parent = parent
+        self.Parent = parent
 
-        local origin, maxPos = obj:_findWorldBounds()
-        obj.WorldOrigin = origin
-        obj.RealSize2 = maxPos - origin
+        local origin, maxPos = self:_findWorldBounds()
+        self.WorldOrigin = origin
+        self.RealSize2 = maxPos - origin
 
-        obj.ScaleFactor = 1.2
-        obj.ScaleFactorSmall = 1.2
-        obj.MapSizeSmall = UDim2.fromOffset(300, 300)
+        self.ScaleFactor = 1.2
+        self.ScaleFactorSmall = 1.2
+        self.MapSizeSmall = UDim2.fromOffset(300, 300)
 
         local mapFrameO = Instance.new("Frame")
         mapFrameO.AnchorPoint = Vector2.new(0, 1)
@@ -1951,7 +1945,7 @@ do  -- minimap
         mapFrameO.ClipsDescendants = true
         mapFrameO.Parent = parent
 
-        obj.FrameOuter = mapFrameO
+        self.FrameOuter = mapFrameO
 
         local mapFrameI = Instance.new("Frame")
         mapFrameI.BackgroundTransparency = 1
@@ -1959,71 +1953,71 @@ do  -- minimap
         mapFrameI.Position = UDim2.fromScale(0, 0)
         mapFrameI.Parent = mapFrameO
 
-        obj.FrameInner = mapFrameI
+        self.FrameInner = mapFrameI
 
-        obj.Tooltips = TooltipProvider.new(parent)
+        self.Tooltips = TooltipProvider.new(parent)
 
-        obj.AreaLayer = obj:createLayer()
-        obj.TerrainLayer = obj:createLayer()
-        obj.SeatLayer = obj:createLayer()
-        obj.PlayerLayerRandom = obj:createLayer()
-        obj.PlayerLayerSpecial = obj:createLayer()
-        obj.PlayerLayerSelf = obj:createLayer()
-        obj.WaypointLayer = obj:createLayer()
+        self.AreaLayer = self:createLayer()
+        self.TerrainLayer = self:createLayer()
+        self.SeatLayer = self:createLayer()
+        self.PlayerLayerRandom = self:createLayer()
+        self.PlayerLayerSpecial = self:createLayer()
+        self.PlayerLayerSelf = self:createLayer()
+        self.WaypointLayer = self:createLayer()
 
-        obj.PlayerLayers = { obj.PlayerLayerRandom, obj.PlayerLayerSpecial, obj.PlayerLayerSelf }
+        self.PlayerLayers = { self.PlayerLayerRandom, self.PlayerLayerSpecial, self.PlayerLayerSelf }
 
-        obj.MapObjects = {}
-        obj:_plotAreas()
-        obj:_plotTerrain()
-        obj:_plotWaypoints()
+        self.MapObjects = {}
+        self:_plotAreas()
+        self:_plotTerrain()
+        self:_plotWaypoints()
 
-        obj.Players = {}
-        obj.PlayerPositions = {}
-        obj.FriendsCache = FriendsCache.new()
+        self.Players = {}
+        self.PlayerPositions = {}
+        self.FriendsCache = FriendsCache.new()
 
-        for k, v in pairs(PLAYERS:GetPlayers()) do
-            obj:_playerConnect(v)
+        for _, v in pairs(Players:GetPlayers()) do
+            self:_playerConnect(v)
         end
 
-        obj._lConnect = PLAYERS.PlayerAdded:Connect(function(player)
-            obj:_playerConnect(player)
+        self._lConnect = Players.PlayerAdded:Connect(function(player)
+            self:_playerConnect(player)
         end)
 
-        obj._lDisconnect = PLAYERS.PlayerRemoving:Connect(function(player)
-            obj:_playerDisconnect(player)
+        self._lDisconnect = Players.PlayerRemoving:Connect(function(player)
+            self:_playerDisconnect(player)
         end)
 
-        obj._lHeartbeat = RUN.Heartbeat:Connect(function()
-            obj:_heartbeat()
+        self._lHeartbeat = RunService.Heartbeat:Connect(function()
+            self:_heartbeat()
         end)
 
-        obj._expandTween = nil
-        obj.Expanded = nil
-        obj:setExpanded(false)
+        self._expandTween = nil
+        self.Expanded = nil
+        self:setExpanded(false)
 
-        obj._dragStart = nil
-        obj._dragPosOrig = nil
+        self._dragStart = nil
+        self._dragPosOrig = nil
 
         mapFrameO.InputBegan:Connect(function(input)
-            obj:_inputB(input)
+            self:_inputB(input)
         end)
 
         mapFrameO.InputChanged:Connect(function(input)
-            obj:_inputC(input)
+            self:_inputC(input)
         end)
 
         mapFrameO.InputEnded:Connect(function(input)
-            obj:_inputE(input)
+            self:_inputE(input)
         end)
 
-        obj._lSizeChange = parent:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
-            obj:updateSizeO()
+        self._lSizeChange = parent:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+            self:updateSizeO()
         end)
 
-        obj:updateSizeO()
+        self:updateSizeO()
 
-        return obj
+        return self
     end
 
     function Minimap:createLayer()
@@ -2076,7 +2070,7 @@ do  -- minimap
             end
         end
 
-        for k, v in pairs(insts) do
+        for _, v in pairs(insts) do
             for _, part in pairs(v:GetDescendants()) do
                 scan(part)
             end
@@ -2086,7 +2080,7 @@ do  -- minimap
     end
 
     function Minimap:_findWorldBounds()
-        local posMin, posMax = self:_findBounds({ workspace.PlayArea, REPLICATED.Zones, workspace.ActiveZone })
+        local posMin, posMax = self:_findBounds({ workspace.PlayArea, ReplicatedStorage.Zones, workspace.ActiveZone })
         -- must scan ActiveZone for zones player is currently inside
         return Vector2.new(posMin.X, posMin.Z), Vector2.new(posMax.X, posMax.Z)
     end
@@ -2120,7 +2114,7 @@ do  -- minimap
             self.ScaleFactor = self.ScaleFactorSmall
         end
 
-        local tween = TWEEN:Create(self.FrameOuter, tweenInfo, goal)
+        local tween = TweenService:Create(self.FrameOuter, tweenInfo, goal)
         self._expandTween = tween
         tween:Play()
 
@@ -2148,13 +2142,13 @@ do  -- minimap
             self.FrameInner.Position = self.FrameInner.Position - UDim2.fromOffset(distance.X, distance.Y)
         end
 
-        for k, v in pairs(self.MapObjects) do
+        for _, v in pairs(self.MapObjects) do
             if v then
                 v:UpdateSize(self.ScaleFactor)
             end
         end
 
-        for k, v in pairs(self.Players) do
+        for _, v in pairs(self.Players) do
             if v then
                 v:UpdateSize(self.ScaleFactor)
                 self:plotPlayer(v.Player)
@@ -2163,7 +2157,7 @@ do  -- minimap
     end
 
     function Minimap:_findZone(name)
-        local rep = REPLICATED.Zones:FindFirstChild(name)
+        local rep = ReplicatedStorage.Zones:FindFirstChild(name)
         if rep then return rep end
 
         local active = workspace.ActiveZone:FindFirstChild(name)
@@ -2212,7 +2206,7 @@ do  -- minimap
         local cParkourSize = 4.0023837089539
         local cParkourEpsilon = 1e-2
 
-        for k, v in pairs(features) do -- not so important stuff
+        for _, v in pairs(features) do -- not so important stuff
             if v:IsA("Model") and v.Name == "stupid tree1" then -- single square trees
                 self:plotPartQuad(v:FindFirstChild("Part"), cTree, cTreeB)
             elseif v:IsA("Part") then
@@ -2231,7 +2225,7 @@ do  -- minimap
         local cBench = Color3.fromRGB(173, 125, 110)
         local cBenchB = Color3.fromRGB(173, 88, 62)
 
-        for k, v in pairs(features) do -- bench
+        for _, v in pairs(features) do -- bench
             if v:IsA("Model") and (v.Name == "Bench" or v.Name == "log") then
                 local cf, size = v:GetBoundingBox()
                 self:plotBBox(cf, size, cBench, cBenchB)
@@ -2239,8 +2233,8 @@ do  -- minimap
         end
 
         -- ALL SEATS!!!
-        for k, list in pairs({ features, workspace.ActiveZone:GetDescendants(), REPLICATED.Zones:GetDescendants() }) do
-            for k, v in pairs(list) do
+        for _, list in pairs({ features, workspace.ActiveZone:GetDescendants(), ReplicatedStorage.Zones:GetDescendants() }) do
+            for _, v in pairs(list) do
                 if v:IsA("Seat") then
                     local seatObj = MapSeat.new(self, v)
                     self:addMapObject(seatObj, self.SeatLayer)
@@ -2253,7 +2247,7 @@ do  -- minimap
         local cColorSpawn = Color3.fromRGB(255, 166, 193)
         local cColorSpawnB = Color3.fromRGB(247, 0, 74)
 
-        for k, v in pairs(spawns) do
+        for _, v in pairs(spawns) do
             self:plotPartQuad(v, cColorSpawn, cColorSpawnB)
         end
     end
@@ -2383,7 +2377,7 @@ do  -- minimap
     end
 
     function Minimap:_heartbeat()
-        for k, v in pairs(PLAYERS:GetPlayers()) do
+        for _, v in pairs(Players:GetPlayers()) do
             self:plotPlayer(v)
         end
 
@@ -2450,7 +2444,7 @@ do  -- update info
         local goal = {}
         goal.BackgroundColor3 = Color3.fromRGB(255, 165, 0)
 
-        local tween = TWEEN:Create(tabButtonInfo.Tab, tweenInfo, goal)
+        local tween = TweenService:Create(tabButtonInfo.Tab, tweenInfo, goal)
         tween:Play()
 
         BFS.Config.Value.version = version

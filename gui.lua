@@ -435,6 +435,7 @@ do -- exit
 	BFS.Binds:bind("Exit", function()
 		BFS.Root:Destroy()
 		BFS.Binds:destroy()
+        getgenv().BFS = null
 
 		for name, func in pairs(exitBinds) do
 			local success = pcall(func)
