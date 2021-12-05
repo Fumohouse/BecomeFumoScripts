@@ -352,6 +352,8 @@ At any time, you can press [0] to close the script and reset everything back to 
 <b>1.5.8</b>
 - The GUI has been split into another file, which is publicly accessible.
 - (BORING!) Various code quality and conventions improvements
+- Added a way to have custom orbit patterns
+    - Set using getgenv().orbitFunction - contact for details
 
 <b>1.5.7</b>
 - Fix error when closing script with map not loaded
@@ -1035,6 +1037,15 @@ do  -- hats come alive
         end)()
     end
 
+    local function defaultOrbitFunction(ctx)
+        local theta = (ctx.Time + 10 * ctx.PartIndex) * 3
+        local xOff = math.cos(theta)
+        local yOff = math.sin(theta)
+        local zOff = math.cos(theta * 2) / 2
+
+        return ctx.Pivot.Position + Vector3.new(xOff, zOff, yOff) * 2
+    end
+
     local function updatePart(info, raycastPos, t, dT, idx)
         local debugReport = {}
 
@@ -1046,6 +1057,27 @@ do  -- hats come alive
 
         local ang = ((t + 10 * idx) * math.pi) % (2 * math.pi)
 
+        local target = tpTarget or LocalPlayer.Character
+        local targetPart = target:FindFirstChild(info.TargetName)
+
+        if targetPart then
+            targetPart = targetPart:FindFirstChild(info.TargetName)
+        end
+
+        if not targetPart then
+            if tpTarget == LocalPlayer.Character then
+                targetPart = info.Weld.Part0
+            else
+                targetPart = tpTarget.Torso.Torso
+
+                for _, v in pairs(parts) do
+                    if v and v.Part.Name == info.TargetName then
+                        targetPart = v.Part
+                    end
+                end
+            end
+        end
+
         if raycastPos then
             debugReport.Type = "cast"
 
@@ -1054,26 +1086,6 @@ do  -- hats come alive
             info.Gyro.CFrame = CFrame.Angles(0, ang, 0)
         elseif tpTarget then
             debugReport.Type = "follow"
-
-            local targetPart = tpTarget:FindFirstChild(info.TargetName)
-
-            if targetPart then
-                targetPart = targetPart:FindFirstChild(info.TargetName)
-            end
-
-            if not targetPart then
-                if tpTarget == LocalPlayer.Character then
-                    targetPart = info.Weld.Part0
-                else
-                    targetPart = tpTarget.Torso.Torso
-
-                    for _, v in pairs(parts) do
-                        if v and v.Part.Name == info.TargetName then
-                            targetPart = v.Part
-                        end
-                    end
-                end
-            end
 
             debugReport.TargetPart = targetPart
 
@@ -1116,19 +1128,30 @@ do  -- hats come alive
         else
             debugReport.Type = "orbit"
 
-            local theta = (t + 10 * idx) * 3
-            local xOff = math.cos(theta)
-            local yOff = math.sin(theta)
-            local zOff = math.cos(theta * 2) / 2
-            local vOff = Vector3.new(xOff, zOff, yOff) * 2
+            -- Function should return either one value (the position of the part, global space)
+            -- or two values (the position and the rotation of the part, rotation being a CFrame (i.e. use CFrame.Angles or similar))
+            local orbitFunction = getgenv().orbitFunction or defaultOrbitFunction
+
+            local pivot
 
             if LocalPlayer.Character.Torso.Torso:FindFirstChild("Head") then
-                targetPos = LocalPlayer.Character.Head.Head.Position + vOff
+                pivot = LocalPlayer.Character.Head.Head.CFrame
             else
-                targetPos = LocalPlayer.Character.Torso.Torso.Position + vOff
+                pivot = LocalPlayer.Character.Torso.Torso.CFrame
             end
+
+            local pos, angle = orbitFunction({
+                Pivot = pivot, -- Pivot location (always head or torso) (CFrame)
+                Time = t, -- Game time (seconds) (Number)
+                PartIndex = idx, -- Part index, starting from 1 (Number)
+                PartInfo = info, -- Various information on the part orbitting (.Part - Part that is orbiting, .TotalOffset - CFrame offset from TargetPart to original weld location)
+                TargetPart = targetPart, -- Body part that the part was originally welded to (Part)
+            })
+
+            targetPos = pos
+            info.Gyro.CFrame = angle or CFrame.Angles(ang, ang, ang)
+
             alpha = 0.2
-            info.Gyro.CFrame = CFrame.Angles(ang, ang, ang)
         end
 
         local dist = math.sqrt((targetPos.X - info.Pos.Position.X)^2 + (targetPos.Y - info.Pos.Position.Y)^2)
