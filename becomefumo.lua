@@ -9,6 +9,27 @@ if not BFS then
     error("BFS core components are not loaded!")
 end
 
+local cDefaultConfig = {
+    version = nil, -- for version check
+    keybinds = {
+        TabCharacters = Enum.KeyCode.One.Name,
+        TabOptions = Enum.KeyCode.Two.Name,
+        TabDocs = Enum.KeyCode.Three.Name,
+        TabAnims = Enum.KeyCode.Four.Name,
+        TabWaypoints = Enum.KeyCode.Five.Name,
+        TabWelds = Enum.KeyCode.Six.Name,
+        TabSettings = Enum.KeyCode.Seven.Name,
+        HideGui = Enum.KeyCode.F1.Name,
+        MapVis = Enum.KeyCode.N.Name,
+        MapView = Enum.KeyCode.M.Name,
+    },
+    orbitTp = false,
+    debug = false,
+    replaceHumanoid = false,
+}
+
+BFS.Config:mergeDefaults(cDefaultConfig)
+
 version = "1.5.8"
 
 do  -- double load prevention
@@ -351,6 +372,7 @@ At any time, you can press [0] to close the script and reset everything back to 
     local cChangelogContent = [[
 <b>1.5.8</b>
 - The GUI has been split into another file, which is publicly accessible.
+    - It is now possible to create your own scripts with the same UI as BFS, or to extend the current script (but you should ask me how before you try).
 - (BORING!) Various code quality and conventions improvements
 - Added a way to have custom orbit patterns
     - Set using getgenv().orbitFunction - contact for details
@@ -1412,12 +1434,31 @@ do  -- settings
 
     local function createSettingsCategory(name)
         BFS.UI.createCategoryLabel(settingsScroll, name)
+
+        local frame = Instance.new("Frame")
+        frame.BackgroundTransparency = 1
+        frame.BorderSizePixel = 0
+        frame.Size = UDim2.fromScale(1, 0)
+        frame.AutomaticSize = Enum.AutomaticSize.Y
+        frame.Parent = settingsScroll
+
+        BFS.UI.createListLayout(frame)
+
+        return frame
     end
+
+    local bindFrame = createSettingsCategory("Keybinds")
 
     local currentlyBinding = nil
     local listener = nil
 
+    local bindButtons = {}
+
     local function addBind(name)
+        if bindButtons[name] then
+            return
+        end
+
         local labelInfo = nil
         local label = nil
 
@@ -1440,7 +1481,7 @@ do  -- settings
             currentlyBinding = nil
         end
 
-        labelInfo = BFS.UI.createLabelButtonLarge(settingsScroll, getName(), function(setActive, type)
+        labelInfo = BFS.UI.createLabelButtonLarge(bindFrame, getName(), function(setActive, type)
             if type == Enum.UserInputType.MouseButton1 then
                 if currentlyBinding then
                     if currentlyBinding == name then
@@ -1472,9 +1513,14 @@ do  -- settings
         end)
 
         label = labelInfo.Label
+        bindButtons[name] = labelInfo
     end
 
-    createSettingsCategory("Keybinds")
+    BFS.Binds.BindingsUpdated.Event:Connect(function()
+        for key, _ in pairs(BFS.Binds.Keybinds) do
+            addBind(key)
+        end
+    end)
 
     local cBinds = { "TabCharacters", "TabOptions", "TabDocs", "TabAnims", "TabWaypoints", "TabWelds", "TabSettings", "HideGui", "MapVis", "MapView", "Exit" }
 
@@ -1482,8 +1528,8 @@ do  -- settings
         addBind(v)
     end
 
-    local function addCheckbox(label, field, cb)
-        BFS.UI.createCheckbox(settingsScroll, label, function(checked)
+    local function addCheckbox(parent, label, field, cb)
+        BFS.UI.createCheckbox(parent, label, function(checked)
             BFS.Config.Value[field] = checked
             BFS.Config:save()
 
@@ -1491,10 +1537,10 @@ do  -- settings
         end, BFS.Config.Value[field])
     end
 
-    createSettingsCategory("Weld Options")
+    local weldFrame = createSettingsCategory("Weld Options")
 
-    addCheckbox("Orbit Teleport", "orbitTp")
-    addCheckbox("Debug", "debug", function(checked)
+    addCheckbox(weldFrame, "Orbit Teleport", "orbitTp")
+    addCheckbox(weldFrame, "Debug", "debug", function(checked)
         debugL.Visible = checked
     end)
 end -- settings

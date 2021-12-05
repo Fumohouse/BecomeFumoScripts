@@ -264,6 +264,20 @@ do -- config & bindings
 	local ConfigManager = {}
 	ConfigManager.__index = ConfigManager
 
+    local function mergeTable(current, toMerge, cb)
+        for key, value in pairs(toMerge) do
+            if type(value) == "table" then
+                current[key] = mergeTable(current[key] or {}, value, cb)
+            else
+                current[key] = value
+            end
+
+            cb(current, key)
+        end
+
+        return current
+    end
+
 	function ConfigManager.new()
 		local obj = {}
 		setmetatable(obj, ConfigManager)
@@ -271,24 +285,10 @@ do -- config & bindings
 		obj.Filename = "fumo.json"
 		obj.Value = nil
 		obj.Default = {
-			["version"] = nil, -- for version check
-			["keybinds"] = {
-				["TabCharacters"] = Enum.KeyCode.One.Name,
-				["TabOptions"] = Enum.KeyCode.Two.Name,
-				["TabDocs"] = Enum.KeyCode.Three.Name,
-				["TabAnims"] = Enum.KeyCode.Four.Name,
-				["TabWaypoints"] = Enum.KeyCode.Five.Name,
-				["TabWelds"] = Enum.KeyCode.Six.Name,
-				["TabSettings"] = Enum.KeyCode.Seven.Name,
-				["HideGui"] = Enum.KeyCode.F1.Name,
-				["MapVis"] = Enum.KeyCode.N.Name,
-				["MapView"] = Enum.KeyCode.M.Name,
-				["Exit"] = Enum.KeyCode.Zero.Name,
-			},
-			["orbitTp"] = false,
-			["debug"] = false,
-			["replaceHumanoid"] = false,
-		}
+            keybinds = {
+                Exit = Enum.KeyCode.Zero.Name,
+            }
+        }
 
 		obj.UseFs = true
 
@@ -300,8 +300,19 @@ do -- config & bindings
 		obj:load()
 		obj:checkMissingKeys()
 
+        obj.DefaultsUpdated = Instance.new("BindableEvent")
+
 		return obj
 	end
+
+    function ConfigManager:mergeDefaults(newDefaults)
+        mergeTable(self.Default, newDefaults, function(obj, key)
+            if obj == self.Default then
+                self.DefaultsUpdated:Fire(key)
+            end
+        end)
+        self:checkMissingKeys()
+    end
 
 	function ConfigManager:checkMissingKeys()
 		local shouldSave = false
@@ -362,6 +373,10 @@ do -- config & bindings
 		end
 	end
 
+    function ConfigManager:destroy()
+        self.DefaultsUpdated:Destroy()
+    end
+
 	BFS.Config = ConfigManager.new()
 
 	local KeybindManager = {}
@@ -379,6 +394,14 @@ do -- config & bindings
 				self:_keyPress(input.KeyCode)
 			end
 		end)
+
+        self.BindingsUpdated = Instance.new("BindableEvent")
+
+        configManager.DefaultsUpdated.Event:Connect(function(key)
+            if key == "keybinds" then
+                self.BindingsUpdated:Fire()
+            end
+        end)
 
 		self.Bindings = {}
 
@@ -424,6 +447,7 @@ do -- config & bindings
 
 	function KeybindManager:destroy()
 		self._lKeyPress:Disconnect()
+        self.BindingsUpdated:Destroy()
 	end
 
 	BFS.Binds = KeybindManager.new(BFS.Config)
@@ -434,7 +458,9 @@ do -- exit
 
 	BFS.Binds:bind("Exit", function()
 		BFS.Root:Destroy()
+        BFS.Config:destroy()
 		BFS.Binds:destroy()
+
         getgenv().BFS = null
 
 		for name, func in pairs(exitBinds) do
