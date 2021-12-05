@@ -354,6 +354,7 @@ At any time, you can press [0] to close the script and reset everything back to 
 - (BORING!) Various code quality and conventions improvements
 - Added a way to have custom orbit patterns
     - Set using getgenv().orbitFunction - contact for details
+- Fixed HumanoidRootPart welds causing infinite loop
 
 <b>1.5.7</b>
 - Fix error when closing script with map not loaded
@@ -899,7 +900,7 @@ do  -- hats come alive
     local cBobThreshold = 1e-6
     local cAngleThreshold = math.pi / 48
 
-    local commonWelds = {"Head", "Torso", "LArm", "RArm", "LLeg", "RLeg"}
+    local commonWelds = {"Head", "Torso", "LArm", "RArm", "LLeg", "RLeg", "HumanoidRootPart"}
     local parts = {}
 
     local tpTarget
@@ -1060,7 +1061,7 @@ do  -- hats come alive
         local target = tpTarget or LocalPlayer.Character
         local targetPart = target:FindFirstChild(info.TargetName)
 
-        if targetPart then
+        if targetPart:IsA("Model") then
             targetPart = targetPart:FindFirstChild(info.TargetName)
         end
 
