@@ -279,30 +279,29 @@ do -- config & bindings
     end
 
 	function ConfigManager.new()
-		local obj = {}
-		setmetatable(obj, ConfigManager)
+		local self = setmetatable({}, ConfigManager)
 
-		obj.Filename = "fumo.json"
-		obj.Value = nil
-		obj.Default = {
+		self.Filename = "fumo.json"
+		self.Value = nil
+		self.Default = {
             keybinds = {
                 Exit = Enum.KeyCode.Zero.Name,
             }
         }
 
-		obj.UseFs = true
+		self.UseFs = true
 
 		if not writefile then
 			BFS.log("WARNING: No file write access. Config will not save or load.")
-			obj.UseFs = false
+			self.UseFs = false
 		end
 
-		obj:load()
-		obj:checkMissingKeys()
+		self:load()
+		self:checkMissingKeys()
 
-        obj.DefaultsUpdated = Instance.new("BindableEvent")
+        self.DefaultsUpdated = Instance.new("BindableEvent")
 
-		return obj
+		return self
 	end
 
     function ConfigManager:mergeDefaults(newDefaults)
@@ -510,11 +509,10 @@ do -- tabcontrol
 	TabControl.__index = TabControl
 
 	function TabControl.new(parent, binds)
-		local obj = {}
-		setmetatable(obj, TabControl)
+		local self = setmetatable({}, TabControl)
 
-		obj.Parent = parent
-		obj.Binds = binds
+		self.Parent = parent
+		self.Binds = binds
 
 		local tabContainer = Instance.new("Frame")
 		tabContainer.BackgroundTransparency = 1
@@ -528,19 +526,19 @@ do -- tabcontrol
 		BFS.UI.createListLayout(tabContainer, Enum.HorizontalAlignment.Left)
 
 		tabContainer.MouseEnter:Connect(function()
-			obj:_setTabsExpanded(true)
+			self:_setTabsExpanded(true)
 		end)
 
 		tabContainer.MouseLeave:Connect(function()
-			obj:_setTabsExpanded(false)
+			self:_setTabsExpanded(false)
 		end)
 
-		obj.TabContainer = tabContainer
+		self.TabContainer = tabContainer
 
-		obj.TabButtons = {}
-		obj.Tabs = {}
+		self.TabButtons = {}
+		self.Tabs = {}
 
-		return obj
+		return self
 	end
 
 	function TabControl:setTabsVisible(visible)
