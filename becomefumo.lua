@@ -1254,8 +1254,6 @@ do  -- hats come alive
     end)
 
     BFS.bindToExit("HCA: Clean up", function()
-        debugL:Destroy()
-
         lHeartbeat:Disconnect()
         lStepped:Disconnect()
         lInputB:Disconnect()
