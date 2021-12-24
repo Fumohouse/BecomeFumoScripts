@@ -6,7 +6,7 @@
 local BFS = getgenv().BFS
 
 if not BFS then
-    loadstring(game:HttpGet(("https://gist.githubusercontent.com/kyoseki/07f37b493f46895e67339e85c223423c/raw/4779212b7dd49d508705700a31d7ea1b3e262013/gui.lua"), true))()
+    loadstring(game:HttpGet(("https://gist.githubusercontent.com/kyoseki/07f37b493f46895e67339e85c223423c/raw/gui.lua"), true))()
     BFS = getgenv().BFS
 end
 
@@ -31,7 +31,7 @@ local cDefaultConfig = {
 
 BFS.Config:mergeDefaults(cDefaultConfig)
 
-version = "1.5.8"
+version = "1.5.9"
 
 do  -- double load prevention
     if BF_LOADED then
@@ -59,6 +59,13 @@ local UserInput = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
+local StarterGui = game:GetService("StarterGui")
+
+local huiFolder
+if BFS.IsUsingHUI then
+    huiFolder = BFS.Root.Parent
+end
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -206,10 +213,13 @@ do  -- options
     BFS.UI.createListLayout(optionsTab, Enum.HorizontalAlignment.Center, Enum.VerticalAlignment.Center, cOptionSpacing)
 
     local function createOptionsButton(labelText, cb)
-        BFS.UI.createLabelButtonLarge(optionsTab, labelText, function()
-            BFS.TabControl:closeAllTabs()
-            cb()
+        local button
+
+        button = BFS.UI.createLabelButtonLarge(optionsTab, labelText, function()
+            cb(button)
         end)
+
+        return button
     end
 
     local function openGui(name)
@@ -217,18 +227,44 @@ do  -- options
 
         _G.GlobalDebounce = true
         ReplicatedStorage.ClientUIEvents.OpenClose:Fire(name, true)
+        BFS.TabControl:closeAllTabs()
         wait(0.6)
         _G.GlobalDebounce = false
     end
 
-    createOptionsButton("Toggle Anti-Grief", function()
+    local function updateAntiGrief(button)
+        local char = LocalPlayer.Character
+        if not char then
+            return
+        end
+
+        button.SetActive(char.PrimaryPart.CollisionGroupId == 2)
+    end
+
+    local collSignal
+
+    local collButton = createOptionsButton("Toggle Anti-Grief", function(button)
         if _G.GlobalDebounce then return end
 
         _G.GlobalDebounce = true
         ReplicatedStorage.UIRemotes.SetColl:FireServer()
+
+        if LocalPlayer.Character then
+            if collSignal then
+                collSignal:Disconnect()
+            end
+
+            collSignal = LocalPlayer.Character.PrimaryPart:GetPropertyChangedSignal("CollisionGroupId"):Connect(function()
+                updateAntiGrief(button)
+                collSignal:Disconnect()
+            end)
+        end
+
         wait(1)
         _G.GlobalDebounce = false
     end)
+
+    updateAntiGrief(collButton)
 
     createOptionsButton("Day/Night Settings", function()
         openGui("DayNightSetting")
@@ -236,6 +272,22 @@ do  -- options
 
     createOptionsButton("Block Players", function()
         openGui("UserSettings")
+    end)
+
+    local specialChatValue = ReplicatedStorage.UIRemotes:FindFirstChild("SpecialChatEnabled")
+
+    local voiceButton = createOptionsButton("Mute Special Voicelines", function(button)
+        _G.GlobalDebounce = true
+        specialChatValue.Value = not specialChatValue.Value
+        button.SetActive(not specialChatValue.Value)
+        wait(1)
+        _G.GlobalDebounce = false
+    end)
+
+    voiceButton.SetActive(not specialChatValue.Value)
+
+    createOptionsButton("BCF Credits", function()
+        openGui("Credits")
     end)
 end -- options
 
@@ -371,6 +423,17 @@ At any time, you can press [0] to close the script and reset everything back to 
     addDoc(cAboutInfo)
 
     local cChangelogContent = [[
+<b>1.5.9</b>
+- Policies in the Knowledgebase "Cheaters' Etiquette" article have been updated. <b>Please reread it.</b>
+    - Many A2-era rules have been removed or reworded.
+    - Rules relating to the BCF developers have been removed. The recommendation now is that you maintain respectful distance with them. For more information, ask me.
+    * If you read Appendix I to the Code of Conduct (issued 2021/11/26), it no longer applies. It has been covered by broader rules in this update.
+    * Generally, try to make a positive impact on the community.
+- Added the nanodesu and Inu Sakuya animations.
+- Added indicator to collision button.
+- Added mute voicelines and credits buttons.
+- Made the F1 key hide more of the GUI, to come in line with Photo Mode. It hides quite literally everything - core game GUIs and other exploit script's GUIs included (at least on KRNL).
+
 <b>1.5.8</b>
 - The GUI has been split into another file, which is publicly accessible.
     - It is now possible to create your own scripts with the same UI as BFS, or to extend the current script (but you should ask me how before you try).
@@ -544,27 +607,26 @@ At any time, you can press [0] to close the script and reset everything back to 
     addDoc(cChangelogInfo)
 
     local cEtiquetteContent = [[
-The policies outlined in this article were first introduced in Announcement A2.
-
 The policies are guided by the following principles:
-- <b>Respect the developers' decisions.</b> Be polite to them, and try to respect their decisions regarding the game.
-- <b>Try to act PG-13 as much as possible.</b> Bypassing the swear filter is discouraged, and using animations to have sex with others is disallowed.
+- <b>Try to act PG-13 as much as possible.</b> Keep in mind the age demographic of this game and Roblox.
 - <b>Avoid disturbing regular players.</b> Being annoying is not appreciated.
+- <b>Avoid interacting with bad actors.</b> If people seek attention, giving it to them will only make it worse.
 - <b>Avoid being a disappointment.</b> You know who you are.
 
 Explicit policies are outlined below:
 - <b>Do not depict fumo in inappropriate acts.</b> This covers both usage of animations and chat.
-- <b>Do not take off fumos' clothing, and avoid making them bald.</b> Try to avoid traumatizing people. Removing accessories that are attached to the clothes or hair is ok.
-- <b>Avoid hijacking the train.</b> Generally, this causes unnecessary disruption.
-- <b>Do not attempt to access developer/contributor-only content*, especially while they are online.</b> Self-explanatory. *outside of testing
+- <b>Avoid taking off fumos' clothing.</b> Try not to traumatize people.
 - <b>Do not share, or attempt to share, the script with other people.</b> If you have been issued a copy which bypasses the whitelist, <i>do not share it</i>.
     - Excerpts of the source, or the complete source, may be given to you if you request them from me.
 
-The following policy only affects the 6R tab:
-- <b>Do not give your parts to random players unless they ask.</b>
+Your behavior is also governed by the Fumohouse Code of Conduct:
+> https://github.com/Fumohouse/Fumohouse/blob/master/CODE_OF_CONDUCT.md
 
 Restricted access to the script is possible with the violation of any of the above policies and principles. Restriction could last any amount of time, depending on level of infraction.
 <i>Your behavior outside of the usage of this script is also covered by these rules.</i>
+
+For questions or other information, contact me ingame, via Discord (voided#6691) or on Fumohouse's Discord:
+> discord.gg/X8Z3WzA6m6
     ]]
 
     local cEtiquetteInfo = {}
@@ -886,6 +948,7 @@ do  -- animations
     addAnimation("Penguin", "rbxassetid://6898226631")
     addAnimation("September", "rbxassetid://7532444804")
     addAnimation("Spooky", "rbxassetid://7640665121")
+    addAnimation("Nanodesu", "rbxassetid://8208645816")
 
     createAnimationCategory("Arcade")
     addAnimation("Taiko", "rbxassetid://7162205569")
@@ -904,6 +967,9 @@ do  -- animations
     addAnimation("Run", "rbxassetid://6235359704")
     addAnimation("Jump", "rbxassetid://6235182835")
     addAnimation("Fall", "rbxassetid://6235205527")
+
+    addAnimation("Inu Sakuya - Sleep", "rbxassetid://8146736060")
+    addAnimation("Inu Sakuya - Awake", "rbxassetid://8146775417")
 end -- animations
 
 do  -- ?
@@ -2391,8 +2457,6 @@ do  -- minimap
     end
 
     function Minimap:plotPlayer(player)
-        local cIconSize = 20
-
         if not player.Character then return end
 
         local humanRoot = player.Character:FindFirstChild("HumanoidRootPart")
@@ -2534,12 +2598,41 @@ do  -- announcements
 end -- announcements
 
 local guiVisible = true
+local guiWasVisible = {}
+
+local function setGuiVisible(isVisible)
+    BFS.TabControl:setTabsVisible(isVisible)
+    secondaryRoot.Visible = isVisible
+
+    StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Chat, isVisible) -- for chat window
+
+    local function updateRecursive(root)
+        for _, gui in pairs(root:GetDescendants()) do
+            if gui:IsA("ScreenGui") then
+                if guiWasVisible[gui] == nil then
+                    guiWasVisible[gui] = gui.Enabled
+                end
+
+                gui.Enabled = guiWasVisible[gui] and isVisible
+            end
+        end
+    end
+
+    updateRecursive(CoreGui)
+    if huiFolder then
+        updateRecursive(huiFolder)
+    end
+
+    LocalPlayer.PlayerGui.MainGui.Enabled = isVisible
+end
 
 BFS.Binds:bind("HideGui", function()
     guiVisible = not guiVisible
+    setGuiVisible(guiVisible)
+end)
 
-    BFS.TabControl:setTabsVisible(guiVisible)
-    secondaryRoot.Visible = guiVisible
+BFS.bindToExit("Unhide GUIs", function()
+    setGuiVisible(true)
 end)
 
 local map = nil

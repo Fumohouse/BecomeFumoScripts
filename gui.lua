@@ -33,6 +33,7 @@ do -- base gui
 	local root = Instance.new("ScreenGui")
 	root.Name = randomString()
 	BFS.Root = root
+	BFS.IsUsingHUI = false
 
 	if syn and syn.protect_gui then
 		syn.protect_gui(root)
@@ -40,6 +41,7 @@ do -- base gui
 	elseif get_hidden_gui or gethui then
 		local hiddenUI = get_hidden_gui or gethui
 		root.Parent = hiddenUI()
+		BFS.IsUsingHUI = true
 	else
 		root.Parent = CoreGui
 	end
