@@ -27,11 +27,12 @@ local cDefaultConfig = {
     orbitTp = false,
     debug = false,
     replaceHumanoid = false,
+    mapRenderEverything = false,
 }
 
 BFS.Config:mergeDefaults(cDefaultConfig)
 
-version = "1.5.9"
+version = "1.6.0"
 
 do  -- double load prevention
     if BF_LOADED then
@@ -49,6 +50,17 @@ do  -- double load prevention
         getgenv().BF_LOADED = false
     end)
 end -- double load prevention
+
+do  -- place detection
+    local cPlaces = {
+        [6238705697] = "BCF",
+        [7363647365] = "SBF"
+    }
+
+    place = cPlaces[game.PlaceId]
+
+    BFS.log("Detected place: "..place)
+end -- place detection
 
 --
 -- services
@@ -70,17 +82,22 @@ end
 local LocalPlayer = Players.LocalPlayer
 
 do  -- disable stuff
-    local mainGui = LocalPlayer:FindFirstChild("PlayerGui"):FindFirstChild("MainGui")
-    local toggleButton = mainGui:FindFirstChild("MainFrame"):FindFirstChild("ToggleButton")
-    toggleButton.Visible = false -- disable the default character selector
+    if place == "BCF" then
+        -- anticipating GUI rework will break things
+        pcall(function()
+            local mainGui = LocalPlayer:FindFirstChild("PlayerGui"):FindFirstChild("MainGui")
+            local toggleButton = mainGui:FindFirstChild("MainFrame"):FindFirstChild("ToggleButton")
+            toggleButton.Visible = false -- disable the default character selector
 
-    local settings = mainGui:FindFirstChild("SettingsFrame")
-    settings.Visible = false -- disable the default settings
+            local settings = mainGui:FindFirstChild("SettingsFrame")
+            settings.Visible = false -- disable the default settings
 
-    BFS.bindToExit("Re-enable GUI", function()
-        toggleButton.Visible = true -- reenable the default character selector
-        settings.Visible = true -- reenable the default settings
-    end)
+            BFS.bindToExit("Re-enable GUI", function()
+                toggleButton.Visible = true -- reenable the default character selector
+                settings.Visible = true -- reenable the default settings
+            end)
+        end)
+    end
 end -- disable stuff
 
 local secondaryRoot = Instance.new("Frame")
@@ -108,7 +125,7 @@ function teleport(pos)
     return origPos
 end
 
-do  -- characters
+if place == "BCF" then  -- characters
     local cCharacters = {}
 
     for _, v in pairs(LocalPlayer.PlayerGui.MainGui.MainFrame.ScrollingFrame:GetChildren()) do -- steal from the gui instead of the replicated list, which does not include badge chars
@@ -205,7 +222,7 @@ do  -- characters
     end
 end -- characters
 
-do  -- options
+if place == "BCF" then  -- options
     local cOptionSpacing = 5
 
     local optionsTab = BFS.TabControl:createTab("Options", "2O", "TabOptions")
@@ -423,6 +440,14 @@ At any time, you can press [0] to close the script and reset everything back to 
     addDoc(cAboutInfo)
 
     local cChangelogContent = [[
+<b>1.6.0</b>
+- Waypoints are now automatically placed at each spawnpoint.
+- Added an option to 7S which sets the map to render absolutely everything.
+    - This is incredibly laggy and could cause your game to crash.
+- Added basic support for Scuffed Become Fumo.
+    - Tabs 1C and 2O are removed on SBF because I don't think they're necessary. The GUI is already very non-intrusive.
+    - The animation list is specific to each place due to how animation usage permissions work.
+
 <b>1.5.9</b>
 - Policies in the Knowledgebase "Cheaters' Etiquette" article have been updated. <b>Please reread it.</b>
     - Many A2-era rules have been removed or reworded.
@@ -932,44 +957,65 @@ do  -- animations
         createAnimationButton(info)
     end
 
-    createAnimationCategory("Emotes")
-    addAnimation("Wave", "rbxassetid://6235397232")
-    addAnimation("Point", "rbxassetid://6237758978")
-    addAnimation("Dance1", "rbxassetid://6237334056")
-    addAnimation("Dance2", "rbxassetid://6237617098")
-    addAnimation("Dance3", "rbxassetid://6237729300")
-    addAnimation("Laugh", "rbxassetid://6237857610")
-    addAnimation("Cheer", "rbxassetid://6235416318")
-    addAnimation("Abunai", "rbxassetid://6384606896")
-    addAnimation("Sonanoka", "rbxassetid://6384613936")
-    addAnimation("Scarlet Police", "rbxassetid://6509462656")
-    addAnimation("Caramell", "rbxassetid://6542355684")
-    addAnimation("Swag", "rbxassetid://6659873025")
-    addAnimation("Penguin", "rbxassetid://6898226631")
-    addAnimation("September", "rbxassetid://7532444804")
-    addAnimation("Spooky", "rbxassetid://7640665121")
-    addAnimation("Nanodesu", "rbxassetid://8208645816")
+    if place == "BCF" then
+        createAnimationCategory("Emotes")
+        addAnimation("Wave", "rbxassetid://6235397232")
+        addAnimation("Point", "rbxassetid://6237758978")
+        addAnimation("Dance1", "rbxassetid://6237334056")
+        addAnimation("Dance2", "rbxassetid://6237617098")
+        addAnimation("Dance3", "rbxassetid://6237729300")
+        addAnimation("Laugh", "rbxassetid://6237857610")
+        addAnimation("Cheer", "rbxassetid://6235416318")
+        addAnimation("Abunai", "rbxassetid://6384606896")
+        addAnimation("Sonanoka", "rbxassetid://6384613936")
+        addAnimation("Scarlet Police", "rbxassetid://6509462656")
+        addAnimation("Caramell", "rbxassetid://6542355684")
+        addAnimation("Swag", "rbxassetid://6659873025")
+        addAnimation("Penguin", "rbxassetid://6898226631")
+        addAnimation("September", "rbxassetid://7532444804")
+        addAnimation("Spooky", "rbxassetid://7640665121")
+        addAnimation("Nanodesu", "rbxassetid://8208645816")
 
-    createAnimationCategory("Arcade")
-    addAnimation("Taiko", "rbxassetid://7162205569")
-    addAnimation("SDVX", "rbxassetid://7162634952")
-    addAnimation("DDR", "rbxassetid://7162282756")
-    addAnimation("Flip", "rbxassetid://7162815644")
-    addAnimation("Drive", "rbxassetid://7162720899")
-    addAnimation("Shoot", "rbxassetid://7162118758")
-    addAnimation("Maimai", "rbxassetid://7162040292")
+        createAnimationCategory("Arcade")
+        addAnimation("Taiko", "rbxassetid://7162205569")
+        addAnimation("SDVX", "rbxassetid://7162634952")
+        addAnimation("DDR", "rbxassetid://7162282756")
+        addAnimation("Flip", "rbxassetid://7162815644")
+        addAnimation("Drive", "rbxassetid://7162720899")
+        addAnimation("Shoot", "rbxassetid://7162118758")
+        addAnimation("Maimai", "rbxassetid://7162040292")
 
-    createAnimationCategory("Misc Default")
-    addAnimation("Drip", "rbxassetid://6573833053")
-    addAnimation("Drip (w/ sitting)", "rbxassetid://6565089997")
+        createAnimationCategory("Misc Default")
+        addAnimation("Drip", "rbxassetid://6573833053")
+        addAnimation("Drip (w/ sitting)", "rbxassetid://6565089997")
 
-    addAnimation("Walk", "rbxassetid://6235532038")
-    addAnimation("Run", "rbxassetid://6235359704")
-    addAnimation("Jump", "rbxassetid://6235182835")
-    addAnimation("Fall", "rbxassetid://6235205527")
+        addAnimation("Walk", "rbxassetid://6235532038")
+        addAnimation("Run", "rbxassetid://6235359704")
+        addAnimation("Jump", "rbxassetid://6235182835")
+        addAnimation("Fall", "rbxassetid://6235205527")
 
-    addAnimation("Inu Sakuya - Sleep", "rbxassetid://8146736060")
-    addAnimation("Inu Sakuya - Awake", "rbxassetid://8146775417")
+        addAnimation("Inu Sakuya - Sleep", "rbxassetid://8146736060")
+        addAnimation("Inu Sakuya - Awake", "rbxassetid://8146775417")
+    elseif place == "SBF" then
+        createAnimationCategory("Emotes")
+        addAnimation("Wave", "rbxassetid://8369377676")
+        addAnimation("Point", "rbxassetid://8369361957")
+        addAnimation("Dance1", "rbxassetid://8369300730")
+        addAnimation("Dance2", "rbxassetid://8369304237")
+        addAnimation("Dance3", "rbxassetid://7364328999")
+        addAnimation("Laugh", "rbxassetid://8369369772")
+        addAnimation("Cheer", "rbxassetid://8369365889")
+        addAnimation("Abunai", "rbxassetid://8377632838")
+        addAnimation("Sonanoka", "rbxassetid://8377647016")
+        addAnimation("September", "rbxassetid://8377653917")
+        addAnimation("Scarlet Police", "rbxassetid://8377644069")
+        addAnimation("Spooky", "rbxassetid://8377651174")
+        addAnimation("Swag", "rbxassetid://8377648781")
+        addAnimation("Caramell", "rbxassetid://8393935521")
+        addAnimation("Drip", "rbxassetid://8557253884")
+        addAnimation("Penguin", "rbxassetid://8557261868")
+        addAnimation("Clap", "rbxassetid://8557305015")
+    end
 end -- animations
 
 do  -- ?
@@ -1283,7 +1329,13 @@ do  -- hats come alive
         if mousePos then
             local unitRay = workspace.CurrentCamera:ScreenPointToRay(mousePos.X, mousePos.Y)
             local params = RaycastParams.new()
-            params.FilterDescendantsInstances = { LocalPlayer.Character, workspace.MusicPlayer.SoundRegions, workspace.PlayArea["invis walls"] }
+
+            if place == "BCF" then
+                params.FilterDescendantsInstances = { LocalPlayer.Character, workspace.MusicPlayer.SoundRegions, workspace.PlayArea["invis walls"] }
+            elseif place == "SBF" then
+                params.FilterDescendantsInstances = { LocalPlayer.Character }
+            end
+
             params.FilterType = Enum.RaycastFilterType.Blacklist
 
             local result = workspace:Raycast(unitRay.Origin, unitRay.Direction * 1000, params)
@@ -1610,6 +1662,10 @@ do  -- settings
     addCheckbox(weldFrame, "Debug", "debug", function(checked)
         debugL.Visible = checked
     end)
+
+    local mapFrame = createSettingsCategory("Map Options")
+
+    addCheckbox(mapFrame, "Map Everything", "mapRenderEverything")
 end -- settings
 
 do  -- info
@@ -2177,6 +2233,14 @@ do  -- minimap
         local function scan(inst)
             if not (inst:IsA("Part") or inst:IsA("MeshPart")) or (check and not check(inst)) then return end
 
+            if place == "SBF" then
+                for _, player in pairs(Players:GetPlayers()) do
+                    if player.Character and inst:IsDescendantOf(player.Character) then
+                        return
+                    end
+                end
+            end
+
             local posMin = inst.Position - inst.Size / 2 -- top left
             local posMax = inst.Position + inst.Size / 2 -- bottom right
 
@@ -2215,7 +2279,13 @@ do  -- minimap
     end
 
     function Minimap:_findWorldBounds()
-        local posMin, posMax = self:_findBounds({ workspace.PlayArea, ReplicatedStorage.Zones, workspace.ActiveZone })
+        local posMin, posMax
+        if place == "BCF" then
+            posMin, posMax = self:_findBounds({ workspace.PlayArea, ReplicatedStorage.Zones, workspace.ActiveZone })
+        elseif place == "SBF" then
+            posMin, posMax = self:_findBounds({ workspace })
+        end
+
         -- must scan ActiveZone for zones player is currently inside
         return Vector2.new(posMin.X, posMin.Z), Vector2.new(posMax.X, posMax.Z)
     end
@@ -2305,32 +2375,43 @@ do  -- minimap
         local cArea = Color3.fromRGB(86, 94, 81)
         local cAreaB = Color3.fromRGB(89, 149, 111)
 
-        local mwCf, mwSize = workspace.PlayArea["invis walls"]:GetBoundingBox()
-        self:plotBBox(mwCf, mwSize, cArea, cAreaB, self.AreaLayer)
+        if place == "BCF" then
+            local mwCf, mwSize = workspace.PlayArea["invis walls"]:GetBoundingBox()
+            self:plotBBox(mwCf, mwSize, cArea, cAreaB, self.AreaLayer)
 
-        local cBeachCf = CFrame.new(-978.322266, 134.538483, 8961.99805, 1, 0, 0, 0, 1, 0, 0, 0, 1) -- the roof barrier
-        local cBeachSize = Vector3.new(273.79, 29.45, 239.5)
-        self:plotBBox(cBeachCf, cBeachSize, cArea, cAreaB, self.AreaLayer)
+            local cBeachCf = CFrame.new(-978.322266, 134.538483, 8961.99805, 1, 0, 0, 0, 1, 0, 0, 0, 1) -- the roof barrier
+            local cBeachSize = Vector3.new(273.79, 29.45, 239.5)
+            self:plotBBox(cBeachCf, cBeachSize, cArea, cAreaB, self.AreaLayer)
 
-        local ruinsMin, ruinsMax = self:_findBounds({ self:_findZone("Ruins") }, function(inst) return inst.Name ~= "bal" end)
-        local ruinsCenter = CFrame.new((ruinsMin + ruinsMax) / 2)
-        self:plotBBox(ruinsCenter, ruinsMax - ruinsMin, cArea, cAreaB, self.AreaLayer)
+            local ruinsMin, ruinsMax = self:_findBounds({ self:_findZone("Ruins") }, function(inst) return inst.Name ~= "bal" end)
+            local ruinsCenter = CFrame.new((ruinsMin + ruinsMax) / 2)
+            self:plotBBox(ruinsCenter, ruinsMax - ruinsMin, cArea, cAreaB, self.AreaLayer)
 
-        local velvetMin, velvetMax = self:_findBounds({ self:_findZone("VelvetRoom") })
-        local velvetCenter = CFrame.new((velvetMin + velvetMax) / 2)
-        self:plotBBox(velvetCenter, velvetMax - velvetMin, cArea, cAreaB, self.AreaLayer)
+            local velvetMin, velvetMax = self:_findBounds({ self:_findZone("VelvetRoom") })
+            local velvetCenter = CFrame.new((velvetMin + velvetMax) / 2)
+            self:plotBBox(velvetCenter, velvetMax - velvetMin, cArea, cAreaB, self.AreaLayer)
+        end
     end
 
     function Minimap:_plotTerrain()
-        local features = workspace.PlayArea:GetDescendants()
+        local features
+        local seatList
 
-        local cWater = Color3.fromRGB(70, 92, 86)
-        local cWaterB = Color3.fromRGB(2, 135, 99)
+        if place == "BCF" then
+            features = workspace.PlayArea:GetDescendants()
+            seatList = { features, workspace.ActiveZone:GetDescendants(), ReplicatedStorage.Zones:GetDescendants() }
 
-        local cPoolCf = CFrame.new(51.980999, -16.854372, -63.6765823, 1, 0, 0, 0, 1, 0, 0, 0, 1) -- cframe and size of the pool floor
-        local cPoolSize = Vector3.new(45.3603, 5.33651, 32.0191)
+            local cWater = Color3.fromRGB(70, 92, 86)
+            local cWaterB = Color3.fromRGB(2, 135, 99)
 
-        self:plotBBox(cPoolCf, cPoolSize, cWater, cWaterB)
+            local cPoolCf = CFrame.new(51.980999, -16.854372, -63.6765823, 1, 0, 0, 0, 1, 0, 0, 0, 1) -- cframe and size of the pool floor
+            local cPoolSize = Vector3.new(45.3603, 5.33651, 32.0191)
+
+            self:plotBBox(cPoolCf, cPoolSize, cWater, cWaterB)
+        elseif place == "SBF" then
+            features = workspace.Map:GetDescendants()
+            seatList = { features }
+        end
 
         local cTree = Color3.fromRGB(89, 149, 111)
         local cTreeB = Color3.fromRGB(5, 145, 56)
@@ -2341,100 +2422,137 @@ do  -- minimap
         local cParkourSize = 4.0023837089539
         local cParkourEpsilon = 1e-2
 
-        for _, v in pairs(features) do -- not so important stuff
-            if v:IsA("Model") and v.Name == "stupid tree1" then -- single square trees
-                self:plotPartQuad(v:FindFirstChild("Part"), cTree, cTreeB)
-            elseif v:IsA("Part") then
-                local children = v:GetChildren()
+        if BFS.Config.Value.mapRenderEverything then
+            local function getTopY(part)
+                return part.Position.Y + part.Size.Y / 2
+            end
 
-                if v.Color == cRock then -- any rocks
-                    self:plotPartQuad(v, cRock, cRockB)
-                elseif almostEqual(v.Size.X, cParkourSize, cParkourEpsilon) and -- parkour
-                    almostEqual(v.Size.Z, cParkourSize, cParkourEpsilon) and
-                    #children >= 6 and children[1]:IsA("Texture") and children[1].Texture == "http://www.roblox.com/asset/?id=6022009301" then
-                    self:plotPartQuad(v, v.Color, cRockB)
+            local function compare(a, b)
+                return getTopY(a) < getTopY(b)
+            end
+
+            local parts = {}
+
+            for _, v in pairs(features) do
+                if v:IsA("BasePart") then
+                    parts[#parts + 1] = v
                 end
             end
-        end
 
-        local cBench = Color3.fromRGB(173, 125, 110)
-        local cBenchB = Color3.fromRGB(173, 88, 62)
+            table.sort(parts, compare)
 
-        for _, v in pairs(features) do -- bench
-            if v:IsA("Model") and (v.Name == "Bench" or v.Name == "log") then
-                local cf, size = v:GetBoundingBox()
-                self:plotBBox(cf, size, cBench, cBenchB)
+            for _, v in pairs(parts) do
+                self:plotPartQuad(v, v.Color, cRockB)
             end
-        end
 
-        -- ALL SEATS!!!
-        for _, list in pairs({ features, workspace.ActiveZone:GetDescendants(), ReplicatedStorage.Zones:GetDescendants() }) do
-            for _, v in pairs(list) do
-                if v:IsA("Seat") then
-                    local seatObj = MapSeat.new(self, v)
-                    self:addMapObject(seatObj, self.SeatLayer)
-                    self.Tooltips:register(seatObj)
+            local cBench = Color3.fromRGB(173, 125, 110)
+            local cBenchB = Color3.fromRGB(173, 88, 62)
+
+            for _, v in pairs(features) do -- bench
+                if v:IsA("Model") and (v.Name == "Bench" or v.Name == "log") then
+                    local cf, size = v:GetBoundingBox()
+                    self:plotBBox(cf, size, cBench, cBenchB)
+                end
+            end
+
+            -- ALL SEATS!!!
+            for _, list in pairs(seatList) do
+                for _, v in pairs(list) do
+                    if v:IsA("Seat") then
+                        local seatObj = MapSeat.new(self, v)
+                        self:addMapObject(seatObj, self.SeatLayer)
+                        self.Tooltips:register(seatObj)
+                    end
+                end
+            end
+        else
+            for _, v in pairs(features) do -- not so important stuff
+                if v:IsA("Model") and v.Name == "stupid tree1" then -- single square trees
+                    self:plotPartQuad(v:FindFirstChild("Part"), cTree, cTreeB)
+                elseif v:IsA("Part") then
+                    local children = v:GetChildren()
+
+                    if v.Color == cRock then -- any rocks
+                        self:plotPartQuad(v, cRock, cRockB)
+                    elseif almostEqual(v.Size.X, cParkourSize, cParkourEpsilon) and -- parkour
+                        almostEqual(v.Size.Z, cParkourSize, cParkourEpsilon) and
+                        #children >= 6 and children[1]:IsA("Texture") and children[1].Texture == "http://www.roblox.com/asset/?id=6022009301" then
+                        self:plotPartQuad(v, v.Color, cRockB)
+                    end
                 end
             end
         end
 
         local spawns = workspace.Spawns:GetChildren()
-        local cColorSpawn = Color3.fromRGB(255, 166, 193)
-        local cColorSpawnB = Color3.fromRGB(247, 0, 74)
+        local cColorSpawn
+        local cColorSpawnB
+
+        if place == "BCF" then
+            cColorSpawn = Color3.fromRGB(255, 166, 193)
+            cColorSpawnB = Color3.fromRGB(247, 0, 74)
+        elseif place == "SBF" then
+            cColorSpawn = Color3.fromRGB(74, 118, 165)
+            cColorSpawnB = Color3.fromRGB(49, 79, 110)
+        end
+
+        local cSpawnOffset = Vector3.new(0, 0.5, 0)
 
         for _, v in pairs(spawns) do
             self:plotPartQuad(v, cColorSpawn, cColorSpawnB)
+            self:plotWaypoint(v.Name, v.CFrame + cSpawnOffset, cColorSpawnB)
         end
     end
 
     function Minimap:_plotWaypoints()
-        local cItemColor = Color3.fromRGB(61, 161, 255)
+        if place == "BCF" then
+            local cItemColor = Color3.fromRGB(61, 161, 255)
 
-        self:plotWaypoint("Burger/Soda", CFrame.new(-12.6373434, -2.39721942, -104.279655, 0.999609232, -9.48658307e-09, -0.0279524103, 9.50391588e-09, 1, 4.87206442e-10, 0.0279524103, -7.5267359e-10, 0.999609232), cItemColor)
-        self:plotWaypoint("Japari Bun (Rock)", CFrame.new(44.2933311, 2.69040394, -174.404465, -0.926118135, 2.03467754e-09, -0.377233654, -1.18587207e-09, 1, 8.30502511e-09, 0.377233654, 8.13878565e-09, -0.926118135), cItemColor)
-        self:plotWaypoint("Shrimp Fry", CFrame.new(23.7285004, -3.39721847, -38.656456, -0.999925613, 1.10185701e-08, 0.0121939164, 1.07577787e-08, 1, -2.14526548e-08, -0.0121939164, -2.13198827e-08, -0.999925613), cItemColor)
-        self:plotWaypoint("Ice Cream", CFrame.new(47.6086464, -2.35769129, 86.1823273, -0.999982059, 1.08832019e-08, 0.00585500291, 1.07577787e-08, 1, -2.14526548e-08, -0.00585500291, -2.13892744e-08, -0.999982059), cItemColor)
-        self:plotWaypoint("Bike", CFrame.new(41.1308136, -3.39721847, 70.4393082, 0.999999881, -4.17922266e-08, 0.000145394108, 4.18030872e-08, 1, -7.49089111e-08, -0.000145394108, 7.49150004e-08, 0.999999881), cItemColor)
-        self:plotWaypoint("Fishing Rod", CFrame.new(-50.5187149, 1.6041007, -120.919296, 0.998044968, 5.13549168e-08, -0.0625005439, -5.57155957e-08, 1, -6.80274113e-08, 0.0625005439, 7.13766752e-08, 0.998044968), cItemColor)
-        self:plotWaypoint("Baseball", CFrame.new(63.9862785, 1.61707997, -113.393738, 0.852416873, -1.00618301e-07, 0.522862673, 9.67299414e-08, 1, 3.47396458e-08, -0.522862673, 2.09638351e-08, 0.852416873), cItemColor)
-        self:plotWaypoint("LunarTech Rifle", CFrame.new(-76.0725632, -3.39721847, -122.150734, 0.00984575041, 1.867169e-08, -0.999951541, -1.71646324e-08, 1, 1.85035862e-08, 0.999951541, 1.69816179e-08, 0.00984575041), cItemColor)
-        self:plotWaypoint("Buster Gauntlets", CFrame.new(3.52978015, 8.10278034, -103.847221, -0.999056339, -9.71976277e-08, 0.0434325524, -9.49071506e-08, 1, 5.47984236e-08, -0.0434325524, 5.06246529e-08, -0.999056339), cItemColor)
-        self:plotWaypoint("Trolldier Set", CFrame.new(-57.4301414, 36.6266022, -77.7773438, 0.0280102566, 2.76124923e-09, 0.999607563, -8.18409589e-08, 1, -4.69047745e-10, -0.999607563, -8.17956973e-08, 0.0280102566), cItemColor)
-        self:plotWaypoint("Soul Edge", CFrame.new(62.3707314, 22.2510509, 45.5647964, -0.0124317836, 7.14263138e-08, -0.999922097, 3.7549458e-10, 1, 7.14271877e-08, 0.999922097, 5.12501597e-10, -0.0124317836), cItemColor)
-        self:plotWaypoint("Chair", CFrame.new(-14.3926878, -3.39721847, -127.052185, -0.998602152, -1.55643036e-08, 0.0528521165, -2.24233379e-08, 1, -1.29184926e-07, -0.0528521165, -1.30189534e-07, -0.998602152), cItemColor)
-        self:plotWaypoint("Gigasword", CFrame.new(-54.6563225, 22.4595356, -172.48053, 0.320373297, 5.91488103e-08, 0.947291434, 1.88988629e-08, 1, -6.88315112e-08, -0.947291434, 3.99545073e-08, 0.320373297), cItemColor)
-        self:plotWaypoint("Totsugeki", CFrame.new(-15.5478992, -3.39721918, 110.352875, 0.99858731, 6.11212769e-08, -0.0531353056, -6.31656292e-08, 1, -3.67950932e-08, 0.0531353056, 4.00994402e-08, 0.99858731), cItemColor)
+            self:plotWaypoint("Burger/Soda", CFrame.new(-12.6373434, -2.39721942, -104.279655, 0.999609232, -9.48658307e-09, -0.0279524103, 9.50391588e-09, 1, 4.87206442e-10, 0.0279524103, -7.5267359e-10, 0.999609232), cItemColor)
+            self:plotWaypoint("Japari Bun (Rock)", CFrame.new(44.2933311, 2.69040394, -174.404465, -0.926118135, 2.03467754e-09, -0.377233654, -1.18587207e-09, 1, 8.30502511e-09, 0.377233654, 8.13878565e-09, -0.926118135), cItemColor)
+            self:plotWaypoint("Shrimp Fry", CFrame.new(23.7285004, -3.39721847, -38.656456, -0.999925613, 1.10185701e-08, 0.0121939164, 1.07577787e-08, 1, -2.14526548e-08, -0.0121939164, -2.13198827e-08, -0.999925613), cItemColor)
+            self:plotWaypoint("Ice Cream", CFrame.new(47.6086464, -2.35769129, 86.1823273, -0.999982059, 1.08832019e-08, 0.00585500291, 1.07577787e-08, 1, -2.14526548e-08, -0.00585500291, -2.13892744e-08, -0.999982059), cItemColor)
+            self:plotWaypoint("Bike", CFrame.new(41.1308136, -3.39721847, 70.4393082, 0.999999881, -4.17922266e-08, 0.000145394108, 4.18030872e-08, 1, -7.49089111e-08, -0.000145394108, 7.49150004e-08, 0.999999881), cItemColor)
+            self:plotWaypoint("Fishing Rod", CFrame.new(-50.5187149, 1.6041007, -120.919296, 0.998044968, 5.13549168e-08, -0.0625005439, -5.57155957e-08, 1, -6.80274113e-08, 0.0625005439, 7.13766752e-08, 0.998044968), cItemColor)
+            self:plotWaypoint("Baseball", CFrame.new(63.9862785, 1.61707997, -113.393738, 0.852416873, -1.00618301e-07, 0.522862673, 9.67299414e-08, 1, 3.47396458e-08, -0.522862673, 2.09638351e-08, 0.852416873), cItemColor)
+            self:plotWaypoint("LunarTech Rifle", CFrame.new(-76.0725632, -3.39721847, -122.150734, 0.00984575041, 1.867169e-08, -0.999951541, -1.71646324e-08, 1, 1.85035862e-08, 0.999951541, 1.69816179e-08, 0.00984575041), cItemColor)
+            self:plotWaypoint("Buster Gauntlets", CFrame.new(3.52978015, 8.10278034, -103.847221, -0.999056339, -9.71976277e-08, 0.0434325524, -9.49071506e-08, 1, 5.47984236e-08, -0.0434325524, 5.06246529e-08, -0.999056339), cItemColor)
+            self:plotWaypoint("Trolldier Set", CFrame.new(-57.4301414, 36.6266022, -77.7773438, 0.0280102566, 2.76124923e-09, 0.999607563, -8.18409589e-08, 1, -4.69047745e-10, -0.999607563, -8.17956973e-08, 0.0280102566), cItemColor)
+            self:plotWaypoint("Soul Edge", CFrame.new(62.3707314, 22.2510509, 45.5647964, -0.0124317836, 7.14263138e-08, -0.999922097, 3.7549458e-10, 1, 7.14271877e-08, 0.999922097, 5.12501597e-10, -0.0124317836), cItemColor)
+            self:plotWaypoint("Chair", CFrame.new(-14.3926878, -3.39721847, -127.052185, -0.998602152, -1.55643036e-08, 0.0528521165, -2.24233379e-08, 1, -1.29184926e-07, -0.0528521165, -1.30189534e-07, -0.998602152), cItemColor)
+            self:plotWaypoint("Gigasword", CFrame.new(-54.6563225, 22.4595356, -172.48053, 0.320373297, 5.91488103e-08, 0.947291434, 1.88988629e-08, 1, -6.88315112e-08, -0.947291434, 3.99545073e-08, 0.320373297), cItemColor)
+            self:plotWaypoint("Totsugeki", CFrame.new(-15.5478992, -3.39721918, 110.352875, 0.99858731, 6.11212769e-08, -0.0531353056, -6.31656292e-08, 1, -3.67950932e-08, 0.0531353056, 4.00994402e-08, 0.99858731), cItemColor)
 
-        local cE0Color = Color3.fromRGB(61, 255, 122)
+            local cE0Color = Color3.fromRGB(61, 255, 122)
 
-        self:plotWaypoint("Campfire (Cave)", CFrame.new(50.5005188, -3.27936959, 45.8245049, 0.511625528, -1.06045634e-08, 0.859208643, 3.62333026e-08, 1, -9.23321064e-09, -0.859208643, 3.58559191e-08, 0.511625528), cE0Color)
-        self:plotWaypoint("Campfire (Ground) & Gamer Shack", CFrame.new(-35.0969467, -3.39721847, -5.80594683, -0.782029748, 2.27397319e-08, -0.623240769, 3.63110004e-08, 1, -9.07598174e-09, 0.623240769, -2.97281399e-08, -0.782029748), cE0Color)
-        self:plotWaypoint("Campfire (Poolside)", CFrame.new(49.8565903, 1.61707997, -102.113022, 0.53096503, -5.22703569e-09, -0.847393513, 5.28910675e-08, 1, 2.69724456e-08, 0.847393513, -5.9140973e-08, 0.53096503), cE0Color)
-        self:plotWaypoint("Miko Borgar (Door)", CFrame.new(-1.05410039, -3.39721847, -82.1947021, 0.998766482, -2.69013523e-08, -0.0496555455, 3.06295682e-08, 1, 7.43202406e-08, 0.0496555455, -7.57493979e-08, 0.998766482), cE0Color)
-        self:plotWaypoint("Pond", CFrame.new(-51.4066544, -2.45410466, -103.242828, -0.937839568, 3.27229159e-08, 0.347069085, 3.4841225e-08, 1, -1.36675046e-10, -0.347069085, 1.19641328e-08, -0.937839568), cE0Color)
-        self:plotWaypoint("Pool (Benches)", CFrame.new(30.9888954, -3.39721847, -80.3704605, -0.715499997, -5.40728564e-08, -0.698610604, -1.14304344e-09, 1, -7.62298313e-08, 0.698610604, -5.37439142e-08, -0.715499997), cE0Color)
-        self:plotWaypoint("Cirno Statues", CFrame.new(49.1739616, -3.39721847, -8.75012016, -0.543244958, -6.46215383e-08, -0.839574218, -1.14304521e-09, 1, -7.62298455e-08, 0.839574218, -4.04518019e-08, -0.543244958), cE0Color)
-        self:plotWaypoint("Treehouse", CFrame.new(31.4564857, 35.6251411, 50.0041885, 0.715494156, 5.91811222e-08, 0.69861877, 3.8019552e-09, 1, -8.86053471e-08, -0.69861877, 6.60527633e-08, 0.715494156), cE0Color)
-        self:plotWaypoint("Bouncy Castle", CFrame.new(0.475164026, -3.39721847, 23.8564453, -0.99950707, 9.88343851e-10, 0.0313819498, -1.32396899e-10, 1, -3.57108298e-08, -0.0313819498, -3.56973651e-08, -0.99950707), cE0Color)
-        self:plotWaypoint("Slide (Small Hill)", CFrame.new(-50.6221809, 9.94405937, 56.1536865, 0.997613728, 2.3075911e-08, -0.0690322742, -2.23911307e-08, 1, 1.06936717e-08, 0.0690322742, -9.12244946e-09, 0.997613728), cE0Color)
-        self:plotWaypoint("Slide (Poolside)", CFrame.new(40.0324783, 6.6087389, -39.532444, 0.999875724, -1.93160812e-08, -0.0157229118, 1.95169676e-08, 1, 1.26231088e-08, 0.0157229118, -1.29284112e-08, 0.999875724), cE0Color)
-        self:plotWaypoint("Funky Room", CFrame.new(-68.484436, -3.39721847, 60.7482109, -2.32830644e-10, -3.11954729e-08, -0.999997795, 5.44967769e-08, 1, -3.11955013e-08, 0.999997795, -5.44967342e-08, -2.32830644e-10), cE0Color)
-        self:plotWaypoint("Suwako Room", CFrame.new(-61.846508, -3.39721847, -66.5909882, 0.00312713091, -3.28514393e-09, -0.999995053, 7.25480831e-08, 1, -3.05829273e-09, 0.999995053, -7.25381568e-08, 0.00312713091), cE0Color)
-        self:plotWaypoint("Lobster", CFrame.new(5.77875519, -12.7361145, -63.4011688, 0.999820292, 1.11183072e-08, -0.0189436078, -9.94847138e-09, 1, 6.18481266e-08, 0.0189436078, -6.16485281e-08, 0.999820292), cE0Color)
-        self:plotWaypoint("Izakaya", CFrame.new(-6.60881424, -3.277318, -45.8185806, -0.0179589726, -3.68412358e-08, 0.99983871, -8.20734258e-10, 1, 3.68324358e-08, -0.99983871, -1.59129168e-10, -0.0179589726), cE0Color)
+            self:plotWaypoint("Campfire (Cave)", CFrame.new(50.5005188, -3.27936959, 45.8245049, 0.511625528, -1.06045634e-08, 0.859208643, 3.62333026e-08, 1, -9.23321064e-09, -0.859208643, 3.58559191e-08, 0.511625528), cE0Color)
+            self:plotWaypoint("Campfire (Ground) & Gamer Shack", CFrame.new(-35.0969467, -3.39721847, -5.80594683, -0.782029748, 2.27397319e-08, -0.623240769, 3.63110004e-08, 1, -9.07598174e-09, 0.623240769, -2.97281399e-08, -0.782029748), cE0Color)
+            self:plotWaypoint("Campfire (Poolside)", CFrame.new(49.8565903, 1.61707997, -102.113022, 0.53096503, -5.22703569e-09, -0.847393513, 5.28910675e-08, 1, 2.69724456e-08, 0.847393513, -5.9140973e-08, 0.53096503), cE0Color)
+            self:plotWaypoint("Miko Borgar (Door)", CFrame.new(-1.05410039, -3.39721847, -82.1947021, 0.998766482, -2.69013523e-08, -0.0496555455, 3.06295682e-08, 1, 7.43202406e-08, 0.0496555455, -7.57493979e-08, 0.998766482), cE0Color)
+            self:plotWaypoint("Pond", CFrame.new(-51.4066544, -2.45410466, -103.242828, -0.937839568, 3.27229159e-08, 0.347069085, 3.4841225e-08, 1, -1.36675046e-10, -0.347069085, 1.19641328e-08, -0.937839568), cE0Color)
+            self:plotWaypoint("Pool (Benches)", CFrame.new(30.9888954, -3.39721847, -80.3704605, -0.715499997, -5.40728564e-08, -0.698610604, -1.14304344e-09, 1, -7.62298313e-08, 0.698610604, -5.37439142e-08, -0.715499997), cE0Color)
+            self:plotWaypoint("Cirno Statues", CFrame.new(49.1739616, -3.39721847, -8.75012016, -0.543244958, -6.46215383e-08, -0.839574218, -1.14304521e-09, 1, -7.62298455e-08, 0.839574218, -4.04518019e-08, -0.543244958), cE0Color)
+            self:plotWaypoint("Treehouse", CFrame.new(31.4564857, 35.6251411, 50.0041885, 0.715494156, 5.91811222e-08, 0.69861877, 3.8019552e-09, 1, -8.86053471e-08, -0.69861877, 6.60527633e-08, 0.715494156), cE0Color)
+            self:plotWaypoint("Bouncy Castle", CFrame.new(0.475164026, -3.39721847, 23.8564453, -0.99950707, 9.88343851e-10, 0.0313819498, -1.32396899e-10, 1, -3.57108298e-08, -0.0313819498, -3.56973651e-08, -0.99950707), cE0Color)
+            self:plotWaypoint("Slide (Small Hill)", CFrame.new(-50.6221809, 9.94405937, 56.1536865, 0.997613728, 2.3075911e-08, -0.0690322742, -2.23911307e-08, 1, 1.06936717e-08, 0.0690322742, -9.12244946e-09, 0.997613728), cE0Color)
+            self:plotWaypoint("Slide (Poolside)", CFrame.new(40.0324783, 6.6087389, -39.532444, 0.999875724, -1.93160812e-08, -0.0157229118, 1.95169676e-08, 1, 1.26231088e-08, 0.0157229118, -1.29284112e-08, 0.999875724), cE0Color)
+            self:plotWaypoint("Funky Room", CFrame.new(-68.484436, -3.39721847, 60.7482109, -2.32830644e-10, -3.11954729e-08, -0.999997795, 5.44967769e-08, 1, -3.11955013e-08, 0.999997795, -5.44967342e-08, -2.32830644e-10), cE0Color)
+            self:plotWaypoint("Suwako Room", CFrame.new(-61.846508, -3.39721847, -66.5909882, 0.00312713091, -3.28514393e-09, -0.999995053, 7.25480831e-08, 1, -3.05829273e-09, 0.999995053, -7.25381568e-08, 0.00312713091), cE0Color)
+            self:plotWaypoint("Lobster", CFrame.new(5.77875519, -12.7361145, -63.4011688, 0.999820292, 1.11183072e-08, -0.0189436078, -9.94847138e-09, 1, 6.18481266e-08, 0.0189436078, -6.16485281e-08, 0.999820292), cE0Color)
+            self:plotWaypoint("Izakaya", CFrame.new(-6.60881424, -3.277318, -45.8185806, -0.0179589726, -3.68412358e-08, 0.99983871, -8.20734258e-10, 1, 3.68324358e-08, -0.99983871, -1.59129168e-10, -0.0179589726), cE0Color)
 
-        local cE1Color = Color3.fromRGB(255, 196, 61)
+            local cE1Color = Color3.fromRGB(255, 196, 61)
 
-        self:plotWaypoint("Savanna", CFrame.new(37.7001686, -3.40405059, -137.407516, 0.999959052, 4.18167581e-08, 0.00899411179, -4.13985326e-08, 1, -4.66871946e-08, -0.00899411179, 4.63129659e-08, 0.999959052), cE1Color)
-        self:plotWaypoint("Blue Door", CFrame.new(-33.5249329, -3.39721847, -211.964386, -0.999284327, 2.38968401e-08, 0.037821576, 2.54846189e-08, 1, 4.14982999e-08, -0.037821576, 4.24324718e-08, -0.999284327), cE1Color)
-        self:plotWaypoint("Train Station", CFrame.new(-54.2110176, 6.25, -161.287369, -0.999873161, 7.6191661e-08, 0.0159097109, 7.52258629e-08, 1, -6.13025932e-08, -0.0159097109, -6.0098003e-08, -0.999873161), cE1Color)
+            self:plotWaypoint("Savanna", CFrame.new(37.7001686, -3.40405059, -137.407516, 0.999959052, 4.18167581e-08, 0.00899411179, -4.13985326e-08, 1, -4.66871946e-08, -0.00899411179, 4.63129659e-08, 0.999959052), cE1Color)
+            self:plotWaypoint("Blue Door", CFrame.new(-33.5249329, -3.39721847, -211.964386, -0.999284327, 2.38968401e-08, 0.037821576, 2.54846189e-08, 1, 4.14982999e-08, -0.037821576, 4.24324718e-08, -0.999284327), cE1Color)
+            self:plotWaypoint("Train Station", CFrame.new(-54.2110176, 6.25, -161.287369, -0.999873161, 7.6191661e-08, 0.0159097109, 7.52258629e-08, 1, -6.13025932e-08, -0.0159097109, -6.0098003e-08, -0.999873161), cE1Color)
 
-        local cE2Color = Color3.fromRGB(242, 255, 61)
+            local cE2Color = Color3.fromRGB(242, 255, 61)
 
-        self:plotWaypoint("Fountain", CFrame.new(35.8924446, -2.35769129, 96.6178894, -0.0536103845, -2.98055269e-08, -0.998561919, -6.42211972e-08, 1, -2.64005671e-08, 0.998561919, 6.27135108e-08, -0.0536103845), cE2Color)
-        self:plotWaypoint("Ratcade", CFrame.new(3.75609636, -3.39721847, 89.8193359, 0.0222254563, 5.80779727e-08, 0.999752939, 3.18127285e-08, 1, -5.87995359e-08, -0.999752939, 3.31117072e-08, 0.0222254563), cE2Color)
-        self:plotWaypoint("Inside UFO Catcher", CFrame.new(-37.7735367, -0.92603755, 78.7536469, -0.999979138, -6.31962678e-08, 0.00645794719, -6.36200426e-08, 1, -6.5419826e-08, -0.00645794719, -6.5829326e-08, -0.999979138), cE2Color)
-        self:plotWaypoint("Beach Portal", CFrame.new(67.0926361, -2.81909084, 99.9620361, -0.34926942, 1.66901373e-08, -0.937022328, 5.79714232e-08, 1, -3.79660969e-09, 0.937022328, -5.56465594e-08, -0.34926942), cE2Color)
+            self:plotWaypoint("Fountain", CFrame.new(35.8924446, -2.35769129, 96.6178894, -0.0536103845, -2.98055269e-08, -0.998561919, -6.42211972e-08, 1, -2.64005671e-08, 0.998561919, 6.27135108e-08, -0.0536103845), cE2Color)
+            self:plotWaypoint("Ratcade", CFrame.new(3.75609636, -3.39721847, 89.8193359, 0.0222254563, 5.80779727e-08, 0.999752939, 3.18127285e-08, 1, -5.87995359e-08, -0.999752939, 3.31117072e-08, 0.0222254563), cE2Color)
+            self:plotWaypoint("Inside UFO Catcher", CFrame.new(-37.7735367, -0.92603755, 78.7536469, -0.999979138, -6.31962678e-08, 0.00645794719, -6.36200426e-08, 1, -6.5419826e-08, -0.00645794719, -6.5829326e-08, -0.999979138), cE2Color)
+            self:plotWaypoint("Beach Portal", CFrame.new(67.0926361, -2.81909084, 99.9620361, -0.34926942, 1.66901373e-08, -0.937022328, 5.79714232e-08, 1, -3.79660969e-09, 0.937022328, -5.56465594e-08, -0.34926942), cE2Color)
+        end
     end
 
     function Minimap:plotWaypoint(name, loc, color)
