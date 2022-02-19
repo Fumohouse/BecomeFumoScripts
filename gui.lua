@@ -259,6 +259,25 @@ do -- gui class
 		return checkbox
 	end
 
+	function UIUtils.createTextBox(parent, placeholder, height)
+		local textBox = Instance.new("TextBox")
+		textBox.ClearTextOnFocus = false
+		textBox.BackgroundColor3 = cGui.BackgroundColorLight
+		textBox.BorderSizePixel = 1
+		textBox.Font = cGui.Font
+		textBox.TextSize = cGui.ButtonHeightLarge * 0.8
+		textBox.TextColor3 = cGui.ForegroundColor
+		textBox.Text = ""
+		textBox.PlaceholderColor3 = Color3.fromRGB(127, 127, 127)
+		textBox.PlaceholderText = placeholder
+		textBox.TextXAlignment = Enum.TextXAlignment.Left
+		textBox.TextYAlignment = Enum.TextYAlignment.Center
+		textBox.Size = UDim2.new(1, 0, 0, height)
+		textBox.Parent = parent
+
+		return textBox
+	end
+
 	BFS.UI = UIUtils
 end -- gui class
 
@@ -440,8 +459,6 @@ do -- config & bindings
 				if del then
 					del()
 				end
-
-				return
 			end
 		end
 	end

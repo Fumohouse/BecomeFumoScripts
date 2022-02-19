@@ -17,7 +17,8 @@ local cDefaultConfig = {
         TabOptions = Enum.KeyCode.Two.Name,
         TabDocs = Enum.KeyCode.Three.Name,
         TabAnims = Enum.KeyCode.Four.Name,
-        TabWaypoints = Enum.KeyCode.Five.Name,
+        -- TabWaypoints = Enum.KeyCode.Five.Name,
+        TabTools = Enum.KeyCode.Five.Name,
         TabWelds = Enum.KeyCode.Six.Name,
         TabSettings = Enum.KeyCode.Seven.Name,
         HideGui = Enum.KeyCode.F1.Name,
@@ -28,11 +29,12 @@ local cDefaultConfig = {
     debug = false,
     replaceHumanoid = false,
     mapRenderEverything = false,
+    postLoad = {}
 }
 
 BFS.Config:mergeDefaults(cDefaultConfig)
 
-version = "1.6.0"
+version = "1.7.0"
 
 do  -- double load prevention
     if BF_LOADED then
@@ -433,13 +435,25 @@ At any time, you can press [0] to close the script and reset everything back to 
 - zorro - hat
     ]]
 
-    local cAboutInfo = {}
-    cAboutInfo.Label = "About this Script"
-    cAboutInfo.Content = cAboutContent
-
-    addDoc(cAboutInfo)
+    addDoc({
+        Label = "About this Script",
+        Content = cAboutContent
+    })
 
     local cChangelogContent = [[
+<b>1.7.0 - Tools and Postload</b>
+- Added Nanodesu
+- Added better handling of certain welds
+- Made it so you can unweld tools without reloading the script
+- Game shouldn't crash when attempting to unweld weirdly welded parts
+* Certain welds will not work because of how they were made. The script will send a warning in the console, and in these cases, it is not possible to orbit.
+- Automatically stop orbitting/attempting to orbit parts which are destroyed
+- GUI: Binding multiple actions to the same key causes all actions to run instead of just the first one
+- Replaced Tab 5 with a "Tools" tab for misc. actions like equipping everything in the backpack at once
+- You can now configure BFS to load other scripts on start through the 7S section "Post-load scripts". Paste any script URL (i.e. from Github) into the list and it will load after BFS.
+    - Post-loading happens every time BFS starts, and BFS will avoid loading the same script twice (if it was the one who loaded it originally).
+    - More details in a Knowledgebase article titled "Manual: Niche Features"
+
 <b>1.6.0</b>
 - Waypoints are now automatically placed at each spawnpoint.
 - Added an option to 7S which sets the map to render absolutely everything.
@@ -625,9 +639,10 @@ At any time, you can press [0] to close the script and reset everything back to 
 - Added an about page
     ]]
 
-    cChangelogInfo = {}
-    cChangelogInfo.Label = "Changelog"
-    cChangelogInfo.Content = cChangelogContent
+    cChangelogInfo = {
+        Label = "Changelog",
+        Content = cChangelogContent
+    }
 
     addDoc(cChangelogInfo)
 
@@ -654,11 +669,29 @@ For questions or other information, contact me ingame, via Discord (voided#6691)
 > discord.gg/X8Z3WzA6m6
     ]]
 
-    local cEtiquetteInfo = {}
-    cEtiquetteInfo.Label = "Cheaters' Etiquette"
-    cEtiquetteInfo.Content = cEtiquetteContent
+    addDoc({
+        Label = "Cheaters' Etiquette",
+        Content = cEtiquetteContent
+    })
 
-    addDoc(cEtiquetteInfo)
+    local cNicheDocsContent = [[
+<b>1. The post-load scripts feature</b>
+Post-load scripts can be configured through the section of the same name in the Settings (7S) tab.
+Whenever BFS starts, it will load any scripts configured and run them, as long as it has not run them before in the same session.
+
+Text boxes will appear with previously configured post-load scripts. To add one, just paste a URL into the "Script URL" spot.
+
+Script URLs must have a URL protocol (the thing before ://).
+- You can use standard http:// or https://, essentially, any URL hosted on the web (Github, Pastebin, etc). Make sure that the website responds with raw text (i.e. use raw Pastebin or raw Github links)
+- You can also configure BFS to load scripts from the filesystem. If the URL protocol is "workspace://", you can add your script to the workspace folder of your exploit and add the path to the file after the protocol.
+    - For KRNL, the workspace folder is in the same folder as krnl.exe.
+    - For example, if there is a script located at "[WORKSPACE FOLDER]\test.lua", use the URL "workspace://test.lua".
+    ]]
+
+    addDoc({
+        Label = "Manual: Niche Features",
+        Content = cNicheDocsContent
+    })
 
     createKnowledgebaseCategory("Exploit Write-ups")
 
@@ -685,11 +718,10 @@ Generally speaking, most server side scripts affecting your character will no lo
 Another button labeled 'Replace Humanoid Now' provides older functionality. It doesn't show animations client-side, it requires a custom key listener for jumping to work, and it requires resetting the camera. But, it activates the feature without needing to change characters. The benefit of this is you can use items or do things before you activate the feature (such as getting the red glow on Soul Edge).
     ]]
 
-    local cHumanoidInfo = {}
-    cHumanoidInfo.Label = "Replacing Humanoid"
-    cHumanoidInfo.Content = cHumanoidContent
-
-    addDoc(cHumanoidInfo)
+    addDoc({
+        Label = "Replacing Humanoid",
+        Content = cHumanoidContent
+    })
 
     local cWeldsContent = [[
 <i>Discovery & disclosure: gandalf872 and LordOfCatgirls</i>
@@ -709,11 +741,10 @@ The method used in this script may still be unstable, causing death after minute
 Please remember that the people who discovered this did not do it for you to take off your clothes. Please do not take off your clothes. Please do not take off your clothes. Ple
     ]]
 
-    local cWeldsInfo = {}
-    cWeldsInfo.Label = "Removing Welds"
-    cWeldsInfo.Content = cWeldsContent
-
-    addDoc(cWeldsInfo)
+    addDoc({
+        Label = "Removing Welds",
+        Content = cWeldsContent
+    })
 
     local cDetachContent = [[
 <i>Disclosure: xowada</i>
@@ -728,11 +759,10 @@ This script has the parts orbit the player by default. If middle click is held, 
 The script still suffers from relative instability and death may occur frequently. Report these instances to me with as much detail as possible."
     ]]
 
-    local cDetachInfo = {}
-    cDetachInfo.Label = "Detaching Accessories"
-    cDetachInfo.Content = cDetachContent
-
-    addDoc(cDetachInfo)
+    addDoc({
+        Label = "Detaching Accessories",
+        Content = cDetachContent
+    })
 
     createKnowledgebaseCategory("Announcements")
 
@@ -767,11 +797,10 @@ Other information about the new checks and the fate of this script will be in th
 <i>This script is not dead yet!</i>
     ]]
 
-    local cChecksInfo = {}
-    cChecksInfo.Label = "ReplicatedFirst Scripts"
-    cChecksInfo.Content = cChecksContent
-
-    addDoc(cChecksInfo)
+    addDoc({
+        Label = "ReplicatedFirst Scripts",
+        Content = cChecksContent
+    })
 
     local cA2Content = [[
 Announcement, 2021/9/26
@@ -783,11 +812,10 @@ A2 is hosted on Google Docs, the link is in this pastebin: <i>https://pastebin.c
 If you wish to sign the document, please tell me. It may be used during negotiations.
     ]]
 
-    local cA2Info = {}
-    cA2Info.Label = "Update & Policies"
-    cA2Info.Content = cA2Content
-
-    addDoc(cA2Info)
+    addDoc({
+        Label = "Update & Policies",
+        Content = cA2Content
+    })
 
     local cA3Content = [[
 Announcement, 2021/9/26
@@ -811,11 +839,10 @@ For the second point, a blacklist may go into place over time. Please use the fe
 Your signatures in A2 were highly appreciated. Thank you for your help.
     ]]
 
-    local cA3Info = {}
-    cA3Info.Label = "Update Again"
-    cA3Info.Content = cA3Content
-
-    addDoc(cA3Info)
+    addDoc({
+        Label = "Update Again",
+        Content = cA3Content
+    })
 end -- docs content -- globals exposed: cChangelogInfo
 
 do  -- animation UI
@@ -843,21 +870,7 @@ do  -- animation UI
 
     local animationsTab = BFS.TabControl:createTab("Animations", "4A", "TabAnims")
 
-    local speedField = Instance.new("TextBox")
-    speedField.ClearTextOnFocus = false
-    speedField.BackgroundColor3 = BFS.UIConsts.BackgroundColorLight
-    speedField.BorderSizePixel = 1
-    speedField.Font = BFS.UIConsts.Font
-    speedField.TextSize = BFS.UIConsts.ButtonHeightLarge * 0.8
-    speedField.TextColor3 = BFS.UIConsts.ForegroundColor
-    speedField.Text = ""
-    speedField.PlaceholderColor3 = Color3.fromRGB(127, 127, 127)
-    speedField.PlaceholderText = "Speed"
-    speedField.TextXAlignment = Enum.TextXAlignment.Left
-    speedField.TextYAlignment = Enum.TextYAlignment.Center
-    speedField.Size = UDim2.new(1, 0, 0, cSpeedFieldSize)
-    speedField.Position = UDim2.fromScale(0, 0)
-    speedField.Parent = animationsTab
+    local speedField = BFS.UI.createTextBox(animationsTab, "Speed", cSpeedFieldSize)
 
     speedField.FocusLost:Connect(function()
         if speedField.Text == "" then
@@ -1015,12 +1028,71 @@ do  -- animations
         addAnimation("Drip", "rbxassetid://8557253884")
         addAnimation("Penguin", "rbxassetid://8557261868")
         addAnimation("Clap", "rbxassetid://8557305015")
+        addAnimation("Nanodesu", "rbxassetid://8828894391")
     end
 end -- animations
 
-do  -- ?
-    local unknownTab = BFS.TabControl:createTab("?", "5?", "TabWaypoints")
-end -- ?
+do  -- tools
+    local toolsTab = BFS.TabControl:createTab("Tools", "5T", "TabTools")
+
+    local toolsScroll = BFS.UI.createListScroll(toolsTab, 2)
+
+    local function addToolHeader(text)
+        BFS.UI.createCategoryLabel(toolsScroll, text)
+    end
+
+    local function addTool(text, callback)
+        BFS.UI.createLabelButtonLarge(toolsScroll, text, callback)
+    end
+
+    addToolHeader("Backpack")
+
+    addTool("Equip all tools", function()
+        if not LocalPlayer.Character then
+            return
+        end
+
+        for _, tool in pairs(LocalPlayer.Backpack:GetChildren()) do
+            tool.Parent = LocalPlayer.Character
+        end
+    end)
+
+    addTool("Clear all tools", function()
+        if not LocalPlayer.Character then
+            return
+        end
+
+        LocalPlayer.Backpack:ClearAllChildren()
+
+        for _, tool in pairs(LocalPlayer.Character:GetChildren()) do
+            if tool:IsA("Tool") then
+                tool:Destroy()
+            end
+        end
+    end)
+
+    addToolHeader("Misc")
+
+    addTool("Log running animations", function()
+        if not LocalPlayer.Character then
+            return
+        end
+
+        local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if not hum then
+            return
+        end
+
+        local animator = hum:FindFirstChildOfClass("Animator")
+        if not animator then
+            return
+        end
+
+        for k, v in pairs(animator:GetPlayingAnimationTracks()) do
+            print("#"..tostring(k)..": "..v.Animation.AnimationId)
+        end
+    end)
+end -- tools
 
 do  -- hats come alive
     debugL = BFS.UI.createText(BFS.Root, 18)
@@ -1036,6 +1108,47 @@ do  -- hats come alive
     local cAngleThreshold = math.pi / 48
 
     local commonWelds = {"Head", "Torso", "LArm", "RArm", "LLeg", "RLeg", "HumanoidRootPart"}
+
+    -- add offsets of welds until a common part is reached
+    local function findCommonWeld(weld)
+        -- add offsets of welds until a common part is reached
+        local checkWeld = weld
+        local totalOffset = weld.C0 * weld.C1:Inverse()
+
+        local iterations = 0
+
+        while not table.find(commonWelds, checkWeld.Part0.Name) and not table.find(commonWelds, checkWeld.Part1.Name) do
+            local found
+
+            for _, desc in pairs(LocalPlayer.Character:GetDescendants()) do
+                if desc:IsA("JointInstance") then
+                    if desc ~= checkWeld then
+                        if desc.Part1 == checkWeld.Part0 then
+                            totalOffset = desc.C0 * desc.C1:Inverse() * totalOffset
+                            checkWeld = desc
+
+                            found = true
+                        end
+                    end
+                end
+            end
+
+            if iterations > 1000 then
+                warn("fumo WCA: Exceeded 1000 iterations on weld " .. checkWeld.Name .. ", Part0: " .. checkWeld.Part0.Name .. ", Part1: " .. checkWeld.Part1.Name)
+                return
+            end
+
+            if not found then
+                warn("fumo WCA: Weld path is a dead end")
+                return
+            end
+
+            iterations += 1
+        end
+
+        return checkWeld, totalOffset
+    end
+
     local parts = {}
 
     local tpTarget
@@ -1063,14 +1176,14 @@ do  -- hats come alive
             local shouldTp = BFS.Config.Value.orbitTp
 
             for _, v in pairs(part:GetDescendants()) do
-                if v:IsA("Weld") then
+                if v:IsA("JointInstance") and v.Part0 == part then
                     makeAlive(v, cb)
                     if cb then cb(v) end
                 end
             end
 
             for _, v in pairs(LocalPlayer.Character:GetDescendants()) do
-                if v ~= weld and v:IsA("Weld") and v.Part1 == weld.Part1 then
+                if v ~= weld and v:IsA("JointInstance") and v.Part1 == weld.Part1 then
                     v:Destroy()
                     if cb then cb(v) end
                 end
@@ -1096,68 +1209,74 @@ do  -- hats come alive
                 wait(1)
             end
 
-            part.CanTouch = true
+            local baseWeld, totalOffset = findCommonWeld(weld)
+            if not baseWeld then
+                warn("fumo WCA: Something is wrong! Did not find a base weld.")
+            else
+                part.CanTouch = true
 
-            local pos = Instance.new("BodyPosition")
-            pos.P = 500000
-            pos.D = 1000
-            pos.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-            pos.Position = part.Position
-            pos.Parent = part
+                local pos = Instance.new("BodyPosition")
+                pos.P = 500000
+                pos.D = 1000
+                pos.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+                pos.Position = part.Position
+                pos.Parent = part
 
-            local gyro = Instance.new("BodyGyro")
-            gyro.P = 500000
-            gyro.D = 1000
-            gyro.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
-            gyro.Parent = part
+                local gyro = Instance.new("BodyGyro")
+                gyro.P = 500000
+                gyro.D = 1000
+                gyro.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+                gyro.Parent = part
 
-            local antiG = Instance.new("BodyForce")
-            antiG.Force = Vector3.new(0, part:GetMass() * workspace.Gravity, 0)
-            antiG.Parent = part
+                local antiG = Instance.new("BodyForce")
+                antiG.Force = Vector3.new(0, part:GetMass() * workspace.Gravity, 0)
+                antiG.Parent = part
 
-            -- add offsets of welds until a common part is reached
-            local checkWeld = weld
-            local totalOffset = weld.C0 * weld.C1:Inverse()
+                local partInfo = {}
+                partInfo.Weld = weld
+                partInfo.TargetName = baseWeld.Part0.Name
+                partInfo.Part = part
+                partInfo.Pos = pos
+                partInfo.Gyro = gyro
+                partInfo.TotalOffset = totalOffset
 
-            while not table.find(commonWelds, checkWeld.Part0.Name) do
-                for _, desc in pairs(LocalPlayer.Character:GetDescendants()) do
-                    if desc:IsA("Weld") and desc.Part1 == checkWeld.Part0 then
-                        totalOffset = desc.C0 * desc.C1:Inverse() * totalOffset
-                        checkWeld = desc
+                parts[#parts + 1] = partInfo
+
+                part.Touched:Connect(function(otherPart)
+                    local hum = otherPart.Parent:FindFirstChildOfClass("Humanoid")
+
+                    if not hum then
+                        hum = otherPart.Parent:FindFirstChild("HumanoidRootPart")
                     end
-                end
+
+                    if hum and mousePos then
+                        local newTarget = hum.Parent
+
+                        if draggedAway ~= newTarget then
+                            mousePos = nil
+                            resetTpTarget(newTarget)
+                        end
+                    end
+                end)
+
+                part.AncestryChanged:Connect(function(_, parent)
+                    if parent then
+                        return
+                    end
+
+                    for i, partData in pairs(parts) do
+                        if partData.Part == part then
+                            print("fumo WCA: Stopped tracking part", part.Name, "(#"..tostring(i)..")")
+                            table.remove(parts, i)
+                            break
+                        end
+                    end
+                end)
+
+                weld:Destroy()
+                part.Velocity = Vector3.new(0, 100, 0)
+                part.Anchored = true
             end
-
-            local partInfo = {}
-            partInfo.Weld = weld
-            partInfo.TargetName = checkWeld.Part0.Name
-            partInfo.Part = part
-            partInfo.Pos = pos
-            partInfo.Gyro = gyro
-            partInfo.TotalOffset = totalOffset
-
-            parts[#parts+1] = partInfo
-
-            part.Touched:Connect(function(otherPart)
-                local hum = otherPart.Parent:FindFirstChildOfClass("Humanoid")
-
-                if not hum then
-                    hum = otherPart.Parent:FindFirstChild("HumanoidRootPart")
-                end
-
-                if hum and mousePos then
-                    local newTarget = hum.Parent
-
-                    if draggedAway ~= newTarget then
-                        mousePos = nil
-                        resetTpTarget(newTarget)
-                    end
-                end
-            end)
-
-            weld:Destroy()
-            part.Velocity = Vector3.new(0, 100, 0)
-            part.Anchored = true
 
             if shouldTp then
                 wait(2)
@@ -1449,10 +1568,10 @@ do  -- welds
         inProgress = inProgress - 1
     end
 
-    local labels = {}
+    local welds = {}
 
     local function removeWeldButton(weld)
-        for _, l in pairs(labels) do
+        for _, l in pairs(welds) do
             if l and l.Weld == weld then
                 l.Label:Destroy()
             end
@@ -1470,7 +1589,7 @@ do  -- welds
                 setActive(true)
 
                 deleteWeld(weld, function(p)
-                    for _, l in pairs(labels) do
+                    for _, l in pairs(welds) do
                         if l and l.Weld == p or l.Weld.Part0 == p or l.Weld.Part1 == p then
                             l.Label:Destroy()
                         end
@@ -1510,25 +1629,39 @@ do  -- welds
             label.TextScaled = true
         end
 
-        local labelInfo = {}
-        labelInfo.Label = label
-        labelInfo.Weld = weld
+        local weldInfo = {}
+        weldInfo.Label = label
+        weldInfo.Weld = weld
 
-        labels[#labels + 1] = labelInfo
+        welds[#welds + 1] = weldInfo
     end
 
+    local lCharacterDescendantAdded, lCharacterDescendantRemoved
+
     local function updateChar(char)
-        for _, l in pairs(labels) do
+        for _, l in pairs(welds) do
             l.Label:Destroy()
         end
 
-        labels = {}
+        welds = {}
 
         for _, v in pairs(char:GetDescendants()) do
-            if v:IsA("Weld") or v:IsA("Motor6D") then
+            if v:IsA("JointInstance") then
                 addWeld(v)
             end
         end
+
+        lCharacterDescendantAdded = char.DescendantAdded:Connect(function(desc)
+            if desc:IsA("JointInstance") then
+                addWeld(desc)
+            end
+        end)
+
+        lCharacterDescendantRemoved = char.DescendantRemoving:Connect(function(desc)
+            if desc:IsA("JointInstance") then
+                removeWeldButton(desc)
+            end
+        end)
     end
 
     local function setChar(char)
@@ -1541,6 +1674,14 @@ do  -- welds
 
     BFS.bindToExit("Welds: Unbind CharacterAdded", function()
         lCharacter:Disconnect()
+
+        if lCharacterDescendantAdded then
+            lCharacterDescendantAdded:Disconnect()
+        end
+
+        if lCharacterDescendantRemoved then
+            lCharacterDescendantRemoved:Disconnect()
+        end
     end)
 
     if LocalPlayer.Character then setChar(LocalPlayer.Character) end
@@ -1666,6 +1807,52 @@ do  -- settings
     local mapFrame = createSettingsCategory("Map Options")
 
     addCheckbox(mapFrame, "Map Everything", "mapRenderEverything")
+
+    local postLoadFrame = createSettingsCategory("Post-load scripts")
+    local postLoadTextBoxes = {}
+
+    local function updatePostLoads()
+        local urls = {}
+
+        for _, textBox in pairs(postLoadTextBoxes) do
+            if textBox.Text ~= "" then
+                urls[#urls + 1] = textBox.Text
+            end
+        end
+
+        BFS.Config.Value.postLoad = urls
+        BFS.Config:save()
+    end
+
+    local function addPostLoadBox(initialText)
+        local textBox = BFS.UI.createTextBox(postLoadFrame, "Script URL", 24)
+        textBox.Text = initialText or ""
+
+        textBox.FocusLost:Connect(function()
+            local idx = table.find(postLoadTextBoxes, textBox)
+
+            if idx == #postLoadTextBoxes then
+                if textBox.Text ~= "" then
+                    addPostLoadBox()
+                end
+            else
+                if textBox.Text == "" then
+                    textBox:Destroy()
+                    table.remove(postLoadTextBoxes, idx)
+                end
+            end
+
+            updatePostLoads()
+        end)
+
+        postLoadTextBoxes[#postLoadTextBoxes + 1] = textBox
+    end
+
+    for _, url in pairs(BFS.Config.Value.postLoad) do
+        addPostLoadBox(url)
+    end
+
+    addPostLoadBox()
 end -- settings
 
 do  -- info
@@ -2771,3 +2958,31 @@ BFS.Binds:bind("MapView", function()
         map:setExpanded(not map.Expanded)
     end
 end)
+
+do  -- postload
+    local loadedScripts = getgenv().loadedScripts
+    if not loadedScripts then
+        loadedScripts = {}
+        getgenv().loadedScripts = loadedScripts
+    end
+
+    local cWorkspacePrefix = "workspace://"
+
+    local function startsWith(str, prefix)
+        return string.sub(str, 1, #prefix) == prefix
+    end
+
+    for _, url in pairs(BFS.Config.Value.postLoad) do
+        if table.find(loadedScripts, url) then
+            print("fumo postload: Skipping", url, "as it has already been loaded by BFS.")
+        else
+            if startsWith(url, "http://") or startsWith(url, "https://") then
+                loadstring(game:HttpGet((url), true))()
+            elseif startsWith(url, cWorkspacePrefix) then
+                loadstring(readfile(string.sub(url, #cWorkspacePrefix + 1)))()
+            end
+
+            loadedScripts[#loadedScripts + 1] = url
+        end
+    end
+end -- postload
