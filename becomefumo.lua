@@ -34,7 +34,7 @@ local cDefaultConfig = {
 
 BFS.Config:mergeDefaults(cDefaultConfig)
 
-version = "1.7.0"
+version = "1.7.1"
 
 do  -- double load prevention
     if BF_LOADED then
@@ -88,15 +88,16 @@ do  -- disable stuff
         -- anticipating GUI rework will break things
         pcall(function()
             local mainGui = LocalPlayer:FindFirstChild("PlayerGui"):FindFirstChild("MainGui")
-            local toggleButton = mainGui:FindFirstChild("MainFrame"):FindFirstChild("ToggleButton")
-            toggleButton.Visible = false -- disable the default character selector
 
-            local settings = mainGui:FindFirstChild("SettingsFrame")
-            settings.Visible = false -- disable the default settings
+            local selectButton = mainGui:FindFirstChild("FumoSelectButton")
+            selectButton.Visible = false
+
+            local settingsButton = mainGui:FindFirstChild("SettingsButton")
+            settingsButton.Visible = false
 
             BFS.bindToExit("Re-enable GUI", function()
-                toggleButton.Visible = true -- reenable the default character selector
-                settings.Visible = true -- reenable the default settings
+                selectButton.Visible = true
+                settingsButton.Visible = true
             end)
         end)
     end
@@ -441,6 +442,9 @@ At any time, you can press [0] to close the script and reset everything back to 
     })
 
     local cChangelogContent = [[
+<b>1.7.1</b>
+- Hopefully fixed execution on BCF (I did not check)
+
 <b>1.7.0 - Tools and Postload</b>
 - Added Nanodesu
 - Added better handling of certain welds
