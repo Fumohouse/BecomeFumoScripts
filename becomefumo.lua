@@ -34,7 +34,7 @@ local cDefaultConfig = {
 
 BFS.Config:mergeDefaults(cDefaultConfig)
 
-version = "1.7.1"
+version = "1.7.1b"
 
 do  -- double load prevention
     if BF_LOADED then
@@ -131,7 +131,7 @@ end
 if place == "BCF" then  -- characters
     local cCharacters = {}
 
-    for _, v in pairs(LocalPlayer.PlayerGui.MainGui.MainFrame.ScrollingFrame:GetChildren()) do -- steal from the gui instead of the replicated list, which does not include badge chars
+    for _, v in pairs(LocalPlayer.PlayerGui.MainGui.FumoSelectFrame.ScrollingFrame:GetChildren()) do -- steal from the gui instead of the replicated list, which does not include badge chars
         if v:IsA("TextButton") then
             cCharacters[#cCharacters + 1] = v.Name
         end
@@ -442,6 +442,9 @@ At any time, you can press [0] to close the script and reset everything back to 
     })
 
     local cChangelogContent = [[
+<b>1.7.1b</b>
+- Attempt 2 to fix execution on BCF
+
 <b>1.7.1</b>
 - Hopefully fixed execution on BCF (I did not check)
 
