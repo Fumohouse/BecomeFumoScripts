@@ -34,7 +34,7 @@ local cDefaultConfig = {
 
 BFS.Config:mergeDefaults(cDefaultConfig)
 
-version = "1.7.1b"
+version = "1.7.2"
 
 do  -- double load prevention
     if BF_LOADED then
@@ -442,6 +442,9 @@ At any time, you can press [0] to close the script and reset everything back to 
     })
 
     local cChangelogContent = [[
+<b>1.7.2</b>
+- Added new SBF animations
+
 <b>1.7.1b</b>
 - Attempt 2 to fix execution on BCF
 
@@ -1023,7 +1026,9 @@ do  -- animations
         addAnimation("Dance1", "rbxassetid://8369300730")
         addAnimation("Dance2", "rbxassetid://8369304237")
         addAnimation("Dance3", "rbxassetid://7364328999")
+	addAnimation("Dance4", "rbxassetid://8950972041")
         addAnimation("Laugh", "rbxassetid://8369369772")
+	addAnimation("Laugh1", "rbxassetid://9081137241")
         addAnimation("Cheer", "rbxassetid://8369365889")
         addAnimation("Abunai", "rbxassetid://8377632838")
         addAnimation("Sonanoka", "rbxassetid://8377647016")
@@ -1036,6 +1041,11 @@ do  -- animations
         addAnimation("Penguin", "rbxassetid://8557261868")
         addAnimation("Clap", "rbxassetid://8557305015")
         addAnimation("Nanodesu", "rbxassetid://8828894391")
+	addAnimation("The J", "rbxassetid://8959872788")
+	addAnimation("Flan Dance", "rbxassetid://8974536681")
+	addAnimation("Yoinky Sploinky", "rbxassetid://9468968342")
+	addAnimation("Katzotsky Kick", "rbxassetid://9119699991")
+	addAnimation("Orin Dance", "rbxassetid://9612119226")
     end
 end -- animations
 
