@@ -18,7 +18,7 @@ getgenv().orbitFunction = function(ctx)
         layer_num = layer_num + 1
         in_layer = inLayer(layer_num)
     end
-    
+
     if not data[layer_num] then
         data[layer_num] = -1
     end
