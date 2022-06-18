@@ -120,6 +120,19 @@ function teleport(pos)
     return origPos
 end
 
+local function getFootPosition()
+    local orientation, size = LocalPlayer.Character:GetBoundingBox()
+    return orientation.Position - Vector3.new(0, size.Y / 2, 0)
+end
+
+local function formatVector(v)
+    if not v then
+        return "unset"
+    end
+
+    return string.format("(%02d, %02d, %02d)", v.X, v.Y, v.Z)
+end
+
 local raceData = {
     active = false,
     checkpoints = {},
@@ -134,6 +147,129 @@ function raceData:Log(msg)
         "[%s] %s",
         os.date("%H:%M:%S", os.time()), msg
     )
+end
+
+function raceData:ClearCheckpoints()
+    for _, checkpoint in pairs(self.checkpoints) do
+        checkpoint:Destroy()
+    end
+
+    self.checkpoints = {}
+end
+
+local Checkpoint = {}
+Checkpoint.__index = Checkpoint
+
+function Checkpoint.new(parent, index, point1, point2, removeHook)
+    local self = setmetatable({}, Checkpoint)
+
+    self.Point1 = point1
+    self.Point2 = point2
+    self.Region = nil
+
+    self.RegionPart = nil
+    self.RegionLabel = nil
+
+    local root = Instance.new("Frame")
+    root.Size = UDim2.new(1, 0, 0, 0)
+    root.BackgroundTransparency = 1
+    root.BorderSizePixel = 0
+    root.AutomaticSize = Enum.AutomaticSize.Y
+    BFS.UI.createListLayout(root, Enum.HorizontalAlignment.Center, Enum.VerticalAlignment.Top)
+
+    root.Parent = parent
+    self.Root = root
+
+    local label = BFS.UI.createCategoryLabel(root, "")
+    self.Label = label
+
+    local point1Button
+    point1Button = BFS.UI.createLabelButtonLarge(root, "Point 1: "..formatVector(self.Point1), function()
+        self.Point1 = getFootPosition()
+        self:UpdateRegion()
+        point1Button.Label.Text = "Point 1: "..formatVector(self.Point1)
+    end)
+
+    local point2Button
+    point2Button = BFS.UI.createLabelButtonLarge(root, "Point 2: "..formatVector(self.Point2), function()
+        self.Point2 = getFootPosition() + Vector3.new(0, 5, 0)
+        self:UpdateRegion()
+        point2Button.Label.Text = "Point 2: "..formatVector(self.Point2)
+    end)
+
+    BFS.UI.createLabelButtonLarge(root, "Delete", removeHook)
+
+    self:UpdateIndex(index)
+    self:UpdateRegion()
+
+    return self
+end
+
+function Checkpoint:UpdateIndex(index)
+    self.Index = index
+    self.Label.Text = "Checkpoint "..index
+
+    if self.RegionLabel then
+        self.RegionLabel.Text = "C"..index
+    end
+end
+
+function Checkpoint:initRegionPart()
+    local part = Instance.new("Part")
+    part.Color = Color3.new(1, 1, 1)
+    part.CanCollide = false
+    part.Transparency = 0.3
+    part.Anchored = true
+    part.Material = Enum.Material.SmoothPlastic
+    part.Parent = workspace
+
+    self.RegionPart = part
+
+    local billboard = Instance.new("BillboardGui")
+    billboard.Adornee = part
+    billboard.Parent = part
+    billboard.Size = UDim2.new(0, 200, 0, 50)
+
+    local text = BFS.UI.createText(billboard, 40)
+    text.Text = "C"..self.Index
+    text.AutomaticSize = Enum.AutomaticSize.XY
+    self.RegionLabel = text
+end
+
+function Checkpoint:UpdateRegion()
+    local cExpand = Vector3.new(1.0, 1.0, 1.0)
+
+    if not self.Point1 or not self.Point2 then
+        return
+    end
+
+    local min = Vector3.new(
+        math.min(self.Point1.X, self.Point2.X),
+        math.min(self.Point1.Y, self.Point2.Y),
+        math.min(self.Point1.Z, self.Point2.Z)
+    )
+
+    local max = Vector3.new(
+        math.max(self.Point1.X, self.Point2.X),
+        math.max(self.Point1.Y, self.Point2.Y),
+        math.max(self.Point1.Z, self.Point2.Z)
+    )
+
+    self.Region = Region3.new(min - cExpand, max + cExpand)
+
+    if not self.RegionPart then
+        self:initRegionPart()
+    end
+
+    self.RegionPart.CFrame = self.Region.CFrame
+    self.RegionPart.Size = self.Region.Size
+end
+
+function Checkpoint:Destroy()
+    self.Root:Destroy()
+    if self.RegionPart then
+        self.RegionPart:Destroy()
+    end
 end
 
 local PlayerData = {}
@@ -497,10 +633,7 @@ do  -- race
     end)
 
     BFS.bindToExit("Race: Clean up", function()
-        for _, checkpoint in pairs(raceData.checkpoints) do
-            checkpoint:Cleanup()
-        end
-
+        raceData:ClearCheckpoints()
         lHeartbeat:Disconnect()
     end)
 end -- race
@@ -527,128 +660,11 @@ do  -- checkpoints
         end
     end
 
-    local function getFootPosition()
-        local orientation, size = LocalPlayer.Character:GetBoundingBox()
-        return orientation.Position - Vector3.new(0, size.Y / 2, 0)
-    end
-
-    local function formatVector(v)
-        if not v then
-            return "unset"
-        end
-
-        return string.format("(%02d, %02d, %02d)", v.X, v.Y, v.Z)
-    end
-
     local function addCheckpoint(point1, point2)
-        -- nils for reference
-        local checkpoint = {
-            Index = nil,
-            Root = nil,
-            Point1 = point1,
-            Point2 = point2,
-            Region = nil,
-            RegionPart = nil,
-            RegionLabel = nil,
-        }
-
         local index = #raceData.checkpoints + 1
-        checkpoint.Index = index
 
-        function checkpoint:UpdateRegion()
-            local cExpand = Vector3.new(1.0, 1.0, 1.0)
-
-            if not self.Point1 or not self.Point2 then
-                return
-            end
-
-            local min = Vector3.new(
-                math.min(self.Point1.X, self.Point2.X),
-                math.min(self.Point1.Y, self.Point2.Y),
-                math.min(self.Point1.Z, self.Point2.Z)
-            )
-
-            local max = Vector3.new(
-                math.max(self.Point1.X, self.Point2.X),
-                math.max(self.Point1.Y, self.Point2.Y),
-                math.max(self.Point1.Z, self.Point2.Z)
-            )
-
-            self.Region = Region3.new(min - cExpand, max + cExpand)
-
-            if not self.RegionPart then
-                local part = Instance.new("Part")
-                part.Color = Color3.new(1, 1, 1)
-                part.CanCollide = false
-                part.Transparency = 0.3
-                part.Anchored = true
-                part.Material = Enum.Material.SmoothPlastic
-                part.Parent = workspace
-
-                self.RegionPart = part
-
-                local billboard = Instance.new("BillboardGui")
-                billboard.Adornee = part
-                billboard.Parent = part
-                billboard.Size = UDim2.new(0, 200, 0, 50)
-
-                local text = BFS.UI.createText(billboard, 40)
-                text.Text = "C"..self.Index
-                text.AutomaticSize = Enum.AutomaticSize.XY
-                self.RegionLabel = text
-            end
-
-            self.RegionPart.CFrame = self.Region.CFrame
-            self.RegionPart.Size = self.Region.Size
-        end
-
-        checkpoint:UpdateRegion()
-
-        function checkpoint:Cleanup()
-            self.Root:Destroy()
-            if self.RegionPart then
-                self.RegionPart:Destroy()
-            end
-        end
-
-        local root = Instance.new("Frame")
-        root.Size = UDim2.new(1, 0, 0, 0)
-        root.BackgroundTransparency = 1
-        root.BorderSizePixel = 0
-        root.AutomaticSize = Enum.AutomaticSize.Y
-        BFS.UI.createListLayout(root, Enum.HorizontalAlignment.Center, Enum.VerticalAlignment.Top)
-
-        root.Parent = checkpointsFrame
-        checkpoint.Root = root
-
-        local label = BFS.UI.createCategoryLabel(root, "")
-
-        function checkpoint:UpdateIndex(i)
-            self.Index = i
-            label.Text = "Checkpoint "..i
-
-            if self.RegionLabel then
-                self.RegionLabel.Text = "C"..i
-            end
-        end
-
-        checkpoint:UpdateIndex(index)
-
-        local point1Button
-        point1Button = BFS.UI.createLabelButtonLarge(root, "Point 1: "..formatVector(checkpoint.Point1), function()
-            checkpoint.Point1 = getFootPosition()
-            checkpoint:UpdateRegion()
-            point1Button.Label.Text = "Point 1: "..formatVector(checkpoint.Point1)
-        end)
-
-        local point2Button
-        point2Button = BFS.UI.createLabelButtonLarge(root, "Point 2: "..formatVector(checkpoint.Point2), function()
-            checkpoint.Point2 = getFootPosition() + Vector3.new(0, 5, 0)
-            checkpoint:UpdateRegion()
-            point2Button.Label.Text = "Point 2: "..formatVector(checkpoint.Point2)
-        end)
-
-        BFS.UI.createLabelButtonLarge(root, "Delete", function()
+        local checkpoint
+        checkpoint = Checkpoint.new(checkpointsFrame, index, point1, point2, function()
             checkpoint:Cleanup()
             table.remove(raceData.checkpoints, checkpoint.Index)
             updateCheckpoints()
@@ -661,6 +677,10 @@ do  -- checkpoints
 
     BFS.UI.createLabelButtonLarge(checkpointsScroll, "Add", function()
         addCheckpoint()
+    end)
+
+    BFS.UI.createLabelButtonLarge(checkpointsScroll, "Clear Checkpoints", function()
+        raceData:ClearCheckpoints()
     end)
 
     local ioFrame = Instance.new("Frame")
@@ -700,7 +720,7 @@ do  -- checkpoints
             return
         end
 
-        raceData.checkpoints = {}
+        raceData:ClearCheckpoints()
 
         if not pcall(function() readfile(fileNameField.Text) end) then
             return
