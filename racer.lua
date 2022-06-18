@@ -31,6 +31,8 @@
     - Racers can miss up to 3 checkpoints and have the lap still counted. This is in order to account for possible network/FPS lag.
         - For this reason, place a sufficient number of checkpoints on the track.
         - If there is contention over the results, check the event log.
+    - If a racer goes over 3 checkpoints *backward*, **their entire lap will be invalidated**.
+        - For this reason, design the checkpoint layout such that it is difficult to actually do this accidentally.
 ]]
 
 local BFS = getgenv().BFS
@@ -428,7 +430,7 @@ do  -- race
                     playerData.Checkpoint = checkpoint.Index
 
                     anyChanged = true
-                elseif diff < 0 then
+                elseif diff < -3 then
                     -- Distance from last visited to last checkpoint
                     playerData.CheckpointsMissed += #raceData.checkpoints - lastCheckpoint
                     -- Distance from here to the first checkpoint
