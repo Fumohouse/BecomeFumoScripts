@@ -142,6 +142,8 @@ end
 local cSDMSize = Vector3.new(420, 2.647937774658203, 420)
 local cSDMPos = CFrame.new(12485.9893, -19.8234463, 420.502899)
 
+local cPadding = 30
+
 local map
 
 local raceData = {
@@ -152,6 +154,36 @@ local raceData = {
     playerCount = 0,
     laps = 0,
 }
+
+local function getColor(playerData, place)
+    if playerData.Finished then
+        return Color3.fromRGB(46, 199, 4)
+    end
+
+    if place == 1 then
+        return Color3.fromRGB(255, 215, 0)
+    end
+
+    if place == 2 then
+        return Color3.fromRGB(192, 192, 192)
+    end
+
+    if place == 3 then
+        return Color3.fromRGB(165, 113, 100)
+    end
+
+    return Color3.new(1, 1, 1)
+end
+
+local function createOverlayFrame()
+    local frame = Instance.new("Frame")
+    frame.BackgroundTransparency = 0.3
+    frame.BackgroundColor3 = Color3.new(0.1, 0.1, 0.1)
+    frame.BorderSizePixel = 4
+    frame.BorderColor3 = Color3.new(0.05, 0.05, 0.05)
+
+    return frame
+end
 
 function raceData:Log(msg)
     self.eventLog[#self.eventLog + 1] = string.format(
@@ -324,6 +356,7 @@ function PlayerData.new(player, overlayEntry)
     self.Player = player
 
     self.Started = tick()
+    self.Place = 0
     self.Lap = 0
     self.Checkpoint = 0
     self.CheckpointsMissed = 0
@@ -388,27 +421,130 @@ function PlayerData:Destroy()
     self.OverlayEntry.Root:Destroy()
 end
 
+do  -- spectating
+    local cPositionHidden = UDim2.fromScale(0.5, -0.2)
+    local cPositionVisible = UDim2.fromScale(0.5, 0)
+
+    local spectatorOverlay = createOverlayFrame()
+    spectatorOverlay.Size = UDim2.fromScale(0.25, 0.08)
+    spectatorOverlay.AnchorPoint = Vector2.new(0.5, 0)
+    spectatorOverlay.Position = cPositionHidden
+    spectatorOverlay.Parent = secondaryRoot
+
+    local spectatingText = BFS.UI.createText(spectatorOverlay, 0)
+    spectatingText.Size = UDim2.fromScale(1, 0.2)
+    spectatingText.RichText = true
+    spectatingText.Text = "<i>Now Spectating</i>"
+    spectatingText.TextScaled = true
+
+    local playerInfo = Instance.new("Frame")
+    playerInfo.BackgroundTransparency = 1
+    playerInfo.BorderSizePixel = 0
+    playerInfo.AnchorPoint = Vector2.new(0.5, 0)
+    playerInfo.Position = UDim2.fromScale(0.5, 0.3)
+    playerInfo.Size = UDim2.fromScale(0.8, 0.6)
+    playerInfo.Parent = spectatorOverlay
+
+    local listLayout = BFS.UI.createListLayout(playerInfo, Enum.HorizontalAlignment.Center, Enum.VerticalAlignment.Center, 20)
+    listLayout.FillDirection = Enum.FillDirection.Horizontal
+
+    local placeText = BFS.UI.createText(playerInfo)
+    placeText.TextScaled = true
+    placeText.Size = UDim2.fromScale(0, 1)
+    placeText.Text = "#1"
+    placeText.AutomaticSize = Enum.AutomaticSize.X
+
+    local usernameText = BFS.UI.createText(playerInfo)
+    usernameText.TextScaled = true
+    usernameText.Size = UDim2.fromScale(0, 0.8)
+    usernameText.Text = "voided_etc"
+    usernameText.AutomaticSize = Enum.AutomaticSize.X
+
+    local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Circular, Enum.EasingDirection.Out)
+
+    local function setVisible(visible)
+        local target = {}
+
+        if visible then
+            target.Position = cPositionVisible
+        else
+            target.Position = cPositionHidden
+        end
+
+        local tween = TweenService:Create(spectatorOverlay, tweenInfo, target)
+        tween:Play()
+    end
+
+    local spectatingPlayer = nil
+
+    local preSpectate = {
+        Focus = nil,
+        CameraType = nil,
+        CameraSubject = nil,
+    }
+
+    local camera = workspace.Camera
+
+    function updateSpectatingOverlay()
+        if spectatingPlayer then
+            placeText.Text = "#"..spectatingPlayer.Place
+            placeText.TextColor3 = getColor(spectatingPlayer, spectatingPlayer.Place)
+            usernameText.Text = spectatingPlayer.Player.Name
+        end
+    end
+
+    function stopSpectating()
+        if spectatingPlayer then
+            map.Focus = preSpectate.Focus
+            camera.CameraType = preSpectate.CameraType
+            camera.CameraSubject = preSpectate.CameraSubject
+
+            setVisible(false)
+            spectatingPlayer = nil
+        end
+    end
+
+    function toggleSpectate(playerData)
+        if spectatingPlayer == playerData then
+            stopSpectating()
+            return
+        end
+
+        if not spectatingPlayer then
+            setVisible(true)
+            preSpectate.Focus = map.Focus
+            preSpectate.CameraType = camera.CameraType
+            preSpectate.CameraSubject = camera.CameraSubject
+        end
+
+        spectatingPlayer = playerData
+        updateSpectatingOverlay()
+
+        map.Focus = { Player = playerData.Player.UserId }
+        camera.CameraType = Enum.CameraType.Follow
+        camera.CameraSubject = playerData.Player.Character.Humanoid
+    end
+
+    BFS.bindToExit("Stop spectating", stopSpectating)
+end -- spectating
+
 do  -- race overlay
     local cPlayers = 5
 
     local cHeaderHeight = 24
     local cPlayerHeight = 30
 
-    local cPadding = 0.05
+    local cRowPadding = 0.05
     local cPlaceWidth = 0.1
     local cPlayerWidth = 0.7
     local cLapWidth = 0.1
 
     local cBodyHeight = cPlayerHeight * cPlayers
 
-    local raceOverlay = Instance.new("Frame")
+    local raceOverlay = createOverlayFrame()
     raceOverlay.Size = UDim2.new(0.3, 0, 0, cBodyHeight + cHeaderHeight)
     raceOverlay.AnchorPoint = Vector2.new(1, 1)
-    raceOverlay.Position = UDim2.new(1, -30, 1, -30)
-    raceOverlay.BackgroundTransparency = 0.3
-    raceOverlay.BackgroundColor3 = Color3.new(0.1, 0.1, 0.1)
-    raceOverlay.BorderSizePixel = 4
-    raceOverlay.BorderColor3 = Color3.new(0.05, 0.05, 0.05)
+    raceOverlay.Position = UDim2.new(1, -cPadding, 1, -cPadding)
     raceOverlay.Parent = secondaryRoot
 
     local function createRowText(parent, size)
@@ -427,12 +563,12 @@ do  -- race overlay
     header.Parent = raceOverlay
 
     local playerHeader = createRowText(header, 15)
-    playerHeader.Position = UDim2.fromScale(cPadding + cPlaceWidth, 0)
+    playerHeader.Position = UDim2.fromScale(cRowPadding + cPlaceWidth, 0)
     playerHeader.Size = UDim2.fromScale(cPlayerWidth, 1)
     playerHeader.Text = "Player"
 
     local lapsHeader = createRowText(header, 15)
-    lapsHeader.Position = UDim2.fromScale(cPadding + cPlaceWidth + cPlayerWidth, 0)
+    lapsHeader.Position = UDim2.fromScale(cRowPadding + cPlaceWidth + cPlayerWidth, 0)
     lapsHeader.Size = UDim2.fromScale(cLapWidth, 1)
     lapsHeader.Text = "Laps"
 
@@ -444,15 +580,22 @@ do  -- race overlay
     function addPlayerToOverlay(player)
         local entryData = {}
         local entry = Instance.new("Frame")
+        entry.Active = true
         entry.BackgroundTransparency = 1
         entry.BorderSizePixel = 0
         entry.Size = UDim2.new(1, 0, 0, cPlayerHeight)
         entry.Position = UDim2.fromOffset(0, cPlayerHeight * raceData.playerCount)
 
+        entry.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                toggleSpectate(raceData.players[player])
+            end
+        end)
+
         entry.Parent = leaderboardScroll
         entryData.Root = entry
 
-        local x = cPadding
+        local x = cRowPadding
 
         local place = createRowText(entry, 25)
         place.Position = UDim2.fromScale(x, 0)
@@ -480,26 +623,6 @@ do  -- race overlay
         return entryData
     end
 
-    local function getColor(playerData, place)
-        if playerData.Finished then
-            return Color3.fromRGB(46, 199, 4)
-        end
-
-        if place == 1 then
-            return Color3.fromRGB(255, 215, 0)
-        end
-
-        if place == 2 then
-            return Color3.fromRGB(192, 192, 192)
-        end
-
-        if place == 3 then
-            return Color3.fromRGB(165, 113, 100)
-        end
-
-        return Color3.new(1, 1, 1)
-    end
-
     function updateOverlay()
         local finishedSorted, playersSorted = raceData:SortPlayers()
 
@@ -507,6 +630,7 @@ do  -- race overlay
         local place = 1
 
         local function updatePlayer(playerData)
+            playerData.Place = place
             playerData.OverlayEntry.Place.Text = "#"..place
             playerData.OverlayEntry.Laps.Text = playerData.Lap
 
@@ -686,6 +810,7 @@ do  -- race
 
             if anyChanged then
                 updateOverlay()
+                updateSpectatingOverlay()
             end
         end
     end)
@@ -699,15 +824,15 @@ end -- race
 do  -- checkpoints
     local checkpointsTab = BFS.TabControl:createTab("Checkpoints", "2C", "TabCheckpoints")
 
-    local cPadding = 10
-    local checkpointsScroll = BFS.UI.createListScroll(checkpointsTab, cPadding)
+    local cListPadding = 10
+    local checkpointsScroll = BFS.UI.createListScroll(checkpointsTab, cListPadding)
 
     local checkpointsFrame = Instance.new("Frame")
     checkpointsFrame.Size = UDim2.new(1, 0, 0, 0)
     checkpointsFrame.BackgroundTransparency = 1
     checkpointsFrame.BorderSizePixel = 0
     checkpointsFrame.AutomaticSize = Enum.AutomaticSize.Y
-    BFS.UI.createListLayout(checkpointsFrame, Enum.HorizontalAlignment.Center, Enum.VerticalAlignment.Top, cPadding)
+    BFS.UI.createListLayout(checkpointsFrame, Enum.HorizontalAlignment.Center, Enum.VerticalAlignment.Top, cListPadding)
 
     checkpointsFrame.Parent = checkpointsScroll
 
@@ -1497,7 +1622,7 @@ do  -- minimap
             self.ScaleFactor = 5
         else
             goal.Size = self.MapSizeSmall
-            goal.Position = UDim2.new(0, 100, 1, -100)
+            goal.Position = UDim2.new(0, cPadding, 1, -cPadding)
             self.ScaleFactor = self.ScaleFactorSmall
         end
 
