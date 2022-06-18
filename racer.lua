@@ -1,6 +1,36 @@
 --[[
-    do - end blocks can be closed in most ides for organization
-    variables beginning with c are constant and should not change
+    !! READ ME !!
+    SBF Race Utilities
+    voided_etc // 2022
+
+    Designed for KRNL
+
+    How to use:
+    1. In the 2C (Checkpoints) tab, you can:
+        a. Create a new list of checkpoints:
+            i. Press the add button
+            ii. Press the button marked "Point 1", which will place one corner of the checkpoint region at your current position.
+            iii. Press the button marked "Point 2", which will place the other corner of the checkpoint region at your current position.
+            iv. Repeat until you have checkpointed the entire track. "Forward" is indicated by the checkpoints in ascending order.
+            - Make sure your checkpoint spans a sufficient amount of the track.
+                - If the checkpoint region is too small, **the tracker could miss a player passing a checkpoint.**
+        b. Import an existing list of checkpoints:
+            i. Place the file into your KRNL workspace folder.
+            ii. Type the file name into the "File name" field.
+            iii. Press "Load".
+            - Make sure you pay attention to the direction of the track. If it is wrong, you need to make the checkpoints yourself.
+        c. Save your list of checkpoints: Type the file name and press "Save".
+    2. In the 1R (Race) tab:
+        a. Indicate how many laps the race should be, and press [ENTER]
+        b. Press "Race Active" to begin tracking players.
+    3. Once the race is over, go to the 1R tab and press "Export Event Log" to export the log of the entire event to your KRNL workspace.
+
+    Notes:
+    - Racers should know that a lap is finished only after they reach all checkpoints, **then reach the first one again.**
+        - This means that **they should not stop short of the starting line after finishing.**
+    - Racers can miss up to 3 checkpoints and have the lap still counted. This is in order to account for possible network/FPS lag.
+        - For this reason, place a sufficient number of checkpoints on the track.
+        - If there is contention over the results, check the event log.
 ]]
 
 local BFS = getgenv().BFS
