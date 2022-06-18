@@ -136,6 +136,78 @@ function raceData:Log(msg)
     )
 end
 
+local PlayerData = {}
+PlayerData.__index = PlayerData
+
+function PlayerData.new(player, overlayEntry)
+    local self = setmetatable({}, PlayerData)
+
+    self.Player = player
+
+    self.Lap = 0
+    self.Checkpoint = 0
+    self.CheckpointsMissed = 0
+    self.Finished = nil
+
+    self.OverlayEntry = overlayEntry
+
+    return self
+end
+
+function PlayerData:HandleVisit(checkpoint)
+    local lastCheckpoint = self.Checkpoint
+    local diff = checkpoint.Index - lastCheckpoint
+
+    if diff > 0 then
+        raceData:Log(string.format("Player %s passed checkpoint %d (last visited %d)", self.Player.Name, checkpoint.Index, lastCheckpoint))
+        self.CheckpointsMissed += diff - 1
+        self.Checkpoint = checkpoint.Index
+
+        return true
+    elseif diff < -(math.min(#raceData.checkpoints - 2, 3)) then
+        -- Distance from last visited to last checkpoint
+        self.CheckpointsMissed += #raceData.checkpoints - lastCheckpoint
+        -- Distance from here to the first checkpoint
+        self.CheckpointsMissed += checkpoint.Index - 1
+
+        local cMaxMisses = 3
+
+        if self.CheckpointsMissed <= cMaxMisses then
+            self.Lap += 1
+
+            raceData:Log(string.format(
+                "Player %s completed a lap (total: %d), now on checkpoint %d (last visited %d; missed %d)",
+                self.Player.Name, self.Lap, checkpoint.Index, lastCheckpoint, self.CheckpointsMissed
+            ))
+
+            if self.Lap == raceData.laps then
+                raceData:Log(string.format(
+                    "Player %s finished the race!",
+                    self.Player.Name
+                ))
+
+                self.Finished = tick()
+            end
+        else
+            raceData:Log(string.format(
+                "!!! Player %s, now on checkpoint %d, missed %d checkpoints, so a lap was not awarded. !!!",
+                self.Player.Name, checkpoint.Index, self.CheckpointsMissed
+            ))
+        end
+
+        self.Checkpoint = checkpoint.Index
+        self.CheckpointsMissed = 0
+
+        return true
+    end
+
+    return false
+end
+
+function PlayerData:Destroy()
+    self.OverlayEntry.Root:Destroy()
+end
+
 do  -- race overlay
     local cPlayers = 5
 
@@ -337,7 +409,7 @@ do  -- race
 
     BFS.UI.createLabelButtonLarge(raceTab, "Reset Player Data", function()
         for _, player in pairs(raceData.players) do
-            player.OverlayEntry.Root:Destroy()
+            player:Destroy()
         end
 
         raceData.players = {}
@@ -359,16 +431,10 @@ do  -- race
     end)
 
     local function initPlayer(player)
-        local playerData = {
-            Lap = 0,
-            Checkpoint = 0,
-            CheckpointsMissed = 0,
-            OverlayEntry = addPlayerToOverlay(player),
-            Finished = nil,
-        }
-
+        local playerData = PlayerData.new(player, addPlayerToOverlay(player))
         raceData.players[player] = playerData
         raceData.playerCount += 1
+
         return playerData
     end
 
@@ -421,51 +487,7 @@ do  -- race
                     updateOverlay()
                 end
 
-                local lastCheckpoint = playerData.Checkpoint
-                local diff = checkpoint.Index - lastCheckpoint
-
-                if diff > 0 then
-                    raceData:Log(string.format("Player %s passed checkpoint %d (last visited %d)", player.Name, checkpoint.Index, lastCheckpoint))
-                    playerData.CheckpointsMissed += diff - 1
-                    playerData.Checkpoint = checkpoint.Index
-
-                    anyChanged = true
-                elseif diff < -3 then
-                    -- Distance from last visited to last checkpoint
-                    playerData.CheckpointsMissed += #raceData.checkpoints - lastCheckpoint
-                    -- Distance from here to the first checkpoint
-                    playerData.CheckpointsMissed += checkpoint.Index - 1
-
-                    local cMaxMisses = 3
-
-                    if playerData.CheckpointsMissed <= cMaxMisses then
-                        playerData.Lap += 1
-
-                        raceData:Log(string.format(
-                            "Player %s completed a lap (total: %d), now on checkpoint %d (last visited %d; missed %d)",
-                            player.Name, playerData.Lap, checkpoint.Index, lastCheckpoint, playerData.CheckpointsMissed
-                        ))
-
-                        if playerData.Lap == raceData.laps then
-                            raceData:Log(string.format(
-                                "Player %s finished the race!",
-                                player.Name
-                            ))
-
-                            playerData.Finished = tick()
-                        end
-
-                        anyChanged = true
-                    else
-                        raceData:Log(string.format(
-                            "!!! Player %s, now on checkpoint %d, missed %d checkpoints, so a lap was not awarded. !!!",
-                            player.Name, checkpoint.Index, playerData.CheckpointsMissed
-                        ))
-                    end
-
-                    playerData.Checkpoint = checkpoint.Index
-                    playerData.CheckpointsMissed = 0
-                end
+                anyChanged = playerData:HandleVisit(checkpoint) or anyChanged
             end
 
             if anyChanged then
