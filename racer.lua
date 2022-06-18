@@ -257,6 +257,7 @@ function Checkpoint:initRegionPart()
     self.RegionPart = part
 
     local billboard = Instance.new("BillboardGui")
+    billboard.StudsOffsetWorldSpace = Vector3.new(0, 8, 0)
     billboard.Adornee = part
     billboard.Parent = part
     billboard.Size = UDim2.new(0, 200, 0, 50)
@@ -701,7 +702,7 @@ do  -- checkpoints
 
         local checkpoint
         checkpoint = Checkpoint.new(checkpointsFrame, index, point1, point2, function()
-            checkpoint:Cleanup()
+            checkpoint:Destroy()
             table.remove(raceData.checkpoints, checkpoint.Index)
             updateCheckpoints()
         end)
