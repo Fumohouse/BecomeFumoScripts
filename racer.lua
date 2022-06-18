@@ -695,7 +695,7 @@ do  -- checkpoints
     local fileNameField = BFS.UI.createTextBox(ioFrame, "File name", 24)
 
     BFS.UI.createLabelButtonLarge(ioFrame, "Save", function()
-        if fileNameField.Text == "" then
+        if fileNameField.Text == "" or #raceData.checkpoints == 0 then
             return
         end
 
