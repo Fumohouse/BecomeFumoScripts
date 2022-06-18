@@ -135,6 +135,15 @@ local function formatVector(v)
     return string.format("(%02d, %02d, %02d)", v.X, v.Y, v.Z)
 end
 
+--
+-- constants
+--
+
+local cSDMSize = Vector3.new(420, 2.647937774658203, 420)
+local cSDMPos = CFrame.new(12485.9893, -19.8234463, 420.502899)
+
+local map
+
 local raceData = {
     active = false,
     checkpoints = {},
@@ -400,7 +409,7 @@ do  -- race overlay
     raceOverlay.BackgroundColor3 = Color3.new(0.1, 0.1, 0.1)
     raceOverlay.BorderSizePixel = 4
     raceOverlay.BorderColor3 = Color3.new(0.05, 0.05, 0.05)
-    raceOverlay.Parent = BFS.Root
+    raceOverlay.Parent = secondaryRoot
 
     local function createRowText(parent, size)
         local text = BFS.UI.createText(parent, size)
@@ -530,9 +539,11 @@ end -- race overlay
 
 do  -- race
     local raceTab = BFS.TabControl:createTab("Race", "1R", "TabRace")
-    BFS.UI.createListLayout(raceTab, Enum.HorizontalAlignment.Center, Enum.VerticalAlignment.Top)
+    local raceScroll = BFS.UI.createListScroll(raceTab)
 
-    local lapsField = BFS.UI.createTextBox(raceTab, "Total Laps", 24)
+    BFS.UI.createCategoryLabel(raceScroll, "Race")
+
+    local lapsField = BFS.UI.createTextBox(raceScroll, "Total Laps", 24)
 
     lapsField.FocusLost:Connect(function()
         if lapsField.Text == "" then
@@ -545,7 +556,7 @@ do  -- race
         end
     end)
 
-    BFS.UI.createLabelButtonLarge(raceTab, "Race Active", function(setActive)
+    BFS.UI.createLabelButtonLarge(raceScroll, "Race Active", function(setActive)
         raceData.active = not raceData.active
         if raceData.active then
             raceData:Log("Race was marked active.")
@@ -555,7 +566,7 @@ do  -- race
         setActive(raceData.active)
     end)
 
-    BFS.UI.createLabelButtonLarge(raceTab, "Reset Player Data", function()
+    BFS.UI.createLabelButtonLarge(raceScroll, "Reset Player Data", function()
         for _, player in pairs(raceData.players) do
             player:Destroy()
         end
@@ -565,7 +576,7 @@ do  -- race
         raceData.eventLog = {}
     end)
 
-    BFS.UI.createLabelButtonLarge(raceTab, "Export Event Log", function()
+    BFS.UI.createLabelButtonLarge(raceScroll, "Export Event Log", function()
         local time = os.time()
         local output = string.format(
             "---- Race log, exported %s ----\n\n",
@@ -601,6 +612,16 @@ do  -- race
 
         local filename = string.format("race-%s.log", os.date("%d-%m-%y_%H-%M-%S"))
         writefile(filename, output)
+    end)
+
+    BFS.UI.createCategoryLabel(raceScroll, "Map Focus")
+
+    BFS.UI.createLabelButtonLarge(raceScroll, "Focus map on SDM track", function()
+        map.Focus = { Size = cSDMSize, Position = cSDMPos }
+    end)
+
+    BFS.UI.createLabelButtonLarge(raceScroll, "Focus map on me", function()
+        map.Focus = nil
     end)
 
     local function initPlayer(player)
@@ -1008,15 +1029,22 @@ do  -- minimap
     local MapBBox = {}
     MapBBox.__index = MapBBox
 
-    function MapBBox.new(minimap, cf, size, color, colorB)
+    function MapBBox.new(minimap, cf, size, color, colorB, contents)
         local self = setmetatable({}, MapBBox)
 
         local quad = Instance.new("Frame")
         quad.AnchorPoint = Vector2.new(0.5, 0.5)
-        quad.BackgroundTransparency = 0.25
-        quad.BackgroundColor3 = color
-        quad.BorderSizePixel = 1
-        quad.BorderColor3 = colorB
+        if contents then
+            quad.BackgroundTransparency = 1
+            quad.BorderSizePixel = 0
+            contents.Parent = quad
+        else
+            quad.BackgroundTransparency = 0.25
+            quad.BackgroundColor3 = color
+            quad.BorderSizePixel = 1
+            quad.BorderColor3 = colorB
+        end
+
 
         self.Map = minimap
         self.Root = quad
@@ -1277,6 +1305,8 @@ do  -- minimap
 
         self.Parent = parent
 
+        self.Focus = nil
+
         local origin, maxPos = self:_findWorldBounds()
         self.WorldOrigin = origin
         self.RealSize2 = maxPos - origin
@@ -1513,16 +1543,6 @@ do  -- minimap
         end
     end
 
-    function Minimap:_findZone(name)
-        local rep = ReplicatedStorage.Zones:FindFirstChild(name)
-        if rep then return rep end
-
-        local active = workspace.ActiveZone:FindFirstChild(name)
-        if active then return active end
-
-        BFS.log("WARNING: Did you delete any zones? Failed to find "..name.."!")
-    end
-
     function Minimap:_plotAreas()
         local cArea = Color3.fromRGB(86, 94, 81)
         local cAreaB = Color3.fromRGB(89, 149, 111)
@@ -1532,7 +1552,6 @@ do  -- minimap
 
     function Minimap:_plotTerrain()
         local features = workspace.Map:GetDescendants()
-        local seatList = { features }
 
         local cTree = Color3.fromRGB(89, 149, 111)
         local cTreeB = Color3.fromRGB(5, 145, 56)
@@ -1572,20 +1591,19 @@ do  -- minimap
                     self:plotBBox(cf, size, cBench, cBenchB)
                 end
             end
-
-            -- ALL SEATS!!!
-            for _, list in pairs(seatList) do
-                for _, v in pairs(list) do
-                    if v:IsA("Seat") then
-                        local seatObj = MapSeat.new(self, v)
-                        self:addMapObject(seatObj, self.SeatLayer)
-                        self.Tooltips:register(seatObj)
-                    end
-                end
-            end
         else
             -- TODO
         end
+
+        -- SDM Track
+        local image = Instance.new("ImageLabel")
+        image.Image = "rbxassetid://9952398601"
+        image.ScaleType = Enum.ScaleType.Fit
+        image.Size = UDim2.fromScale(1, 1)
+        image.BorderSizePixel = 0
+        image.BackgroundTransparency = 1
+
+        self:plotBBox(cSDMPos, cSDMSize, nil, nil, self.TerrainLayer, image)
     end
 
     function Minimap:_plotWaypoints()
@@ -1619,7 +1637,7 @@ do  -- minimap
 
         local pos3D = humanRoot.Position
         local mapped = self:mapPosition(Vector2.new(pos3D.X, pos3D.Z))
-        self.PlayerPositions[player.UserId] = mapped
+        self.PlayerPositions[player.UserId] = pos3D
 
         if not self.Players[player.UserId] then return end
         self.Players[player.UserId].Frame.Position = UDim2.fromOffset(mapped.X, mapped.Y)
@@ -1632,15 +1650,17 @@ do  -- minimap
         obj.Root.Parent = parent
     end
 
-    function Minimap:plotBBox(cf, size, color, colorB, parent)
+    function Minimap:plotBBox(cf, size, color, colorB, parent, contents)
         if not parent then parent = self.TerrainLayer end
 
-        local mapObj = MapBBox.new(self, cf, size, color, colorB)
+        local mapObj = MapBBox.new(self, cf, size, color, colorB, contents)
         self:addMapObject(mapObj, parent)
+
+        return mapObj
     end
 
     function Minimap:plotPartQuad(part, color, colorB, parent)
-        self:plotBBox(part.CFrame, part.Size, color, colorB, parent)
+        return self:plotBBox(part.CFrame, part.Size, color, colorB, parent)
     end
 
     function Minimap:_playerConnect(player)
@@ -1664,15 +1684,33 @@ do  -- minimap
         self.PlayerPositions[player.UserId] = nil
     end
 
+    function Minimap:_focus(position, scale)
+        self.ScaleFactor = scale
+        position = self:mapPosition(position)
+        self:updateZoom(position)
+
+        self.FrameInner.Position = UDim2.new(0.5, -position.X, 0.5, -position.Y)
+    end
+
     function Minimap:_heartbeat()
         for _, v in pairs(Players:GetPlayers()) do
             self:plotPlayer(v)
         end
 
-        local pos = self.PlayerPositions[LocalPlayer.UserId]
+        if self.Expanded and not (self._expandTween and self._expandTween.PlaybackState ~= Enum.PlaybackState.Completed) then
+            return
+        end
 
-        if not self.Expanded or (self._expandTween and self._expandTween.PlaybackState ~= Enum.PlaybackState.Completed) then
-            self.FrameInner.Position = UDim2.new(0.5, -pos.X, 0.5, -pos.Y)
+        if self.Focus and self.Focus.Position and self.Focus.Size then
+            local scale2D = self.FrameOuter.AbsoluteSize / Vector2.new(self.Focus.Size.X, self.Focus.Size.Z)
+            local pos = Vector2.new(self.Focus.Position.X, self.Focus.Position.Z)
+
+            self:_focus(pos, math.min(scale2D.X, scale2D.Y))
+        else
+            local id = (self.Focus and self.Focus.Player) or LocalPlayer.UserId
+            local pos = self.PlayerPositions[id] or self.PlayerPositions[LocalPlayer.UserId]
+
+            self:_focus(Vector2.new(pos.X, pos.Z), self.ScaleFactorSmall)
         end
     end
 
@@ -1753,17 +1791,14 @@ BFS.bindToExit("Unhide GUIs", function()
     setGuiVisible(true)
 end)
 
-local map = nil
+map = Minimap.new(secondaryRoot)
+
+BFS.bindToExit("Destroy Map", function()
+    map:destroy()
+end)
 
 BFS.Binds:bind("MapVis", function()
-    if not map then
-        map = Minimap.new(secondaryRoot)
-        BFS.bindToExit("Destroy Map", function()
-            map:destroy()
-        end)
-    elseif guiVisible then
-        map:setVisible(not map.FrameOuter.Visible)
-    end
+    map:setVisible(not map.FrameOuter.Visible)
 end)
 
 BFS.Binds:bind("MapView", function()
