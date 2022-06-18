@@ -94,6 +94,7 @@ local raceData = {
     players = {},
     eventLog = {},
     playerCount = 0,
+    laps = 0,
 }
 
 function raceData:Log(msg)
@@ -199,11 +200,19 @@ do  -- race overlay
         return playerData.Lap + playerData.Checkpoint / #raceData.checkpoints
     end
 
+    local function finishedComp(a, b)
+        return a.Finished < b.Finished
+    end
+
     local function playerComp(a, b)
         return partialScore(a) > partialScore(b)
     end
 
-    local function getColor(place)
+    local function getColor(playerData, place)
+        if playerData.Finished then
+            return Color3.fromRGB(46, 199, 4)
+        end
+
         if place == 1 then
             return Color3.fromRGB(255, 215, 0)
         end
@@ -220,17 +229,24 @@ do  -- race overlay
     end
 
     function updateOverlay()
+        local finishedSorted = {}
         local playersSorted = {}
         for _, playerData in pairs(raceData.players) do
-            playersSorted[#playersSorted + 1] = playerData
+            if playerData.Finished then
+                finishedSorted[#finishedSorted + 1] = playerData
+            else
+                playersSorted[#playersSorted + 1] = playerData
+            end
         end
 
+        table.sort(finishedSorted, finishedComp)
         table.sort(playersSorted, playerComp)
 
         local y = 0
+        local place = 1
 
-        for idx, playerData in ipairs(playersSorted) do
-            playerData.OverlayEntry.Place.Text = "#"..idx
+        local function updatePlayer(playerData)
+            playerData.OverlayEntry.Place.Text = "#"..place
             playerData.OverlayEntry.Laps.Text = playerData.Lap
 
             local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
@@ -241,12 +257,21 @@ do  -- race overlay
             posTween:Play()
 
             local colorTween = TweenService:Create(playerData.OverlayEntry.Place, tweenInfo, {
-                TextColor3 = getColor(idx)
+                TextColor3 = getColor(playerData, place)
             })
 
             colorTween:Play()
 
+            place += 1
             y += cPlayerHeight
+        end
+
+        for _, playerData in ipairs(finishedSorted) do
+            updatePlayer(playerData)
+        end
+
+        for _, playerData in ipairs(playersSorted) do
+            updatePlayer(playerData)
         end
     end
 end -- race overlay
@@ -254,6 +279,19 @@ end -- race overlay
 do  -- race
     local raceTab = BFS.TabControl:createTab("Race", "1R", "TabRace")
     BFS.UI.createListLayout(raceTab, Enum.HorizontalAlignment.Center, Enum.VerticalAlignment.Top)
+
+    local lapsField = BFS.UI.createTextBox(raceTab, "Total Laps", 24)
+
+    lapsField.FocusLost:Connect(function()
+        if lapsField.Text == "" then
+            return
+        end
+
+        local num = tonumber(lapsField.Text)
+        if num then
+            raceData.laps = num
+        end
+    end)
 
     BFS.UI.createLabelButtonLarge(raceTab, "Race Active", function(setActive)
         raceData.active = not raceData.active
@@ -293,7 +331,8 @@ do  -- race
             Lap = 0,
             Checkpoint = 0,
             CheckpointsMissed = 0,
-            OverlayEntry = addPlayerToOverlay(player)
+            OverlayEntry = addPlayerToOverlay(player),
+            Finished = nil,
         }
 
         raceData.players[player] = playerData
@@ -374,6 +413,15 @@ do  -- race
                             "Player %s completed a lap (total: %d), now on checkpoint %d (last visited %d; missed %d)",
                             player.Name, playerData.Lap, checkpoint.Index, lastCheckpoint, playerData.CheckpointsMissed
                         ))
+
+                        if playerData.Lap == raceData.laps then
+                            raceData:Log(string.format(
+                                "Player %s finished the race!",
+                                player.Name
+                            ))
+
+                            playerData.Finished = tick()
+                        end
 
                         anyChanged = true
                     else
