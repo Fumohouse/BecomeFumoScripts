@@ -263,7 +263,9 @@ function Checkpoint:initRegionPart()
 
     local text = BFS.UI.createText(billboard, 40)
     text.Text = "C"..self.Index
-    text.AutomaticSize = Enum.AutomaticSize.XY
+    text.Size = UDim2.fromScale(1, 1)
+    text.TextXAlignment = Enum.TextXAlignment.Center
+    text.TextYAlignment = Enum.TextYAlignment.Center
     self.RegionLabel = text
 end
 
