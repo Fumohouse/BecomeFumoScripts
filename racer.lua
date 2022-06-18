@@ -26,6 +26,8 @@
     3. Once the race is over, go to the 1R tab and press "Export Event Log" to export the log of the entire event to your KRNL workspace.
 
     Notes:
+    - You should press "Race Active" close to the start of the race. It might be beneficial to press it a bit early, but missing one checkpoint isn't really a big deal.
+    - A player will be placed on the leaderboard as soon as they enter any of the checkpoints.
     - Racers should know that a lap is finished only after they reach all checkpoints, **then reach the first one again.**
         - This means that **they should not stop short of the starting line after finishing.**
     - Racers can miss up to 3 checkpoints and have the lap still counted. This is in order to account for possible network/FPS lag.
@@ -157,6 +159,35 @@ function raceData:ClearCheckpoints()
     self.checkpoints = {}
 end
 
+local function partialScore(playerData)
+    return playerData.Lap + playerData.Checkpoint / #raceData.checkpoints
+end
+
+local function finishedComp(a, b)
+    return a.Finished < b.Finished
+end
+
+local function playerComp(a, b)
+    return partialScore(a) > partialScore(b)
+end
+
+function raceData:SortPlayers()
+    local finishedSorted = {}
+        local playersSorted = {}
+        for _, playerData in pairs(raceData.players) do
+            if playerData.Finished then
+                finishedSorted[#finishedSorted + 1] = playerData
+            else
+                playersSorted[#playersSorted + 1] = playerData
+            end
+        end
+
+        table.sort(finishedSorted, finishedComp)
+        table.sort(playersSorted, playerComp)
+
+        return finishedSorted, playersSorted
+end
+
 local Checkpoint = {}
 Checkpoint.__index = Checkpoint
 
@@ -280,6 +311,7 @@ function PlayerData.new(player, overlayEntry)
 
     self.Player = player
 
+    self.Started = tick()
     self.Lap = 0
     self.Checkpoint = 0
     self.CheckpointsMissed = 0
@@ -436,18 +468,6 @@ do  -- race overlay
         return entryData
     end
 
-    local function partialScore(playerData)
-        return playerData.Lap + playerData.Checkpoint / #raceData.checkpoints
-    end
-
-    local function finishedComp(a, b)
-        return a.Finished < b.Finished
-    end
-
-    local function playerComp(a, b)
-        return partialScore(a) > partialScore(b)
-    end
-
     local function getColor(playerData, place)
         if playerData.Finished then
             return Color3.fromRGB(46, 199, 4)
@@ -469,18 +489,7 @@ do  -- race overlay
     end
 
     function updateOverlay()
-        local finishedSorted = {}
-        local playersSorted = {}
-        for _, playerData in pairs(raceData.players) do
-            if playerData.Finished then
-                finishedSorted[#finishedSorted + 1] = playerData
-            else
-                playersSorted[#playersSorted + 1] = playerData
-            end
-        end
-
-        table.sort(finishedSorted, finishedComp)
-        table.sort(playersSorted, playerComp)
+        local finishedSorted, playersSorted = raceData:SortPlayers()
 
         local y = 0
         local place = 1
@@ -559,6 +568,31 @@ do  -- race
             "---- Race log, exported %s ----\n\n",
             os.date("%d-%m-%Y at %H:%M:%S (local time)")
         )
+
+        output = output.."--- RACE SUMMARY ---\n"
+
+        local finishedSorted, playersSorted = raceData:SortPlayers()
+        local place = 1
+
+        for _, playerData in pairs(finishedSorted) do
+            output = output..string.format(
+                "#%d - %s - %.2f seconds\n",
+                place, playerData.Player.Name, playerData.Finished - playerData.Started
+            )
+
+            place += 1
+        end
+
+        for _, playerData in pairs(playersSorted) do
+            output = output..string.format(
+                "#%d - %s - DNF\n",
+                place, playerData.Player.Name
+            )
+
+            place += 1
+        end
+
+        output = output.."========\n"
 
         output = output..table.concat(raceData.eventLog, "\n")
 
