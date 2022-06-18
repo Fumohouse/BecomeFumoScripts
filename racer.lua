@@ -92,8 +92,16 @@ local raceData = {
     active = false,
     checkpoints = {},
     players = {},
+    eventLog = {},
     playerCount = 0,
 }
+
+function raceData:Log(msg)
+    self.eventLog[#self.eventLog + 1] = string.format(
+        "[%s] %s",
+        os.date("%H:%M:%S", os.time()), msg
+    )
+end
 
 do  -- race overlay
     local cPlayers = 5
@@ -249,6 +257,11 @@ do  -- race
 
     BFS.UI.createLabelButtonLarge(raceTab, "Race Active", function(setActive)
         raceData.active = not raceData.active
+        if raceData.active then
+            raceData:Log("Race was marked active.")
+        else
+            raceData:Log("Race was marked inactive.")
+        end
         setActive(raceData.active)
     end)
 
@@ -259,12 +272,27 @@ do  -- race
 
         raceData.players = {}
         raceData.playerCount = 0
+        raceData.eventLog = {}
+    end)
+
+    BFS.UI.createLabelButtonLarge(raceTab, "Export Event Log", function()
+        local time = os.time()
+        local output = string.format(
+            "---- Race log, exported %s ----\n\n",
+            os.date("%d-%m-%Y at %H:%M:%S (local time)")
+        )
+
+        output = output..table.concat(raceData.eventLog, "\n")
+
+        local filename = string.format("race-%s.log", os.date("%d-%m-%y_%H-%M-%S"))
+        writefile(filename, output)
     end)
 
     local function initPlayer(player)
         local playerData = {
             Lap = 0,
             Checkpoint = 0,
+            CheckpointsMissed = 0,
             OverlayEntry = addPlayerToOverlay(player)
         }
 
@@ -318,24 +346,45 @@ do  -- race
                 local playerData = raceData.players[player]
 
                 if not playerData then
-                    if checkpoint.Index == 1 then
-                        playerData = initPlayer(player)
-                        updateOverlay()
-                    else
-                        continue
-                    end
+                    playerData = initPlayer(player)
+                    updateOverlay()
                 end
 
-                local currentCheckpoint = playerData.Checkpoint
-                if checkpoint.Index - currentCheckpoint == 1 then
-                    if checkpoint.Index >= #raceData.checkpoints then
-                        playerData.Checkpoint = 0
-                        playerData.Lap += 1
-                    else
-                        playerData.Checkpoint += 1
-                    end
+                local lastCheckpoint = playerData.Checkpoint
+                local diff = checkpoint.Index - lastCheckpoint
+
+                if diff > 0 then
+                    raceData:Log(string.format("Player %s passed checkpoint %d (last visited %d)", player.Name, checkpoint.Index, lastCheckpoint))
+                    playerData.CheckpointsMissed += diff - 1
+                    playerData.Checkpoint = checkpoint.Index
 
                     anyChanged = true
+                elseif diff < 0 then
+                    -- Distance from last visited to last checkpoint
+                    playerData.CheckpointsMissed += #raceData.checkpoints - lastCheckpoint
+                    -- Distance from here to the first checkpoint
+                    playerData.CheckpointsMissed += checkpoint.Index - 1
+
+                    local cMaxMisses = 3
+
+                    if playerData.CheckpointsMissed <= cMaxMisses then
+                        playerData.Lap += 1
+
+                        raceData:Log(string.format(
+                            "Player %s completed a lap (total: %d), now on checkpoint %d (last visited %d; missed %d)",
+                            player.Name, playerData.Lap, checkpoint.Index, lastCheckpoint, playerData.CheckpointsMissed
+                        ))
+
+                        anyChanged = true
+                    else
+                        raceData:Log(string.format(
+                            "!!! Player %s, now on checkpoint %d, missed %d checkpoints, so a lap was not awarded. !!!",
+                            player.Name, checkpoint.Index, playerData.CheckpointsMissed
+                        ))
+                    end
+
+                    playerData.Checkpoint = checkpoint.Index
+                    playerData.CheckpointsMissed = 0
                 end
             end
 
