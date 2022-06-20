@@ -1799,7 +1799,7 @@ do  -- settings
         end
     end)
 
-    local cBinds = { "TabCharacters", "TabOptions", "TabDocs", "TabAnims", "TabWaypoints", "TabWelds", "TabSettings", "HideGui", "MapVis", "MapView", "Exit" }
+    local cBinds = { "TabCharacters", "TabOptions", "TabDocs", "TabAnims", "TabTools", "TabWelds", "TabSettings", "HideGui", "MapVis", "MapView", "Exit" }
 
     for _, v in pairs(cBinds) do
         addBind(v)
