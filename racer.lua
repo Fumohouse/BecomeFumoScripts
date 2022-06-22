@@ -481,9 +481,8 @@ do  -- spectating
 
     local placeText = BFS.UI.createText(playerInfo)
     placeText.TextScaled = true
-    placeText.Size = UDim2.fromScale(0, 1)
+    placeText.Size = UDim2.fromScale(0.2, 1)
     placeText.Text = "#1"
-    placeText.AutomaticSize = Enum.AutomaticSize.X
 
     local usernameText = BFS.UI.createText(playerInfo)
     usernameText.TextScaled = true
