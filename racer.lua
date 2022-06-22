@@ -58,7 +58,7 @@ local cDefaultConfig = {
 
 BFS.Config:mergeDefaults(cDefaultConfig)
 
-version = "1.0.0"
+version = "1.0.1"
 
 do  -- double load prevention
     if BF_LOADED then
@@ -153,6 +153,7 @@ local raceData = {
     eventLog = {},
     playerCount = 0,
     laps = 0,
+    checkpointsVisible = true,
 }
 
 local function getColor(playerData, place)
@@ -198,6 +199,14 @@ function raceData:ClearCheckpoints()
     end
 
     self.checkpoints = {}
+end
+
+function raceData:SetCheckpointsVisible(visible)
+    for _, checkpoint in pairs(self.checkpoints) do
+        checkpoint:SetVisible(visible)
+    end
+
+    self.checkpointsVisible = visible
 end
 
 local function partialScore(playerData)
@@ -302,6 +311,7 @@ function Checkpoint:initRegionPart()
     billboard.Adornee = part
     billboard.Parent = part
     billboard.Size = UDim2.new(0, 200, 0, 50)
+    self.Billboard = billboard
 
     local text = BFS.UI.createText(billboard, 40)
     text.Text = "C"..self.Index
@@ -309,6 +319,11 @@ function Checkpoint:initRegionPart()
     text.TextXAlignment = Enum.TextXAlignment.Center
     text.TextYAlignment = Enum.TextYAlignment.Center
     self.RegionLabel = text
+
+    local bBox = map:plotBBox(CFrame.new(), Vector3.new(1, 1, 1), Color3.new(1, 1, 1), Color3.new(1, 1, 1))
+    self.MapBBox = bBox
+
+    self:SetVisible(raceData.checkpointsVisible)
 end
 
 function Checkpoint:UpdateRegion()
@@ -338,12 +353,28 @@ function Checkpoint:UpdateRegion()
 
     self.RegionPart.CFrame = self.Region.CFrame
     self.RegionPart.Size = self.Region.Size
+
+    self.MapBBox:UpdateBounds(self.Region.CFrame, self.Region.Size)
+end
+
+function Checkpoint:SetVisible(visible)
+    if self.RegionPart then
+        self.Billboard.Enabled = visible
+        self.MapBBox.Root.Visible = visible
+
+        if visible then
+            self.RegionPart.Transparency = 0
+        else
+            self.RegionPart.Transparency = 1
+        end
+    end
 end
 
 function Checkpoint:Destroy()
     self.Root:Destroy()
     if self.RegionPart then
         self.RegionPart:Destroy()
+        map:removeMapObject(self.MapBBox)
     end
 end
 
@@ -684,8 +715,10 @@ do  -- race
         raceData.active = not raceData.active
         if raceData.active then
             raceData:Log("Race was marked active.")
+            raceData:SetCheckpointsVisible(false)
         else
             raceData:Log("Race was marked inactive.")
+            raceData:SetCheckpointsVisible(true)
         end
         setActive(raceData.active)
     end)
@@ -1176,10 +1209,21 @@ do  -- minimap
         self.CFrame = cf
         self.Size = size
 
+        self.ScaleFactor = nil
+
         return self
     end
 
+    function MapBBox:UpdateBounds(cf, size)
+        self.CFrame = cf
+        self.Size = size
+
+        self:UpdateSize(self.ScaleFactor)
+    end
+
     function MapBBox:UpdateSize(scaleFactor)
+        self.ScaleFactor = scaleFactor
+
         local scaled = self.Size * scaleFactor
 
         local x, y, z = self.CFrame:ToOrientation()
@@ -1773,6 +1817,17 @@ do  -- minimap
         self.MapObjects[#self.MapObjects + 1] = obj
         obj:UpdateSize(self.ScaleFactor)
         obj.Root.Parent = parent
+    end
+
+    function Minimap:removeMapObject(toRemove)
+        for idx, obj in pairs(self.MapObjects) do
+            if obj == toRemove then
+                local obj = table.remove(self.MapObjects, idx)
+                obj.Root:Destroy()
+
+                break
+            end
+        end
     end
 
     function Minimap:plotBBox(cf, size, color, colorB, parent, contents)
