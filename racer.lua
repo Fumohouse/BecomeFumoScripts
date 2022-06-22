@@ -148,6 +148,7 @@ local map
 
 local raceData = {
     active = false,
+    activeTime = 0,
     checkpoints = {},
     players = {},
     eventLog = {},
@@ -392,10 +393,44 @@ function PlayerData.new(player, overlayEntry)
     self.Checkpoint = 0
     self.CheckpointsMissed = 0
     self.Finished = nil
+    self.DataPoints = {}
 
     self.OverlayEntry = overlayEntry
 
     return self
+end
+
+function PlayerData:LogData()
+    local char = self.Player.Character
+    if not char then
+        return
+    end
+
+    local rootPart = char.PrimaryPart
+    if not rootPart then
+        return
+    end
+
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
+    if not humanoid then
+        return
+    end
+
+    local data = {
+        Tick = tick() - raceData.activeTime,
+        Speed = rootPart.AssemblyLinearVelocity.Magnitude,
+        Sitting = humanoid.Sit,
+    }
+
+    local lastPoint = self.DataPoints[#self.DataPoints - 1]
+
+    if lastPoint then
+        data.InstantAcceleration = (lastPoint.Speed - data.Speed) / (lastPoint.Tick - data.Tick)
+    else
+        data.InstantAcceleration = 0
+    end
+
+    self.DataPoints[#self.DataPoints + 1] = data
 end
 
 function PlayerData:HandleVisit(checkpoint)
@@ -713,7 +748,8 @@ do  -- race
     BFS.UI.createLabelButtonLarge(raceScroll, "Race Active", function(setActive)
         raceData.active = not raceData.active
         if raceData.active then
-            raceData:Log("Race was marked active.")
+            raceData.activeTime = tick()
+            raceData:Log(string.format("Race was marked active. - tick: %f", raceData.activeTime))
             raceData:SetCheckpointsVisible(false)
         else
             raceData:Log("Race was marked inactive.")
@@ -731,6 +767,8 @@ do  -- race
         raceData.playerCount = 0
         raceData.eventLog = {}
     end)
+
+    local cDateFormat = "%d-%m-%y_%H-%M-%S"
 
     BFS.UI.createLabelButtonLarge(raceScroll, "Export Event Log", function()
         local time = os.time()
@@ -766,8 +804,28 @@ do  -- race
 
         output = output..table.concat(raceData.eventLog, "\n")
 
-        local filename = string.format("race-%s.log", os.date("%d-%m-%y_%H-%M-%S"))
+        local filename = string.format("race-%s.log", os.date(cDateFormat))
         writefile(filename, output)
+    end)
+
+    BFS.UI.createLabelButtonLarge(raceScroll, "Export Player Data Logs", function()
+        for _, playerData in pairs(raceData.players) do
+            local output = "Tick,Speed,Acceleration,Sitting\n"
+
+            for _, dataPoint in ipairs(playerData.DataPoints) do
+                local sitNum
+                if dataPoint.Sitting then
+                    sitNum = 1
+                else
+                    sitNum = 0
+                end
+
+                output = output..string.format("%f,%f,%f,%d\n", dataPoint.Tick, dataPoint.Speed, dataPoint.InstantAcceleration, sitNum)
+            end
+
+            local filename = string.format("player-%s-%s.csv", playerData.Player.Name, os.date(cDateFormat))
+            writefile(filename, output)
+        end
     end)
 
     BFS.UI.createCategoryLabel(raceScroll, "Map Focus")
@@ -791,6 +849,10 @@ do  -- race
     local lHeartbeat = RunService.Heartbeat:Connect(function()
         if not raceData.active then
             return
+        end
+
+        for _, playerData in pairs(raceData.players) do
+            playerData:LogData()
         end
 
         local validCheckpoints = 0
