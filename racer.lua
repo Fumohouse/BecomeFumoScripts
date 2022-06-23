@@ -420,15 +420,8 @@ function PlayerData:LogData()
         Tick = tick() - raceData.activeTime,
         Speed = rootPart.AssemblyLinearVelocity.Magnitude,
         Sitting = humanoid.Sit,
+        Place = self.Place,
     }
-
-    local lastPoint = self.DataPoints[#self.DataPoints - 1]
-
-    if lastPoint then
-        data.InstantAcceleration = (lastPoint.Speed - data.Speed) / (lastPoint.Tick - data.Tick)
-    else
-        data.InstantAcceleration = 0
-    end
 
     self.DataPoints[#self.DataPoints + 1] = data
 end
@@ -810,7 +803,7 @@ do  -- race
 
     BFS.UI.createLabelButtonLarge(raceScroll, "Export Player Data Logs", function()
         for _, playerData in pairs(raceData.players) do
-            local output = "Tick,Speed,Acceleration,Sitting\n"
+            local output = "Tick,Place,Speed,Sitting\n"
 
             for _, dataPoint in ipairs(playerData.DataPoints) do
                 local sitNum
@@ -820,7 +813,10 @@ do  -- race
                     sitNum = 0
                 end
 
-                output = output..string.format("%f,%f,%f,%d\n", dataPoint.Tick, dataPoint.Speed, dataPoint.InstantAcceleration, sitNum)
+                output = output..string.format(
+                    "%f,%d,%f,%d\n",
+                    dataPoint.Tick, dataPoint.Place, dataPoint.Speed, sitNum
+                )
             end
 
             local filename = string.format("player-%s-%s.csv", playerData.Player.Name, os.date(cDateFormat))
@@ -849,10 +845,6 @@ do  -- race
     local lHeartbeat = RunService.Heartbeat:Connect(function()
         if not raceData.active then
             return
-        end
-
-        for _, playerData in pairs(raceData.players) do
-            playerData:LogData()
         end
 
         local validCheckpoints = 0
@@ -906,6 +898,10 @@ do  -- race
                 updateOverlay()
                 updateSpectatingOverlay()
             end
+        end
+
+        for _, playerData in pairs(raceData.players) do
+            playerData:LogData()
         end
     end)
 
