@@ -357,7 +357,6 @@ function Checkpoint:initRegionPart()
     local part = Instance.new("Part")
     part.Color = Color3.new(1, 1, 1)
     part.CanCollide = false
-    part.Transparency = 0.3
     part.Anchored = true
     part.Material = Enum.Material.SmoothPlastic
     part.Parent = workspace
@@ -421,7 +420,7 @@ function Checkpoint:SetVisible(visible)
         self.MapBBox.Root.Visible = visible
 
         if visible then
-            self.RegionPart.Transparency = 0
+            self.RegionPart.Transparency = 0.5
         else
             self.RegionPart.Transparency = 1
         end
