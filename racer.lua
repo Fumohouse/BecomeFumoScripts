@@ -3,7 +3,7 @@
     SBF Race Utilities
     voided_etc // 2022
 
-    Designed for KRNL
+    Designed for UNC executors
 
     How to use:
     1. In the 2C (Checkpoints) tab, you can:
@@ -15,7 +15,7 @@
             - Make sure your checkpoint spans a sufficient amount of the track.
                 - If the checkpoint region is too small, **the tracker could miss a player passing a checkpoint.**
         b. Import an existing list of checkpoints:
-            i. Place the file into your KRNL workspace folder.
+            i. Place the file into your executor's workspace folder.
             ii. Type the file name into the "File name" field.
             iii. Press "Load".
             - Make sure you pay attention to the direction of the track. If it is wrong, you need to make the checkpoints yourself.
@@ -23,7 +23,9 @@
     2. In the 1R (Race) tab:
         a. Indicate how many laps the race should be, and press [ENTER]
         b. Press "Race Active" to begin tracking players.
-    3. Once the race is over, go to the 1R tab and press "Export Event Log" to export the log of the entire event to your KRNL workspace.
+    3. Once the race is over, press "Race Active" again to export all logs, clear data, and end the race.
+        - DO NOT END THE RACE EARLY! There is no way to recover/reimport the data after you end the race.
+          Only do so when you are sure everyone has finished or forfeited.
 
     Notes:
     - You should press "Race Active" close to the start of the race. It might be beneficial to press it a bit early, but missing one checkpoint isn't really a big deal.
@@ -188,6 +190,58 @@ local function createOverlayFrame()
     frame.BorderColor3 = Color3.new(0.05, 0.05, 0.05)
 
     return frame
+end
+
+function raceData:Folder()
+    return string.format(
+        "race-%s",
+        os.date(cDateFormat, self.activeTimeLocal)
+    )
+end
+
+function raceData:InitFolder()
+    local folder = self:Folder()
+    if not isfolder(folder) then
+        makefolder(folder)
+    end
+end
+
+function raceData:ExportLog()
+    self:InitFolder()
+    local output = {
+        string.format(
+            "---- Race log, exported %s ----\n\n",
+            os.date("%d-%m-%Y at %H:%M:%S (local time)")
+        ),
+        "--- RACE SUMMARY ---",
+    }
+
+    local finishedSorted, playersSorted = raceData:SortPlayers()
+    local place = 1
+
+    for _, playerData in pairs(finishedSorted) do
+        output[#output + 1] = string.format(
+            "#%d - %s - %.2f seconds",
+            place, playerData.Player.Name, playerData.Finished - playerData.Started
+        )
+
+        place += 1
+    end
+
+    for _, playerData in pairs(playersSorted) do
+        output[#output + 1] = string.format(
+            "#%d - %s - DNF",
+            place, playerData.Player.Name
+        )
+
+        place += 1
+    end
+
+    output[#output + 1] = "========"
+    output[#output + 1] = table.concat(raceData.eventLog, "\n")
+
+    local filename = string.format("%s/race.log", self:Folder(), os.date(cDateFormat))
+    writefile(filename, table.concat(output, "\n"))
 end
 
 function raceData:Log(msg)
@@ -403,6 +457,42 @@ function PlayerData.new(player, overlayEntry)
     return self
 end
 
+function PlayerData:FlushData()
+    raceData:InitFolder()
+
+    local filename = string.format("%s/%s.csv", raceData:Folder(), self.Player.Name)
+    local fileExists = isfile(filename)
+    local output
+
+    if fileExists then
+        output = { "" }
+    else
+        output = { "Tick,Place,Lap,Checkpoint,Speed,Sitting" }
+    end
+
+    for _, dataPoint in ipairs(self.DataPoints) do
+        local sitNum
+        if dataPoint.Sitting then
+            sitNum = 1
+        else
+            sitNum = 0
+        end
+
+        output[#output + 1] = string.format(
+            "%f,%d,%d,%d,%f,%d",
+            dataPoint.Tick, dataPoint.Place, dataPoint.Lap, dataPoint.Checkpoint, dataPoint.Speed, sitNum
+        )
+    end
+
+    if fileExists then
+        appendfile(filename, table.concat(output, "\n"))
+    else
+        writefile(filename, table.concat(output, "\n"))
+    end
+
+    self.DataPoints = {}
+end
+
 function PlayerData:LogData()
     local char = self.Player.Character
     if not char then
@@ -431,37 +521,7 @@ function PlayerData:LogData()
     self.DataPoints[#self.DataPoints + 1] = data
 
     if #self.DataPoints > 600 then
-        local filename = string.format("player-%s-%s.csv", self.Player.Name, os.date(cDateFormat, raceData.activeTimeLocal))
-        local fileExists = isfile(filename)
-        local output
-
-        if fileExists then
-            output = { "\n" }
-        else
-            output = { "Tick,Place,Lap,Checkpoint,Speed,Sitting" }
-        end
-
-        for _, dataPoint in ipairs(self.DataPoints) do
-            local sitNum
-            if dataPoint.Sitting then
-                sitNum = 1
-            else
-                sitNum = 0
-            end
-
-            output[#output + 1] = string.format(
-                "%f,%d,%d,%d,%f,%d",
-                dataPoint.Tick, dataPoint.Place, dataPoint.Lap, dataPoint.Checkpoint, dataPoint.Speed, sitNum
-            )
-        end
-
-        if fileExists then
-            appendfile(filename, table.concat(output, "\n"))
-        else
-            writefile(filename, table.concat(output, "\n"))
-        end
-
-        self.DataPoints = {}
+        self:FlushData()
     end
 end
 
@@ -787,56 +847,21 @@ do  -- race
         else
             raceData:Log("Race was marked inactive.")
             raceData:SetCheckpointsVisible(true)
+
+            raceData:ExportLog()
+
+            for _, player in pairs(raceData.players) do
+                player:FlushData()
+                player:Destroy()
+            end
+
+            raceData.players = {}
+            raceData.playerCount = 0
+            raceData.eventLog = {}
+
+            stopSpectating()
         end
         setActive(raceData.active)
-    end)
-
-    BFS.UI.createLabelButtonLarge(raceScroll, "Reset Player Data", function()
-        for _, player in pairs(raceData.players) do
-            player:Destroy()
-        end
-
-        raceData.players = {}
-        raceData.playerCount = 0
-        raceData.eventLog = {}
-    end)
-
-    BFS.UI.createLabelButtonLarge(raceScroll, "Export Event Log", function()
-        local time = os.time()
-        local output = string.format(
-            "---- Race log, exported %s ----\n\n",
-            os.date("%d-%m-%Y at %H:%M:%S (local time)")
-        )
-
-        output = output.."--- RACE SUMMARY ---\n"
-
-        local finishedSorted, playersSorted = raceData:SortPlayers()
-        local place = 1
-
-        for _, playerData in pairs(finishedSorted) do
-            output = output..string.format(
-                "#%d - %s - %.2f seconds\n",
-                place, playerData.Player.Name, playerData.Finished - playerData.Started
-            )
-
-            place += 1
-        end
-
-        for _, playerData in pairs(playersSorted) do
-            output = output..string.format(
-                "#%d - %s - DNF\n",
-                place, playerData.Player.Name
-            )
-
-            place += 1
-        end
-
-        output = output.."========\n"
-
-        output = output..table.concat(raceData.eventLog, "\n")
-
-        local filename = string.format("race-%s.log", os.date(cDateFormat))
-        writefile(filename, output)
     end)
 
     BFS.UI.createCategoryLabel(raceScroll, "Map Focus")
@@ -847,6 +872,66 @@ do  -- race
 
     BFS.UI.createLabelButtonLarge(raceScroll, "Focus map on me", function()
         map.Focus = nil
+    end)
+
+    BFS.UI.createCategoryLabel(raceScroll, "Misc")
+
+    local lSpeedometer
+    local lastSpeed
+    local maxSpeed
+    local maxAccel
+
+    local speedText
+    local accelText
+
+    BFS.UI.createLabelButtonLarge(raceScroll, "Max Speed-o-meter", function(setActive)
+        if lSpeedometer then
+            lSpeedometer:Disconnect()
+            lSpeedometer = nil
+            setActive(false)
+        else
+            lastSpeed = 0
+            maxSpeed = 0
+            maxAccel = 0
+
+            lSpeedometer = RunService.Heartbeat:Connect(function(dT)
+                local char = LocalPlayer.Character
+                if not char then
+                    return
+                end
+
+                local root = char.PrimaryPart
+                if not root then
+                    return
+                end
+
+                local speed = root.AssemblyLinearVelocity.Magnitude
+                if speed > maxSpeed then
+                    maxSpeed = speed
+                    speedText.Text = string.format("%.2f studs/s", speed)
+                end
+
+                local accel = (speed - lastSpeed) / dT
+                accelText.Text = string.format("%.2f studs/s^2", accel)
+
+                lastSpeed = speed
+            end)
+
+            setActive(true)
+        end
+    end)
+
+    speedText = BFS.UI.createText(raceScroll, 24)
+    speedText.AutomaticSize = Enum.AutomaticSize.XY
+    speedText.Text = "Speed"
+    accelText = BFS.UI.createText(raceScroll, 24)
+    accelText.AutomaticSize = Enum.AutomaticSize.XY
+    accelText.Text = "Acceleration"
+
+    BFS.bindToExit("Unbind speedometer", function()
+        if lSpeedometer then
+            lSpeedometer:Disconnect()
+        end
     end)
 
     local function initPlayer(player)
