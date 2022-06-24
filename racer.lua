@@ -142,12 +142,15 @@ end
 local cSDMSize = Vector3.new(420, 2.647937774658203, 420)
 local cSDMPos = CFrame.new(12485.9893, -19.8234463, 420.502899)
 
+local cDateFormat = "%d-%m-%y_%H-%M-%S"
+
 local cPadding = 30
 
 local map
 
 local raceData = {
     active = false,
+    activeTimeLocal = 0,
     activeTime = 0,
     checkpoints = {},
     players = {},
@@ -421,9 +424,45 @@ function PlayerData:LogData()
         Speed = rootPart.AssemblyLinearVelocity.Magnitude,
         Sitting = humanoid.Sit,
         Place = self.Place,
+        Lap = self.Lap,
+        Checkpoint = self.Checkpoint,
     }
 
     self.DataPoints[#self.DataPoints + 1] = data
+
+    if #self.DataPoints > 600 then
+        local filename = string.format("player-%s-%s.csv", self.Player.Name, os.date(cDateFormat, raceData.activeTimeLocal))
+        local fileExists = isfile(filename)
+        local output
+
+        if fileExists then
+            output = { "\n" }
+        else
+            output = { "Tick,Place,Lap,Checkpoint,Speed,Sitting" }
+        end
+
+        for _, dataPoint in ipairs(self.DataPoints) do
+            local sitNum
+            if dataPoint.Sitting then
+                sitNum = 1
+            else
+                sitNum = 0
+            end
+
+            output[#output + 1] = string.format(
+                "%f,%d,%d,%d,%f,%d",
+                dataPoint.Tick, dataPoint.Place, dataPoint.Lap, dataPoint.Checkpoint, dataPoint.Speed, sitNum
+            )
+        end
+
+        if fileExists then
+            appendfile(filename, table.concat(output, "\n"))
+        else
+            writefile(filename, table.concat(output, "\n"))
+        end
+
+        self.DataPoints = {}
+    end
 end
 
 function PlayerData:HandleVisit(checkpoint)
@@ -741,6 +780,7 @@ do  -- race
     BFS.UI.createLabelButtonLarge(raceScroll, "Race Active", function(setActive)
         raceData.active = not raceData.active
         if raceData.active then
+            raceData.activeTimeLocal = os.time()
             raceData.activeTime = tick()
             raceData:Log(string.format("Race was marked active. - tick: %f", raceData.activeTime))
             raceData:SetCheckpointsVisible(false)
@@ -760,8 +800,6 @@ do  -- race
         raceData.playerCount = 0
         raceData.eventLog = {}
     end)
-
-    local cDateFormat = "%d-%m-%y_%H-%M-%S"
 
     BFS.UI.createLabelButtonLarge(raceScroll, "Export Event Log", function()
         local time = os.time()
@@ -799,29 +837,6 @@ do  -- race
 
         local filename = string.format("race-%s.log", os.date(cDateFormat))
         writefile(filename, output)
-    end)
-
-    BFS.UI.createLabelButtonLarge(raceScroll, "Export Player Data Logs", function()
-        for _, playerData in pairs(raceData.players) do
-            local output = "Tick,Place,Speed,Sitting\n"
-
-            for _, dataPoint in ipairs(playerData.DataPoints) do
-                local sitNum
-                if dataPoint.Sitting then
-                    sitNum = 1
-                else
-                    sitNum = 0
-                end
-
-                output = output..string.format(
-                    "%f,%d,%f,%d\n",
-                    dataPoint.Tick, dataPoint.Place, dataPoint.Speed, sitNum
-                )
-            end
-
-            local filename = string.format("player-%s-%s.csv", playerData.Player.Name, os.date(cDateFormat))
-            writefile(filename, output)
-        end
     end)
 
     BFS.UI.createCategoryLabel(raceScroll, "Map Focus")
@@ -995,7 +1010,7 @@ do  -- checkpoints
 
         raceData:ClearCheckpoints()
 
-        if not pcall(function() readfile(fileNameField.Text) end) then
+        if not isfile(fileNameField.Text) then
             return
         end
 
