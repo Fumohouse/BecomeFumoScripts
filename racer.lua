@@ -834,10 +834,8 @@ do  -- race
             raceData.activeTimeLocal = os.time()
             raceData.activeTime = tick()
             raceData:Log(string.format("Race was marked active. - tick: %f", raceData.activeTime))
-            raceData:SetCheckpointsVisible(false)
         else
             raceData:Log("Race was marked inactive.")
-            raceData:SetCheckpointsVisible(true)
 
             raceData:ExportLog()
 
@@ -853,6 +851,11 @@ do  -- race
             stopSpectating()
         end
         setActive(raceData.active)
+    end)
+
+    BFS.UI.createLabelButtonLarge(raceScroll, "Hide Checkpoints", function(setActive)
+        raceData:SetCheckpointsVisible(not raceData.checkpointsVisible)
+        setActive(not raceData.checkpointsVisible)
     end)
 
     BFS.UI.createCategoryLabel(raceScroll, "Map Focus")
