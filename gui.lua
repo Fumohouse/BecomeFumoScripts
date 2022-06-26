@@ -1,5 +1,5 @@
 --[[
-    Become Fumo Scripts UI
+    Become Fumo Scripts UI & Utility Functions
     Copyright (c) 2021 voided_etc & contributors
 
     This portion of BFS source is public.
@@ -9,12 +9,30 @@
 local CoreGui = game:GetService("CoreGui")
 local HttpService = game:GetService("HttpService")
 local TweenService = game:GetService("TweenService")
+local Players = game:GetService("Players")
 local UserInput = game:GetService("UserInputService")
+
+local LocalPlayer = Players.LocalPlayer
 
 local BFS = {}
 
 function BFS.log(msg)
 	print("[fumo] " .. msg)
+end
+
+function BFS.teleport(pos)
+    local char = LocalPlayer.Character
+    local hum = char:FindFirstChildOfClass("Humanoid")
+
+    if hum and hum.SeatPart then
+        hum.Sit = false
+        wait()
+    end
+
+    local origPos = char:GetPrimaryPartCFrame()
+    char:SetPrimaryPartCFrame(pos)
+
+    return origPos
 end
 
 getgenv().BFS = BFS
@@ -368,7 +386,7 @@ do -- config & bindings
             return
         end
 
-        if not pcall(function() readfile(self.Filename) end) then
+        if not isfile(self.Filename) then
             BFS.log("Creating new config file.")
             self:setDefault()
         else

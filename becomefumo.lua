@@ -10,6 +10,13 @@ if not BFS then
     BFS = getgenv().BFS
 end
 
+local BFSMap = getgenv().BFSMap
+
+if not BFSMap then
+    loadstring(game:HttpGet(("https://gist.githubusercontent.com/kyoseki/07f37b493f46895e67339e85c223423c/raw/minimap.lua"), true))()
+    BFSMap = getgenv().BFSMap
+end
+
 local cDefaultConfig = {
     version = nil, -- for version check
     keybinds = {
@@ -34,7 +41,7 @@ local cDefaultConfig = {
 
 BFS.Config:mergeDefaults(cDefaultConfig)
 
-version = "1.7.2"
+version = "1.7.3"
 
 do  -- double load prevention
     if BF_LOADED then
@@ -108,25 +115,6 @@ secondaryRoot.Size = UDim2.fromScale(1, 1)
 secondaryRoot.BackgroundTransparency = 1
 secondaryRoot.BorderSizePixel = 0
 secondaryRoot.Parent = BFS.Root
-
---
--- random functions
---
-
-function teleport(pos)
-    local char = LocalPlayer.Character
-    local hum = char:FindFirstChildOfClass("Humanoid")
-
-    if hum and hum.SeatPart then
-        hum.Sit = false
-        wait()
-    end
-
-    local origPos = char:GetPrimaryPartCFrame()
-    char:SetPrimaryPartCFrame(pos)
-
-    return origPos
-end
 
 if place == "BCF" then  -- characters
     local cCharacters = {}
@@ -442,6 +430,13 @@ At any time, you can press [0] to close the script and reset everything back to 
     })
 
     local cChangelogContent = [[
+<b>1.7.3</b>
+- Fixed 7S tab crashing on fresh config files
+- The minimap is now a library as it is shared between multiple scripts
+- All plotting of waypoints/terrain on SBF is now disabled due to StreamingEnabled
+- Friends are no longer indicated in blue on the minimap (for now). The feature was intermittent at best.
+- Added the headbang emote on SBF
+
 <b>1.7.2</b>
 - Added new SBF animations
 
@@ -1026,9 +1021,9 @@ do  -- animations
         addAnimation("Dance1", "rbxassetid://8369300730")
         addAnimation("Dance2", "rbxassetid://8369304237")
         addAnimation("Dance3", "rbxassetid://7364328999")
-	addAnimation("Dance4", "rbxassetid://8950972041")
+        addAnimation("Dance4", "rbxassetid://8950972041")
         addAnimation("Laugh", "rbxassetid://8369369772")
-	addAnimation("Laugh1", "rbxassetid://9081137241")
+        addAnimation("Laugh1", "rbxassetid://9081137241")
         addAnimation("Cheer", "rbxassetid://8369365889")
         addAnimation("Abunai", "rbxassetid://8377632838")
         addAnimation("Sonanoka", "rbxassetid://8377647016")
@@ -1041,11 +1036,12 @@ do  -- animations
         addAnimation("Penguin", "rbxassetid://8557261868")
         addAnimation("Clap", "rbxassetid://8557305015")
         addAnimation("Nanodesu", "rbxassetid://8828894391")
-	addAnimation("The J", "rbxassetid://8959872788")
-	addAnimation("Flan Dance", "rbxassetid://8974536681")
-	addAnimation("Yoinky Sploinky", "rbxassetid://9468968342")
-	addAnimation("Katzotsky Kick", "rbxassetid://9119699991")
-	addAnimation("Orin Dance", "rbxassetid://9612119226")
+        addAnimation("The J", "rbxassetid://8959872788")
+        addAnimation("Flan Dance", "rbxassetid://8974536681")
+        addAnimation("Yoinky Sploinky", "rbxassetid://9468968342")
+        addAnimation("Katzotsky Kick", "rbxassetid://9119699991")
+        addAnimation("Orin Dance", "rbxassetid://9612119226")
+        addAnimation("Headbang", "rbxassetid://9658056382")
     end
 end -- animations
 
@@ -1212,7 +1208,7 @@ do  -- hats come alive
 
                 if not savedLocation then savedLocation = humanRoot.CFrame end
 
-                teleport(CFrame.new(10000, 0, 10000))
+                BFS.teleport(CFrame.new(10000, 0, 10000))
                 humanRoot.Anchored = true
 
                 wait(2)
@@ -1300,7 +1296,7 @@ do  -- hats come alive
                 inProgress = inProgress - 1
 
                 if inProgress == 0 then
-                    teleport(savedLocation)
+                    BFS.teleport(savedLocation)
                     savedLocation = nil
                     humanRoot.Anchored = false
                     LocalPlayer.CameraMode = Enum.CameraMode.Classic
@@ -1561,7 +1557,7 @@ do  -- welds
         weld.Part1:ClearAllChildren()
 
         -- allows for tp-back location to be correct between concurrent calls.
-        local origPos = teleport(CFrame.new(31, 45, 50, 1, 0, 0, 0, 1, 0, 0, 0, 1))
+        local origPos = BFS.teleport(CFrame.new(31, 45, 50, 1, 0, 0, 0, 1, 0, 0, 0, 1))
         if not savedLocation then savedLocation = origPos end
         wait(0.2)
 
@@ -1578,7 +1574,7 @@ do  -- welds
         weld.Part1.Anchored = true
 
         if savedLocation and inProgress == 1 then
-            teleport(savedLocation)
+            BFS.teleport(savedLocation)
             savedLocation = nil
         end
 
@@ -1894,417 +1890,26 @@ do  -- info
 end -- info
 
 do  -- minimap
-    local TooltipProvider = {}
-    TooltipProvider.__index = TooltipProvider
+    function plotAreas(map)
+        local cArea = Color3.fromRGB(86, 94, 81)
+        local cAreaB = Color3.fromRGB(89, 149, 111)
 
-    -- TooltipObject spec (abstract)
-    -- :ShowTooltip (opt) - whether the object should show a tooltip
-    -- :CreateTooltip(tp) - create the tooltip
-    -- TooltipObject (GuiObject) - the object that, when hovered, should cause a tooltip to appear
-    -- :Clicked(input) (opt) - called on click
+        if place == "BCF" then
+            local mwCf, mwSize = workspace.PlayArea["invis walls"]:GetBoundingBox()
+            map:plotBBox(mwCf, mwSize, cArea, cAreaB, map.AreaLayer)
 
-    function TooltipProvider.new(parent)
-        local self = setmetatable({}, TooltipProvider)
+            local cBeachCf = CFrame.new(-978.322266, 134.538483, 8961.99805, 1, 0, 0, 0, 1, 0, 0, 0, 1) -- the roof barrier
+            local cBeachSize = Vector3.new(273.79, 29.45, 239.5)
+            map:plotBBox(cBeachCf, cBeachSize, cArea, cAreaB, map.AreaLayer)
 
-        self.Parent = parent
+            local ruinsMin, ruinsMax = map:_findBounds({ map:_findZone("Ruins") }, function(inst) return inst.Name ~= "bal" end)
+            local ruinsCenter = CFrame.new((ruinsMin + ruinsMax) / 2)
+            map:plotBBox(ruinsCenter, ruinsMax - ruinsMin, cArea, cAreaB, map.AreaLayer)
 
-        local tooltipFrame = Instance.new("Frame")
-        tooltipFrame.AnchorPoint = Vector2.new(0, 0)
-        tooltipFrame.AutomaticSize = Enum.AutomaticSize.XY
-        tooltipFrame.BackgroundTransparency = 0.25
-        tooltipFrame.BackgroundColor3 = BFS.UIConsts.BackgroundColor
-        tooltipFrame.BorderSizePixel = 0
-        tooltipFrame.Parent = parent
-
-        self.Focus = nil
-
-        self.Frame = tooltipFrame
-
-        self.Instances = {}
-        self.Scale = 1
-
-        return self
-    end
-
-    function TooltipProvider:createText(size)
-        local text = BFS.UI.createText(self.Frame, size)
-        text.AutomaticSize = Enum.AutomaticSize.XY
-        text.TextWrapped = false
-        text.RichText = true
-
-        return text
-    end
-
-    function TooltipProvider:_mouseEnter(obj)
-        if obj.ShowTooltip and not obj:ShowTooltip() then return end
-
-        local pos = UserInput:GetMouseLocation()
-
-        if self.Focus ~= obj then
-            self.Frame:ClearAllChildren()
-            obj:CreateTooltip(self)
+            local velvetMin, velvetMax = map:_findBounds({ map:_findZone("VelvetRoom") })
+            local velvetCenter = CFrame.new((velvetMin + velvetMax) / 2)
+            map:plotBBox(velvetCenter, velvetMax - velvetMin, cArea, cAreaB, map.AreaLayer)
         end
-
-        self.Frame.Position = UDim2.fromOffset(pos.X, pos.Y)
-
-        self.Focus = obj
-        self.Frame.Visible = true
-    end
-
-    function TooltipProvider:_mouseLeave(obj)
-        self.Frame:ClearAllChildren()
-        self.Frame.Visible = false
-        self.Focus = nil
-    end
-
-    function TooltipProvider:register(obj)
-        if not obj.TooltipObject or not obj.CreateTooltip then return end
-
-        obj.TooltipObject.Active = true
-
-        local info = {}
-        info.Object = obj
-
-        info.lEnter = obj.TooltipObject.MouseEnter:Connect(function()
-            self:_mouseEnter(obj)
-        end)
-
-        info.lMove = obj.TooltipObject.MouseMoved:Connect(function()
-            self:_mouseEnter(obj)
-        end)
-
-        info.lLeave = obj.TooltipObject.MouseLeave:Connect(function()
-            self:_mouseLeave(obj)
-        end)
-
-        if obj.Clicked then
-            info.lClicked = obj.TooltipObject.InputBegan:Connect(function(input)
-                if (not obj.ShowTooltip or obj:ShowTooltip()) and input.UserInputType == Enum.UserInputType.MouseButton1 then
-                    obj:Clicked(input)
-                end
-            end)
-        end
-
-        self.Instances[#self.Instances + 1] = info
-    end
-
-    function TooltipProvider:deregister(obj)
-        for k, v in pairs(self.Instances) do
-            if v.Object == obj then
-                v.lEnter:Disconnect()
-                v.lMove:Disconnect()
-                v.lLeave:Disconnect()
-                if v.lClicked then
-                    v.lClicked:Disconnect()
-                end
-
-                self.Instances[k] = nil
-
-                break
-            end
-        end
-    end
-
-    -- MapObject spec (abstract)
-    -- constructor should contain minimap as first param
-    -- Map - Minimap: the map the object is assigned to
-    -- Root - GuiObject: the parent element of all other components of this MapObject
-    -- UpdateSize(scaleFactor): Causes the MapObject to resize/change appearance based on a new scale factor
-
-    local MapBBox = {}
-    MapBBox.__index = MapBBox
-
-    function MapBBox.new(minimap, cf, size, color, colorB)
-        local self = setmetatable({}, MapBBox)
-
-        local quad = Instance.new("Frame")
-        quad.AnchorPoint = Vector2.new(0.5, 0.5)
-        quad.BackgroundTransparency = 0.25
-        quad.BackgroundColor3 = color
-        quad.BorderSizePixel = 1
-        quad.BorderColor3 = colorB
-
-        self.Map = minimap
-        self.Root = quad
-        self.CFrame = cf
-        self.Size = size
-
-        return self
-    end
-
-    function MapBBox:UpdateSize(scaleFactor)
-        local scaled = self.Size * scaleFactor
-
-        local x, y, z = self.CFrame:ToOrientation()
-
-        if y % (math.pi / 2) > 1e-3 then
-            self.Root.Rotation = -y * 180 / math.pi
-        else
-            scaled = (self.CFrame - self.CFrame.Position):Inverse() * scaled -- if its a multiple of 90deg then just rotate the size instead of rotating the component
-        end
-
-        self.Root.Size = UDim2.fromOffset(scaled.X, scaled.Z)
-
-        local pos2 = self.Map:mapPosition(Vector2.new(self.CFrame.Position.X, self.CFrame.Position.Z))
-        self.Root.Position = UDim2.fromOffset(pos2.X, pos2.Y)
-    end
-
-    local MapSeat = setmetatable({}, { __index = MapBBox });
-    MapSeat.__index = MapSeat
-
-    function MapSeat.new(minimap, seat)
-        local cSeatColor = Color3.fromRGB(38, 38, 38)
-        local cSeatColorB = Color3.fromRGB(0, 0, 0)
-
-        local self = setmetatable(MapBBox.new(minimap, seat.CFrame, seat.Size, cSeatColor, cSeatColorB), MapSeat)
-
-        self.Seat = seat
-        self.TooltipObject = self.Root
-
-        return self
-    end
-
-    function MapSeat:ShowTooltip()
-        return self.Map.ScaleFactor > 2
-    end
-
-    function MapSeat:CreateTooltip(tp)
-        BFS.UI.createListLayout(tp.Frame, Enum.HorizontalAlignment.Left)
-
-        local headerText = tp:createText(24)
-        headerText.Text = "<b>Seat</b>"
-
-        local infoText = tp:createText(15)
-
-        if LocalPlayer.Character and self.Seat.Occupant == LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-            infoText.Text = "Seat is occupied by you"
-        elseif self.Seat.Occupant then
-            infoText.Text = "Seat is occupied by "..self.Seat.Occupant.Parent.Name
-        else
-            infoText.Text = "<i>Click to sit!</i>"
-        end
-    end
-
-    function MapSeat:Clicked()
-        if self.Seat.Occupant then return end
-
-        local char = LocalPlayer.Character
-        if not char then return end
-
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if hum.SeatPart then
-            hum.Sit = false
-            wait()
-        end
-
-        self.Seat:Sit(hum)
-    end
-
-    function MapSeat:UpdateSize(scaleFactor)
-        self.Root.Visible = scaleFactor > 2
-        MapBBox.UpdateSize(self, scaleFactor)
-    end
-
-    local FriendsCache = {}
-    FriendsCache.__index = FriendsCache
-
-    function FriendsCache.new()
-        local self = setmetatable({}, FriendsCache)
-
-        self.Value = nil
-        self.LastCollected = 0
-
-        self:update()
-
-        return self
-    end
-
-    function FriendsCache:update()
-        if not self.Value or DateTime.now().UnixTimestamp - self.LastCollected > 10 then
-            self.Value = LocalPlayer:GetFriendsOnline()
-            self.LastCollected = DateTime.now().UnixTimestamp
-        end
-    end
-
-    local PlayerDot = {}
-    PlayerDot.__index = PlayerDot
-
-    function PlayerDot.new(player, cache, layers)
-        local self = setmetatable({}, PlayerDot)
-
-        local cIconSize = 20
-
-        local frame = Instance.new("Frame")
-        frame.AnchorPoint = Vector2.new(0.5, 0.5)
-        frame.BackgroundTransparency = 1
-        frame.BorderSizePixel = 0
-        frame.Size = UDim2.fromOffset(cIconSize, cIconSize)
-
-        local dot = Instance.new("Frame")
-        dot.AnchorPoint = Vector2.new(0.5, 0.5)
-        dot.Size = UDim2.fromOffset(5, 5)
-        dot.Position = UDim2.fromScale(0.5, 0.5)
-        dot.BorderSizePixel = 0
-        dot.Parent = frame
-
-        local icon = Instance.new("ImageLabel")
-        icon.Image = "rbxassetid://7480141029"
-        icon.BackgroundTransparency = 1
-        icon.Size = UDim2.fromOffset(cIconSize, cIconSize)
-        icon.BorderSizePixel = 0
-        icon.Parent = frame
-
-        local label = BFS.UI.createText(frame)
-        label.Position = UDim2.fromScale(1, 1)
-        label.AutomaticSize = Enum.AutomaticSize.XY
-        label.Visible = false
-        label.Text = player.Name
-
-        self.TooltipObject = frame
-        self.Frame = frame
-        self.Dot = dot
-        self.Icon = icon
-        self.Label = label
-
-        self.Player = player
-        self.IsLocal = player == LocalPlayer
-
-        self.FriendsCache = cache
-
-        self.Layers = layers
-
-        self.InfoText = nil
-
-        self:update()
-
-        return self
-    end
-
-    function PlayerDot:update()
-        if self.Player.UserId == LocalPlayer.UserId then
-            self:setParent(self.Layers[3])
-            self:setColor(Color3.fromRGB(255, 255, 0))
-            return
-        end
-
-        for _, v in pairs(self.FriendsCache.Value) do
-            if v.VisitorId == self.Player.UserId then
-                self:setParent(self.Layers[2])
-                self.InfoText = "Friend"
-                self:setColor(Color3.fromRGB(19, 165, 214))
-                return
-            end
-        end
-
-        self:setParent(self.Layers[1])
-        self:setColor(Color3.fromRGB(255, 255, 255))
-    end
-
-    function PlayerDot:UpdateSize(scale)
-        self.Scale = scale
-
-        if scale > 2 then
-            self.Dot.BackgroundTransparency = 1
-            self.Icon.ImageTransparency = 0
-            self.Label.Visible = true
-        else
-            self.Dot.BackgroundTransparency = 0
-            self.Icon.ImageTransparency = 1
-            self.Label.Visible = false
-        end
-    end
-
-    function PlayerDot:setParent(parent)
-        self.Frame.Parent = parent
-    end
-
-    function PlayerDot:setColor(color)
-        self.Dot.BackgroundColor3 = color
-        self.Icon.ImageColor3 = color
-    end
-
-    function PlayerDot:ShowTooltip()
-        return self.Scale > 2
-    end
-
-    function PlayerDot:CreateTooltip(tp)
-        local cUsernameHeight = 24
-        local cInfoHeight = 15
-
-        BFS.UI.createListLayout(tp.Frame, Enum.HorizontalAlignment.Left)
-
-        local usernameText = tp:createText(cUsernameHeight)
-        usernameText.Text = "<b>"..self.Player.Name.."</b>"
-
-        local infoText = tp:createText(cInfoHeight)
-        if self.InfoText then
-            infoText.Text = self.InfoText
-        elseif self.IsLocal then
-            infoText.Text = "This is you."
-        else
-            infoText.Text = "Random"
-        end
-
-        if not self.IsLocal then
-            local tpText = tp:createText(cInfoHeight)
-            tpText.Text = "<i>Click to teleport!</i>"
-        end
-    end
-
-    function PlayerDot:Clicked(input)
-        if self.IsLocal then return end
-
-        local root = self.Player.Character:FindFirstChild("HumanoidRootPart")
-
-        if root then
-            teleport(root.CFrame)
-        end
-    end
-
-    local Waypoint = {}
-    Waypoint.__index = Waypoint
-
-    function Waypoint.new(minimap, name, loc, color)
-        local self = setmetatable({}, Waypoint)
-
-        local icon = Instance.new("ImageLabel")
-        icon.AnchorPoint = Vector2.new(0.5, 0.5)
-        icon.Image = "rbxassetid://7596158422"
-        icon.ImageColor3 = color
-        icon.Size = UDim2.fromOffset(25, 25)
-        icon.BackgroundTransparency = 1
-        icon.BorderSizePixel = 0
-
-        self.Map = minimap
-        self.Root = icon
-
-        self.Name = name
-        self.CFrame = loc
-
-        self.TooltipObject = icon
-
-        return self
-    end
-
-    function Waypoint:UpdateSize(scaleFactor)
-        local pos2 = self.Map:mapPosition(Vector2.new(self.CFrame.Position.X, self.CFrame.Position.Z))
-        self.Root.Position = UDim2.fromOffset(pos2.X, pos2.Y)
-
-        self.Root.Visible = scaleFactor > 2
-    end
-
-    function Waypoint:Clicked(input)
-        teleport(self.CFrame)
-    end
-
-    function Waypoint:CreateTooltip(tp)
-        BFS.UI.createListLayout(tp.Frame, Enum.HorizontalAlignment.Left)
-
-        local name = tp:createText(24)
-        name.Text = "<b>"..self.Name.."</b>"
-
-        local info = tp:createText(15)
-        info.Text = "<i>Click to teleport!</i>"
     end
 
     local cEpsilon = 1e-7
@@ -2313,291 +1918,7 @@ do  -- minimap
         return math.abs(v1 - v2) < epsilon
     end
 
-    Minimap = {}
-    Minimap.__index = Minimap
-
-    function Minimap.new(parent)
-        local self = setmetatable({}, Minimap)
-
-        self.Parent = parent
-
-        local origin, maxPos = self:_findWorldBounds()
-        self.WorldOrigin = origin
-        self.RealSize2 = maxPos - origin
-
-        self.ScaleFactor = 1.2
-        self.ScaleFactorSmall = 1.2
-        self.MapSizeSmall = UDim2.fromOffset(300, 300)
-
-        local mapFrameO = Instance.new("Frame")
-        mapFrameO.AnchorPoint = Vector2.new(0, 1)
-        mapFrameO.Position = UDim2.fromScale(0, 1)
-        mapFrameO.Size = UDim2.fromScale(0, 0)
-        mapFrameO.BackgroundColor3 = BFS.UIConsts.BackgroundColor
-        mapFrameO.BackgroundTransparency = 0.5
-        mapFrameO.BorderSizePixel = 3
-        mapFrameO.BorderColor3 = BFS.UIConsts.ForegroundColor
-        mapFrameO.ClipsDescendants = true
-        mapFrameO.Parent = parent
-
-        self.FrameOuter = mapFrameO
-
-        local mapFrameI = Instance.new("Frame")
-        mapFrameI.BackgroundTransparency = 1
-        mapFrameI.BorderSizePixel = 0
-        mapFrameI.Position = UDim2.fromScale(0, 0)
-        mapFrameI.Parent = mapFrameO
-
-        self.FrameInner = mapFrameI
-
-        self.Tooltips = TooltipProvider.new(parent)
-
-        self.AreaLayer = self:createLayer()
-        self.TerrainLayer = self:createLayer()
-        self.SeatLayer = self:createLayer()
-        self.PlayerLayerRandom = self:createLayer()
-        self.PlayerLayerSpecial = self:createLayer()
-        self.PlayerLayerSelf = self:createLayer()
-        self.WaypointLayer = self:createLayer()
-
-        self.PlayerLayers = { self.PlayerLayerRandom, self.PlayerLayerSpecial, self.PlayerLayerSelf }
-
-        self.MapObjects = {}
-        self:_plotAreas()
-        self:_plotTerrain()
-        self:_plotWaypoints()
-
-        self.Players = {}
-        self.PlayerPositions = {}
-        self.FriendsCache = FriendsCache.new()
-
-        for _, v in pairs(Players:GetPlayers()) do
-            self:_playerConnect(v)
-        end
-
-        self._lConnect = Players.PlayerAdded:Connect(function(player)
-            self:_playerConnect(player)
-        end)
-
-        self._lDisconnect = Players.PlayerRemoving:Connect(function(player)
-            self:_playerDisconnect(player)
-        end)
-
-        self._lHeartbeat = RunService.Heartbeat:Connect(function()
-            self:_heartbeat()
-        end)
-
-        self._expandTween = nil
-        self.Expanded = nil
-        self:setExpanded(false)
-
-        self._dragStart = nil
-        self._dragPosOrig = nil
-
-        mapFrameO.InputBegan:Connect(function(input)
-            self:_inputB(input)
-        end)
-
-        mapFrameO.InputChanged:Connect(function(input)
-            self:_inputC(input)
-        end)
-
-        mapFrameO.InputEnded:Connect(function(input)
-            self:_inputE(input)
-        end)
-
-        self._lSizeChange = parent:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
-            self:updateSizeO()
-        end)
-
-        self:updateSizeO()
-
-        return self
-    end
-
-    function Minimap:createLayer()
-        local layer = Instance.new("Frame")
-        layer.Size = UDim2.fromScale(1, 1)
-        layer.BorderSizePixel = 0
-        layer.BackgroundTransparency = 1
-        layer.Parent = self.FrameInner
-
-        return layer
-    end
-
-    function Minimap:_findBounds(insts, check)
-        local xMin = math.huge
-        local yMin = math.huge
-        local zMin = math.huge
-
-        local xMax = -math.huge
-        local yMax = -math.huge
-        local zMax = -math.huge
-
-        local function scan(inst)
-            if not (inst:IsA("Part") or inst:IsA("MeshPart")) or (check and not check(inst)) then return end
-
-            if place == "SBF" then
-                for _, player in pairs(Players:GetPlayers()) do
-                    if player.Character and inst:IsDescendantOf(player.Character) then
-                        return
-                    end
-                end
-            end
-
-            local posMin = inst.Position - inst.Size / 2 -- top left
-            local posMax = inst.Position + inst.Size / 2 -- bottom right
-
-            if posMin.X < xMin then
-                xMin = posMin.X
-            end
-
-            if posMax.X > xMax then
-                xMax = posMax.X
-            end
-
-            if posMin.Y < yMin then
-                yMin = posMin.Y
-            end
-
-            if posMax.Y > yMax then
-                yMax = posMax.Y
-            end
-
-            if posMin.Z < zMin then
-                zMin = posMin.Z
-            end
-
-            if posMax.Z > zMax then
-                zMax = posMax.Z
-            end
-        end
-
-        for _, v in pairs(insts) do
-            for _, part in pairs(v:GetDescendants()) do
-                scan(part)
-            end
-        end
-
-        return Vector3.new(xMin, yMin, zMin), Vector3.new(xMax, yMax, zMax)
-    end
-
-    function Minimap:_findWorldBounds()
-        local posMin, posMax
-        if place == "BCF" then
-            posMin, posMax = self:_findBounds({ workspace.PlayArea, ReplicatedStorage.Zones, workspace.ActiveZone })
-        elseif place == "SBF" then
-            posMin, posMax = self:_findBounds({ workspace })
-        end
-
-        -- must scan ActiveZone for zones player is currently inside
-        return Vector2.new(posMin.X, posMin.Z), Vector2.new(posMax.X, posMax.Z)
-    end
-
-    function Minimap:setVisible(visible)
-        if visible == self.FrameOuter.Visible then return end
-
-        self.FrameOuter.Visible = visible
-
-        if not visible then
-            self:setExpanded(false)
-        end
-    end
-
-    function Minimap:setExpanded(expanded, force)
-        if expanded and not self.FrameOuter.Visible then return end
-
-        if not force and expanded == self.Expanded then return end
-        self.Expanded = expanded
-
-        local tweenInfo = TweenInfo.new(0.5)
-        local goal = {}
-
-        if expanded then
-            goal.Size = UDim2.fromScale(1, 1)
-            goal.Position = UDim2.fromScale(0, 1)
-            self.ScaleFactor = 5
-        else
-            goal.Size = self.MapSizeSmall
-            goal.Position = UDim2.new(0, 100, 1, -100)
-            self.ScaleFactor = self.ScaleFactorSmall
-        end
-
-        local tween = TweenService:Create(self.FrameOuter, tweenInfo, goal)
-        self._expandTween = tween
-        tween:Play()
-
-        self:updateZoom()
-        self.FrameOuter.Active = expanded
-    end
-
-    -- anchorPoint is in screen coordinates.
-    function Minimap:updateZoom(anchorPoint)
-        local targetSize = self.RealSize2 * self.ScaleFactor
-
-        local offset
-        local origSize
-
-        if anchorPoint then
-            offset = (Vector2.new(anchorPoint.X, anchorPoint.Y) - self.FrameInner.AbsolutePosition) / self.FrameInner.AbsoluteSize
-            origSize = self.FrameInner.AbsoluteSize
-        end
-
-        self.FrameInner.Size = UDim2.fromOffset(targetSize.X, targetSize.Y)
-
-        if anchorPoint then
-            local offsetLocal = offset * self.FrameInner.AbsoluteSize
-            local distance = offsetLocal - offset * origSize
-            self.FrameInner.Position = self.FrameInner.Position - UDim2.fromOffset(distance.X, distance.Y)
-        end
-
-        for _, v in pairs(self.MapObjects) do
-            if v then
-                v:UpdateSize(self.ScaleFactor)
-            end
-        end
-
-        for _, v in pairs(self.Players) do
-            if v then
-                v:UpdateSize(self.ScaleFactor)
-                self:plotPlayer(v.Player)
-            end
-        end
-    end
-
-    function Minimap:_findZone(name)
-        local rep = ReplicatedStorage.Zones:FindFirstChild(name)
-        if rep then return rep end
-
-        local active = workspace.ActiveZone:FindFirstChild(name)
-        if active then return active end
-
-        BFS.log("WARNING: Did you delete any zones? Failed to find "..name.."!")
-    end
-
-    function Minimap:_plotAreas()
-        local cArea = Color3.fromRGB(86, 94, 81)
-        local cAreaB = Color3.fromRGB(89, 149, 111)
-
-        if place == "BCF" then
-            local mwCf, mwSize = workspace.PlayArea["invis walls"]:GetBoundingBox()
-            self:plotBBox(mwCf, mwSize, cArea, cAreaB, self.AreaLayer)
-
-            local cBeachCf = CFrame.new(-978.322266, 134.538483, 8961.99805, 1, 0, 0, 0, 1, 0, 0, 0, 1) -- the roof barrier
-            local cBeachSize = Vector3.new(273.79, 29.45, 239.5)
-            self:plotBBox(cBeachCf, cBeachSize, cArea, cAreaB, self.AreaLayer)
-
-            local ruinsMin, ruinsMax = self:_findBounds({ self:_findZone("Ruins") }, function(inst) return inst.Name ~= "bal" end)
-            local ruinsCenter = CFrame.new((ruinsMin + ruinsMax) / 2)
-            self:plotBBox(ruinsCenter, ruinsMax - ruinsMin, cArea, cAreaB, self.AreaLayer)
-
-            local velvetMin, velvetMax = self:_findBounds({ self:_findZone("VelvetRoom") })
-            local velvetCenter = CFrame.new((velvetMin + velvetMax) / 2)
-            self:plotBBox(velvetCenter, velvetMax - velvetMin, cArea, cAreaB, self.AreaLayer)
-        end
-    end
-
-    function Minimap:_plotTerrain()
+    function plotTerrain(map)
         local features
         local seatList
 
@@ -2611,7 +1932,7 @@ do  -- minimap
             local cPoolCf = CFrame.new(51.980999, -16.854372, -63.6765823, 1, 0, 0, 0, 1, 0, 0, 0, 1) -- cframe and size of the pool floor
             local cPoolSize = Vector3.new(45.3603, 5.33651, 32.0191)
 
-            self:plotBBox(cPoolCf, cPoolSize, cWater, cWaterB)
+            map:plotBBox(cPoolCf, cPoolSize, cWater, cWaterB)
         elseif place == "SBF" then
             features = workspace.Map:GetDescendants()
             seatList = { features }
@@ -2646,7 +1967,7 @@ do  -- minimap
             table.sort(parts, compare)
 
             for _, v in pairs(parts) do
-                self:plotPartQuad(v, v.Color, cRockB)
+                map:plotPartQuad(v, v.Color, cRockB)
             end
 
             local cBench = Color3.fromRGB(173, 125, 110)
@@ -2655,7 +1976,7 @@ do  -- minimap
             for _, v in pairs(features) do -- bench
                 if v:IsA("Model") and (v.Name == "Bench" or v.Name == "log") then
                     local cf, size = v:GetBoundingBox()
-                    self:plotBBox(cf, size, cBench, cBenchB)
+                    map:plotBBox(cf, size, cBench, cBenchB)
                 end
             end
 
@@ -2663,222 +1984,97 @@ do  -- minimap
             for _, list in pairs(seatList) do
                 for _, v in pairs(list) do
                     if v:IsA("Seat") then
-                        local seatObj = MapSeat.new(self, v)
-                        self:addMapObject(seatObj, self.SeatLayer)
-                        self.Tooltips:register(seatObj)
+                        local seatObj = BFSMap.MapSeat.new(map, v)
+                        map:addMapObject(seatObj, map.SeatLayer)
+                        map.Tooltips:register(seatObj)
                     end
                 end
             end
-        else
+        elseif place == "BCF" then
             for _, v in pairs(features) do -- not so important stuff
                 if v:IsA("Model") and v.Name == "stupid tree1" then -- single square trees
-                    self:plotPartQuad(v:FindFirstChild("Part"), cTree, cTreeB)
+                    map:plotPartQuad(v:FindFirstChild("Part"), cTree, cTreeB)
                 elseif v:IsA("Part") then
                     local children = v:GetChildren()
 
                     if v.Color == cRock then -- any rocks
-                        self:plotPartQuad(v, cRock, cRockB)
+                        map:plotPartQuad(v, cRock, cRockB)
                     elseif almostEqual(v.Size.X, cParkourSize, cParkourEpsilon) and -- parkour
                         almostEqual(v.Size.Z, cParkourSize, cParkourEpsilon) and
                         #children >= 6 and children[1]:IsA("Texture") and children[1].Texture == "http://www.roblox.com/asset/?id=6022009301" then
-                        self:plotPartQuad(v, v.Color, cRockB)
+                        map:plotPartQuad(v, v.Color, cRockB)
                     end
                 end
             end
         end
 
-        local spawns = workspace.Spawns:GetChildren()
-        local cColorSpawn
-        local cColorSpawnB
-
         if place == "BCF" then
+            local spawns = workspace.Spawns:GetChildren()
+            local cColorSpawn
+            local cColorSpawnB
+
             cColorSpawn = Color3.fromRGB(255, 166, 193)
             cColorSpawnB = Color3.fromRGB(247, 0, 74)
-        elseif place == "SBF" then
-            cColorSpawn = Color3.fromRGB(74, 118, 165)
-            cColorSpawnB = Color3.fromRGB(49, 79, 110)
-        end
 
-        local cSpawnOffset = Vector3.new(0, 0.5, 0)
+            local cSpawnOffset = Vector3.new(0, 0.5, 0)
 
-        for _, v in pairs(spawns) do
-            self:plotPartQuad(v, cColorSpawn, cColorSpawnB)
-            self:plotWaypoint(v.Name, v.CFrame + cSpawnOffset, cColorSpawnB)
+            for _, v in pairs(spawns) do
+                map:plotPartQuad(v, cColorSpawn, cColorSpawnB)
+                map:plotWaypoint(v.Name, v.CFrame + cSpawnOffset, cColorSpawnB)
+            end
         end
     end
 
-    function Minimap:_plotWaypoints()
+    function plotWaypoints(map)
         if place == "BCF" then
             local cItemColor = Color3.fromRGB(61, 161, 255)
 
-            self:plotWaypoint("Burger/Soda", CFrame.new(-12.6373434, -2.39721942, -104.279655, 0.999609232, -9.48658307e-09, -0.0279524103, 9.50391588e-09, 1, 4.87206442e-10, 0.0279524103, -7.5267359e-10, 0.999609232), cItemColor)
-            self:plotWaypoint("Japari Bun (Rock)", CFrame.new(44.2933311, 2.69040394, -174.404465, -0.926118135, 2.03467754e-09, -0.377233654, -1.18587207e-09, 1, 8.30502511e-09, 0.377233654, 8.13878565e-09, -0.926118135), cItemColor)
-            self:plotWaypoint("Shrimp Fry", CFrame.new(23.7285004, -3.39721847, -38.656456, -0.999925613, 1.10185701e-08, 0.0121939164, 1.07577787e-08, 1, -2.14526548e-08, -0.0121939164, -2.13198827e-08, -0.999925613), cItemColor)
-            self:plotWaypoint("Ice Cream", CFrame.new(47.6086464, -2.35769129, 86.1823273, -0.999982059, 1.08832019e-08, 0.00585500291, 1.07577787e-08, 1, -2.14526548e-08, -0.00585500291, -2.13892744e-08, -0.999982059), cItemColor)
-            self:plotWaypoint("Bike", CFrame.new(41.1308136, -3.39721847, 70.4393082, 0.999999881, -4.17922266e-08, 0.000145394108, 4.18030872e-08, 1, -7.49089111e-08, -0.000145394108, 7.49150004e-08, 0.999999881), cItemColor)
-            self:plotWaypoint("Fishing Rod", CFrame.new(-50.5187149, 1.6041007, -120.919296, 0.998044968, 5.13549168e-08, -0.0625005439, -5.57155957e-08, 1, -6.80274113e-08, 0.0625005439, 7.13766752e-08, 0.998044968), cItemColor)
-            self:plotWaypoint("Baseball", CFrame.new(63.9862785, 1.61707997, -113.393738, 0.852416873, -1.00618301e-07, 0.522862673, 9.67299414e-08, 1, 3.47396458e-08, -0.522862673, 2.09638351e-08, 0.852416873), cItemColor)
-            self:plotWaypoint("LunarTech Rifle", CFrame.new(-76.0725632, -3.39721847, -122.150734, 0.00984575041, 1.867169e-08, -0.999951541, -1.71646324e-08, 1, 1.85035862e-08, 0.999951541, 1.69816179e-08, 0.00984575041), cItemColor)
-            self:plotWaypoint("Buster Gauntlets", CFrame.new(3.52978015, 8.10278034, -103.847221, -0.999056339, -9.71976277e-08, 0.0434325524, -9.49071506e-08, 1, 5.47984236e-08, -0.0434325524, 5.06246529e-08, -0.999056339), cItemColor)
-            self:plotWaypoint("Trolldier Set", CFrame.new(-57.4301414, 36.6266022, -77.7773438, 0.0280102566, 2.76124923e-09, 0.999607563, -8.18409589e-08, 1, -4.69047745e-10, -0.999607563, -8.17956973e-08, 0.0280102566), cItemColor)
-            self:plotWaypoint("Soul Edge", CFrame.new(62.3707314, 22.2510509, 45.5647964, -0.0124317836, 7.14263138e-08, -0.999922097, 3.7549458e-10, 1, 7.14271877e-08, 0.999922097, 5.12501597e-10, -0.0124317836), cItemColor)
-            self:plotWaypoint("Chair", CFrame.new(-14.3926878, -3.39721847, -127.052185, -0.998602152, -1.55643036e-08, 0.0528521165, -2.24233379e-08, 1, -1.29184926e-07, -0.0528521165, -1.30189534e-07, -0.998602152), cItemColor)
-            self:plotWaypoint("Gigasword", CFrame.new(-54.6563225, 22.4595356, -172.48053, 0.320373297, 5.91488103e-08, 0.947291434, 1.88988629e-08, 1, -6.88315112e-08, -0.947291434, 3.99545073e-08, 0.320373297), cItemColor)
-            self:plotWaypoint("Totsugeki", CFrame.new(-15.5478992, -3.39721918, 110.352875, 0.99858731, 6.11212769e-08, -0.0531353056, -6.31656292e-08, 1, -3.67950932e-08, 0.0531353056, 4.00994402e-08, 0.99858731), cItemColor)
+            map:plotWaypoint("Burger/Soda", CFrame.new(-12.6373434, -2.39721942, -104.279655, 0.999609232, -9.48658307e-09, -0.0279524103, 9.50391588e-09, 1, 4.87206442e-10, 0.0279524103, -7.5267359e-10, 0.999609232), cItemColor)
+            map:plotWaypoint("Japari Bun (Rock)", CFrame.new(44.2933311, 2.69040394, -174.404465, -0.926118135, 2.03467754e-09, -0.377233654, -1.18587207e-09, 1, 8.30502511e-09, 0.377233654, 8.13878565e-09, -0.926118135), cItemColor)
+            map:plotWaypoint("Shrimp Fry", CFrame.new(23.7285004, -3.39721847, -38.656456, -0.999925613, 1.10185701e-08, 0.0121939164, 1.07577787e-08, 1, -2.14526548e-08, -0.0121939164, -2.13198827e-08, -0.999925613), cItemColor)
+            map:plotWaypoint("Ice Cream", CFrame.new(47.6086464, -2.35769129, 86.1823273, -0.999982059, 1.08832019e-08, 0.00585500291, 1.07577787e-08, 1, -2.14526548e-08, -0.00585500291, -2.13892744e-08, -0.999982059), cItemColor)
+            map:plotWaypoint("Bike", CFrame.new(41.1308136, -3.39721847, 70.4393082, 0.999999881, -4.17922266e-08, 0.000145394108, 4.18030872e-08, 1, -7.49089111e-08, -0.000145394108, 7.49150004e-08, 0.999999881), cItemColor)
+            map:plotWaypoint("Fishing Rod", CFrame.new(-50.5187149, 1.6041007, -120.919296, 0.998044968, 5.13549168e-08, -0.0625005439, -5.57155957e-08, 1, -6.80274113e-08, 0.0625005439, 7.13766752e-08, 0.998044968), cItemColor)
+            map:plotWaypoint("Baseball", CFrame.new(63.9862785, 1.61707997, -113.393738, 0.852416873, -1.00618301e-07, 0.522862673, 9.67299414e-08, 1, 3.47396458e-08, -0.522862673, 2.09638351e-08, 0.852416873), cItemColor)
+            map:plotWaypoint("LunarTech Rifle", CFrame.new(-76.0725632, -3.39721847, -122.150734, 0.00984575041, 1.867169e-08, -0.999951541, -1.71646324e-08, 1, 1.85035862e-08, 0.999951541, 1.69816179e-08, 0.00984575041), cItemColor)
+            map:plotWaypoint("Buster Gauntlets", CFrame.new(3.52978015, 8.10278034, -103.847221, -0.999056339, -9.71976277e-08, 0.0434325524, -9.49071506e-08, 1, 5.47984236e-08, -0.0434325524, 5.06246529e-08, -0.999056339), cItemColor)
+            map:plotWaypoint("Trolldier Set", CFrame.new(-57.4301414, 36.6266022, -77.7773438, 0.0280102566, 2.76124923e-09, 0.999607563, -8.18409589e-08, 1, -4.69047745e-10, -0.999607563, -8.17956973e-08, 0.0280102566), cItemColor)
+            map:plotWaypoint("Soul Edge", CFrame.new(62.3707314, 22.2510509, 45.5647964, -0.0124317836, 7.14263138e-08, -0.999922097, 3.7549458e-10, 1, 7.14271877e-08, 0.999922097, 5.12501597e-10, -0.0124317836), cItemColor)
+            map:plotWaypoint("Chair", CFrame.new(-14.3926878, -3.39721847, -127.052185, -0.998602152, -1.55643036e-08, 0.0528521165, -2.24233379e-08, 1, -1.29184926e-07, -0.0528521165, -1.30189534e-07, -0.998602152), cItemColor)
+            map:plotWaypoint("Gigasword", CFrame.new(-54.6563225, 22.4595356, -172.48053, 0.320373297, 5.91488103e-08, 0.947291434, 1.88988629e-08, 1, -6.88315112e-08, -0.947291434, 3.99545073e-08, 0.320373297), cItemColor)
+            map:plotWaypoint("Totsugeki", CFrame.new(-15.5478992, -3.39721918, 110.352875, 0.99858731, 6.11212769e-08, -0.0531353056, -6.31656292e-08, 1, -3.67950932e-08, 0.0531353056, 4.00994402e-08, 0.99858731), cItemColor)
 
             local cE0Color = Color3.fromRGB(61, 255, 122)
 
-            self:plotWaypoint("Campfire (Cave)", CFrame.new(50.5005188, -3.27936959, 45.8245049, 0.511625528, -1.06045634e-08, 0.859208643, 3.62333026e-08, 1, -9.23321064e-09, -0.859208643, 3.58559191e-08, 0.511625528), cE0Color)
-            self:plotWaypoint("Campfire (Ground) & Gamer Shack", CFrame.new(-35.0969467, -3.39721847, -5.80594683, -0.782029748, 2.27397319e-08, -0.623240769, 3.63110004e-08, 1, -9.07598174e-09, 0.623240769, -2.97281399e-08, -0.782029748), cE0Color)
-            self:plotWaypoint("Campfire (Poolside)", CFrame.new(49.8565903, 1.61707997, -102.113022, 0.53096503, -5.22703569e-09, -0.847393513, 5.28910675e-08, 1, 2.69724456e-08, 0.847393513, -5.9140973e-08, 0.53096503), cE0Color)
-            self:plotWaypoint("Miko Borgar (Door)", CFrame.new(-1.05410039, -3.39721847, -82.1947021, 0.998766482, -2.69013523e-08, -0.0496555455, 3.06295682e-08, 1, 7.43202406e-08, 0.0496555455, -7.57493979e-08, 0.998766482), cE0Color)
-            self:plotWaypoint("Pond", CFrame.new(-51.4066544, -2.45410466, -103.242828, -0.937839568, 3.27229159e-08, 0.347069085, 3.4841225e-08, 1, -1.36675046e-10, -0.347069085, 1.19641328e-08, -0.937839568), cE0Color)
-            self:plotWaypoint("Pool (Benches)", CFrame.new(30.9888954, -3.39721847, -80.3704605, -0.715499997, -5.40728564e-08, -0.698610604, -1.14304344e-09, 1, -7.62298313e-08, 0.698610604, -5.37439142e-08, -0.715499997), cE0Color)
-            self:plotWaypoint("Cirno Statues", CFrame.new(49.1739616, -3.39721847, -8.75012016, -0.543244958, -6.46215383e-08, -0.839574218, -1.14304521e-09, 1, -7.62298455e-08, 0.839574218, -4.04518019e-08, -0.543244958), cE0Color)
-            self:plotWaypoint("Treehouse", CFrame.new(31.4564857, 35.6251411, 50.0041885, 0.715494156, 5.91811222e-08, 0.69861877, 3.8019552e-09, 1, -8.86053471e-08, -0.69861877, 6.60527633e-08, 0.715494156), cE0Color)
-            self:plotWaypoint("Bouncy Castle", CFrame.new(0.475164026, -3.39721847, 23.8564453, -0.99950707, 9.88343851e-10, 0.0313819498, -1.32396899e-10, 1, -3.57108298e-08, -0.0313819498, -3.56973651e-08, -0.99950707), cE0Color)
-            self:plotWaypoint("Slide (Small Hill)", CFrame.new(-50.6221809, 9.94405937, 56.1536865, 0.997613728, 2.3075911e-08, -0.0690322742, -2.23911307e-08, 1, 1.06936717e-08, 0.0690322742, -9.12244946e-09, 0.997613728), cE0Color)
-            self:plotWaypoint("Slide (Poolside)", CFrame.new(40.0324783, 6.6087389, -39.532444, 0.999875724, -1.93160812e-08, -0.0157229118, 1.95169676e-08, 1, 1.26231088e-08, 0.0157229118, -1.29284112e-08, 0.999875724), cE0Color)
-            self:plotWaypoint("Funky Room", CFrame.new(-68.484436, -3.39721847, 60.7482109, -2.32830644e-10, -3.11954729e-08, -0.999997795, 5.44967769e-08, 1, -3.11955013e-08, 0.999997795, -5.44967342e-08, -2.32830644e-10), cE0Color)
-            self:plotWaypoint("Suwako Room", CFrame.new(-61.846508, -3.39721847, -66.5909882, 0.00312713091, -3.28514393e-09, -0.999995053, 7.25480831e-08, 1, -3.05829273e-09, 0.999995053, -7.25381568e-08, 0.00312713091), cE0Color)
-            self:plotWaypoint("Lobster", CFrame.new(5.77875519, -12.7361145, -63.4011688, 0.999820292, 1.11183072e-08, -0.0189436078, -9.94847138e-09, 1, 6.18481266e-08, 0.0189436078, -6.16485281e-08, 0.999820292), cE0Color)
-            self:plotWaypoint("Izakaya", CFrame.new(-6.60881424, -3.277318, -45.8185806, -0.0179589726, -3.68412358e-08, 0.99983871, -8.20734258e-10, 1, 3.68324358e-08, -0.99983871, -1.59129168e-10, -0.0179589726), cE0Color)
+            map:plotWaypoint("Campfire (Cave)", CFrame.new(50.5005188, -3.27936959, 45.8245049, 0.511625528, -1.06045634e-08, 0.859208643, 3.62333026e-08, 1, -9.23321064e-09, -0.859208643, 3.58559191e-08, 0.511625528), cE0Color)
+            map:plotWaypoint("Campfire (Ground) & Gamer Shack", CFrame.new(-35.0969467, -3.39721847, -5.80594683, -0.782029748, 2.27397319e-08, -0.623240769, 3.63110004e-08, 1, -9.07598174e-09, 0.623240769, -2.97281399e-08, -0.782029748), cE0Color)
+            map:plotWaypoint("Campfire (Poolside)", CFrame.new(49.8565903, 1.61707997, -102.113022, 0.53096503, -5.22703569e-09, -0.847393513, 5.28910675e-08, 1, 2.69724456e-08, 0.847393513, -5.9140973e-08, 0.53096503), cE0Color)
+            map:plotWaypoint("Miko Borgar (Door)", CFrame.new(-1.05410039, -3.39721847, -82.1947021, 0.998766482, -2.69013523e-08, -0.0496555455, 3.06295682e-08, 1, 7.43202406e-08, 0.0496555455, -7.57493979e-08, 0.998766482), cE0Color)
+            map:plotWaypoint("Pond", CFrame.new(-51.4066544, -2.45410466, -103.242828, -0.937839568, 3.27229159e-08, 0.347069085, 3.4841225e-08, 1, -1.36675046e-10, -0.347069085, 1.19641328e-08, -0.937839568), cE0Color)
+            map:plotWaypoint("Pool (Benches)", CFrame.new(30.9888954, -3.39721847, -80.3704605, -0.715499997, -5.40728564e-08, -0.698610604, -1.14304344e-09, 1, -7.62298313e-08, 0.698610604, -5.37439142e-08, -0.715499997), cE0Color)
+            map:plotWaypoint("Cirno Statues", CFrame.new(49.1739616, -3.39721847, -8.75012016, -0.543244958, -6.46215383e-08, -0.839574218, -1.14304521e-09, 1, -7.62298455e-08, 0.839574218, -4.04518019e-08, -0.543244958), cE0Color)
+            map:plotWaypoint("Treehouse", CFrame.new(31.4564857, 35.6251411, 50.0041885, 0.715494156, 5.91811222e-08, 0.69861877, 3.8019552e-09, 1, -8.86053471e-08, -0.69861877, 6.60527633e-08, 0.715494156), cE0Color)
+            map:plotWaypoint("Bouncy Castle", CFrame.new(0.475164026, -3.39721847, 23.8564453, -0.99950707, 9.88343851e-10, 0.0313819498, -1.32396899e-10, 1, -3.57108298e-08, -0.0313819498, -3.56973651e-08, -0.99950707), cE0Color)
+            map:plotWaypoint("Slide (Small Hill)", CFrame.new(-50.6221809, 9.94405937, 56.1536865, 0.997613728, 2.3075911e-08, -0.0690322742, -2.23911307e-08, 1, 1.06936717e-08, 0.0690322742, -9.12244946e-09, 0.997613728), cE0Color)
+            map:plotWaypoint("Slide (Poolside)", CFrame.new(40.0324783, 6.6087389, -39.532444, 0.999875724, -1.93160812e-08, -0.0157229118, 1.95169676e-08, 1, 1.26231088e-08, 0.0157229118, -1.29284112e-08, 0.999875724), cE0Color)
+            map:plotWaypoint("Funky Room", CFrame.new(-68.484436, -3.39721847, 60.7482109, -2.32830644e-10, -3.11954729e-08, -0.999997795, 5.44967769e-08, 1, -3.11955013e-08, 0.999997795, -5.44967342e-08, -2.32830644e-10), cE0Color)
+            map:plotWaypoint("Suwako Room", CFrame.new(-61.846508, -3.39721847, -66.5909882, 0.00312713091, -3.28514393e-09, -0.999995053, 7.25480831e-08, 1, -3.05829273e-09, 0.999995053, -7.25381568e-08, 0.00312713091), cE0Color)
+            map:plotWaypoint("Lobster", CFrame.new(5.77875519, -12.7361145, -63.4011688, 0.999820292, 1.11183072e-08, -0.0189436078, -9.94847138e-09, 1, 6.18481266e-08, 0.0189436078, -6.16485281e-08, 0.999820292), cE0Color)
+            map:plotWaypoint("Izakaya", CFrame.new(-6.60881424, -3.277318, -45.8185806, -0.0179589726, -3.68412358e-08, 0.99983871, -8.20734258e-10, 1, 3.68324358e-08, -0.99983871, -1.59129168e-10, -0.0179589726), cE0Color)
 
             local cE1Color = Color3.fromRGB(255, 196, 61)
 
-            self:plotWaypoint("Savanna", CFrame.new(37.7001686, -3.40405059, -137.407516, 0.999959052, 4.18167581e-08, 0.00899411179, -4.13985326e-08, 1, -4.66871946e-08, -0.00899411179, 4.63129659e-08, 0.999959052), cE1Color)
-            self:plotWaypoint("Blue Door", CFrame.new(-33.5249329, -3.39721847, -211.964386, -0.999284327, 2.38968401e-08, 0.037821576, 2.54846189e-08, 1, 4.14982999e-08, -0.037821576, 4.24324718e-08, -0.999284327), cE1Color)
-            self:plotWaypoint("Train Station", CFrame.new(-54.2110176, 6.25, -161.287369, -0.999873161, 7.6191661e-08, 0.0159097109, 7.52258629e-08, 1, -6.13025932e-08, -0.0159097109, -6.0098003e-08, -0.999873161), cE1Color)
+            map:plotWaypoint("Savanna", CFrame.new(37.7001686, -3.40405059, -137.407516, 0.999959052, 4.18167581e-08, 0.00899411179, -4.13985326e-08, 1, -4.66871946e-08, -0.00899411179, 4.63129659e-08, 0.999959052), cE1Color)
+            map:plotWaypoint("Blue Door", CFrame.new(-33.5249329, -3.39721847, -211.964386, -0.999284327, 2.38968401e-08, 0.037821576, 2.54846189e-08, 1, 4.14982999e-08, -0.037821576, 4.24324718e-08, -0.999284327), cE1Color)
+            map:plotWaypoint("Train Station", CFrame.new(-54.2110176, 6.25, -161.287369, -0.999873161, 7.6191661e-08, 0.0159097109, 7.52258629e-08, 1, -6.13025932e-08, -0.0159097109, -6.0098003e-08, -0.999873161), cE1Color)
 
             local cE2Color = Color3.fromRGB(242, 255, 61)
 
-            self:plotWaypoint("Fountain", CFrame.new(35.8924446, -2.35769129, 96.6178894, -0.0536103845, -2.98055269e-08, -0.998561919, -6.42211972e-08, 1, -2.64005671e-08, 0.998561919, 6.27135108e-08, -0.0536103845), cE2Color)
-            self:plotWaypoint("Ratcade", CFrame.new(3.75609636, -3.39721847, 89.8193359, 0.0222254563, 5.80779727e-08, 0.999752939, 3.18127285e-08, 1, -5.87995359e-08, -0.999752939, 3.31117072e-08, 0.0222254563), cE2Color)
-            self:plotWaypoint("Inside UFO Catcher", CFrame.new(-37.7735367, -0.92603755, 78.7536469, -0.999979138, -6.31962678e-08, 0.00645794719, -6.36200426e-08, 1, -6.5419826e-08, -0.00645794719, -6.5829326e-08, -0.999979138), cE2Color)
-            self:plotWaypoint("Beach Portal", CFrame.new(67.0926361, -2.81909084, 99.9620361, -0.34926942, 1.66901373e-08, -0.937022328, 5.79714232e-08, 1, -3.79660969e-09, 0.937022328, -5.56465594e-08, -0.34926942), cE2Color)
+            map:plotWaypoint("Fountain", CFrame.new(35.8924446, -2.35769129, 96.6178894, -0.0536103845, -2.98055269e-08, -0.998561919, -6.42211972e-08, 1, -2.64005671e-08, 0.998561919, 6.27135108e-08, -0.0536103845), cE2Color)
+            map:plotWaypoint("Ratcade", CFrame.new(3.75609636, -3.39721847, 89.8193359, 0.0222254563, 5.80779727e-08, 0.999752939, 3.18127285e-08, 1, -5.87995359e-08, -0.999752939, 3.31117072e-08, 0.0222254563), cE2Color)
+            map:plotWaypoint("Inside UFO Catcher", CFrame.new(-37.7735367, -0.92603755, 78.7536469, -0.999979138, -6.31962678e-08, 0.00645794719, -6.36200426e-08, 1, -6.5419826e-08, -0.00645794719, -6.5829326e-08, -0.999979138), cE2Color)
+            map:plotWaypoint("Beach Portal", CFrame.new(67.0926361, -2.81909084, 99.9620361, -0.34926942, 1.66901373e-08, -0.937022328, 5.79714232e-08, 1, -3.79660969e-09, 0.937022328, -5.56465594e-08, -0.34926942), cE2Color)
         end
-    end
-
-    function Minimap:plotWaypoint(name, loc, color)
-        local waypointObj = Waypoint.new(self, name, loc, color)
-        self:addMapObject(waypointObj, self.WaypointLayer)
-        self.Tooltips:register(waypointObj)
-    end
-
-    function Minimap:updateSizeO()
-        local cMapSize169 = 300
-        local parentSize = self.Parent.AbsoluteSize
-        local dim = math.min(cMapSize169 * parentSize.X / 1920, cMapSize169 * parentSize.Y / 1080)
-        self.MapSizeSmall = UDim2.fromOffset(dim, dim)
-        self.ScaleFactorSmall = 1.2 * parentSize.X / 1920
-        self:setExpanded(self.Expanded, true)
-    end
-
-    function Minimap:mapPosition(pos)
-        return (pos - self.WorldOrigin) * self.ScaleFactor
-    end
-
-    function Minimap:plotPlayer(player)
-        if not player.Character then return end
-
-        local humanRoot = player.Character:FindFirstChild("HumanoidRootPart")
-        if not humanRoot then return end
-
-        local pos3D = humanRoot.Position
-        local mapped = self:mapPosition(Vector2.new(pos3D.X, pos3D.Z))
-        self.PlayerPositions[player.UserId] = mapped
-
-        if not self.Players[player.UserId] then return end
-        self.Players[player.UserId].Frame.Position = UDim2.fromOffset(mapped.X, mapped.Y)
-        self.Players[player.UserId].Icon.Rotation = -humanRoot.Orientation.Y - 45
-    end
-
-    function Minimap:addMapObject(obj, parent)
-        self.MapObjects[#self.MapObjects + 1] = obj
-        obj:UpdateSize(self.ScaleFactor)
-        obj.Root.Parent = parent
-    end
-
-    function Minimap:plotBBox(cf, size, color, colorB, parent)
-        if not parent then parent = self.TerrainLayer end
-
-        local mapObj = MapBBox.new(self, cf, size, color, colorB)
-        self:addMapObject(mapObj, parent)
-    end
-
-    function Minimap:plotPartQuad(part, color, colorB, parent)
-        self:plotBBox(part.CFrame, part.Size, color, colorB, parent)
-    end
-
-    function Minimap:_playerConnect(player)
-        if not self.Players[player.UserId] then
-            local dot = PlayerDot.new(player, self.FriendsCache, self.PlayerLayers)
-            dot:UpdateSize(self.ScaleFactor)
-
-            self.Tooltips:register(dot)
-
-            self.Players[player.UserId] = dot
-        end
-    end
-
-    function Minimap:_playerDisconnect(player)
-        if self.Players[player.UserId] then
-            self.Tooltips:deregister(self.Players[player.UserId])
-            self.Players[player.UserId].Frame:Destroy()
-        end
-
-        self.Players[player.UserId] = nil
-        self.PlayerPositions[player.UserId] = nil
-    end
-
-    function Minimap:_heartbeat()
-        for _, v in pairs(Players:GetPlayers()) do
-            self:plotPlayer(v)
-        end
-
-        local pos = self.PlayerPositions[LocalPlayer.UserId]
-
-        if not self.Expanded or (self._expandTween and self._expandTween.PlaybackState ~= Enum.PlaybackState.Completed) then
-            self.FrameInner.Position = UDim2.new(0.5, -pos.X, 0.5, -pos.Y)
-        end
-    end
-
-    function Minimap:_zoom(position)
-        self.ScaleFactor = math.min(math.max(self.ScaleFactor + 0.5 * position.Z, 0.2), 16)
-        self:updateZoom(position)
-    end
-
-    function Minimap:_inputB(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 and self.Expanded then
-            self._dragStart = input.Position
-            self._dragPosOrig = self.FrameInner.Position
-        elseif input.UserInputType == Enum.UserInputType.MouseWheel and self.Expanded then
-            self:_zoom(input.Position)
-        end
-    end
-
-    function Minimap:_inputC(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement and self._dragStart then
-            local offset = input.Position - self._dragStart
-            self.FrameInner.Position = self._dragPosOrig + UDim2.fromOffset(offset.X, offset.Y)
-        elseif input.UserInputType == Enum.UserInputType.MouseWheel and self.Expanded then
-            self:_zoom(input.Position)
-        end
-    end
-
-    function Minimap:_inputE(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            self._dragStart = nil
-        end
-    end
-
-    function Minimap:destroy()
-        self.FrameOuter:Destroy()
-        self.Tooltips.Frame:Destroy()
-        self._lSizeChange:Disconnect()
-        self._lConnect:Disconnect()
-        self._lDisconnect:Disconnect()
-        self._lHeartbeat:Disconnect()
     end
 end -- minimap -- globals exposed: Minimap
 
@@ -2961,7 +2157,11 @@ local map = nil
 
 BFS.Binds:bind("MapVis", function()
     if not map then
-        map = Minimap.new(secondaryRoot)
+        map = BFSMap.Minimap.new(secondaryRoot, 30)
+        plotAreas(map)
+        plotTerrain(map)
+        plotWaypoints(map)
+
         BFS.bindToExit("Destroy Map", function()
             map:destroy()
         end)
