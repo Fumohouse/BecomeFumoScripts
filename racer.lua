@@ -92,7 +92,6 @@ end -- double load prevention
 
 local TweenService = game:GetService("TweenService")
 local UserInput = game:GetService("UserInputService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")

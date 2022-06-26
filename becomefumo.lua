@@ -36,12 +36,13 @@ local cDefaultConfig = {
     debug = false,
     replaceHumanoid = false,
     mapRenderEverything = false,
-    postLoad = {}
+    postLoad = {},
+    blockList = {},
 }
 
 BFS.Config:mergeDefaults(cDefaultConfig)
 
-version = "1.7.3"
+version = "1.8.0"
 
 do  -- double load prevention
     if BF_LOADED then
@@ -430,12 +431,18 @@ At any time, you can press [0] to close the script and reset everything back to 
     })
 
     local cChangelogContent = [[
-<b>1.7.3</b>
+<b>1.8.0 - Blocked</b>
 - Fixed 7S tab crashing on fresh config files
 - The minimap is now a library as it is shared between multiple scripts
 - All plotting of waypoints/terrain on SBF is now disabled due to StreamingEnabled
 - Friends are no longer indicated in blue on the minimap (for now). The feature was intermittent at best.
 - Added the headbang emote on SBF
+- You can now block people using the 5T tab, using essentially the same code as I submitted to Become Fumo (which was hardly used)
+    - Blocking persists through the config
+    - Just as everything else, blocked players are restored when you stop the script
+    - It should block chat messages and hide the player, including nametag
+    - People who were blocked and are occupying a seat should be translucent, although if they were sitting when you connected it may not work (and this cannot be fixed)
+    * This code was tested rather extensively in the past, but there might still be problems. Report back if any.
 
 <b>1.7.2</b>
 - Added new SBF animations
@@ -1045,6 +1052,285 @@ do  -- animations
     end
 end -- animations
 
+do  -- block
+    local ChatEvents = ReplicatedStorage:WaitForChild("DefaultChatSystemChatEvents")
+
+    local BlockInfo = {}
+    BlockInfo.__index = BlockInfo
+
+    function BlockInfo.new(player)
+        local obj = {}
+        setmetatable(obj, BlockInfo)
+
+        obj.Player = player
+        obj.TargetTransparency = 1
+
+        obj.CharacterAdded = player.CharacterAdded:Connect(function(char)
+            obj:_characterAdded(char)
+        end)
+
+        if player.Character then
+            obj:_characterAdded(player.Character)
+        end
+
+        return obj
+    end
+
+    function BlockInfo:_characterAdded(char)
+        self.Transparency = {}
+        self.Signals = {}
+        self.AdjustingTransparency = {}
+
+        --// During studio testing with multiple players locally, Humanoid was nil on CharacterAdded. I don't know why.
+        local hum = char:FindFirstChildOfClass("Humanoid") or char:WaitForChild("Humanoid", 2)
+
+        if hum then
+            self.Seated = hum.Seated:Connect(function(active, part)
+                self:updateVisibility(false)
+            end)
+        end
+
+        self.DescendantAdded = char.DescendantAdded:Connect(function(inst)
+            self:_updatePartVisibility(inst, false)
+        end)
+
+        self:updateVisibility(false)
+    end
+
+    function BlockInfo:_getTargetTransparency(part)
+        local partTransparency = part.Transparency
+
+        if self.Transparency[part] ~= nil then
+            partTransparency = self.Transparency[part]
+        end
+
+        return math.max(partTransparency, self.TargetTransparency)
+    end
+
+    function BlockInfo:_updateBoolVisibility(part, field, visible)
+        if visible then
+            if self.Transparency[part] ~= nil then
+                part[field] = self.Transparency[part]
+            else
+                part[field] = true
+            end
+        else
+            if not self.Transparency[part] then
+                self.Transparency[part] = part[field]
+            end
+
+            self.AdjustingTransparency[part] = true
+            part[field] = false
+            self.AdjustingTransparency[part] = false
+
+            if self.Signals[part] then return end
+
+            self.Signals[part] = part:GetPropertyChangedSignal(field):Connect(function()
+                if not self.AdjustingTransparency[part] and part[field] then
+                    self.Transparency[part] = part[field]
+                    self.AdjustingTransparency[part] = true
+                    part[field] = false
+                    self.AdjustingTransparency[part] = false
+                end
+            end)
+        end
+    end
+
+    function BlockInfo:_updatePartVisibility(part, visible)
+        if visible and self.Signals[part] then
+            self.Signals[part]:Disconnect()
+            self.Signals[part] = nil
+        end
+
+        if part:IsA("BasePart") or part:IsA("Decal") then --// for numeric Transparency
+            if visible then
+                part.Transparency = self.Transparency[part] or 0
+            else
+                if not self.Transparency[part] then
+                    self.Transparency[part] = part.Transparency
+                end
+
+                local targetTransparency = self:_getTargetTransparency(part)
+
+                self.AdjustingTransparency[part] = true
+                part.Transparency = targetTransparency
+                self.AdjustingTransparency[part] = false
+
+                if self.Signals[part] then return end
+
+                self.Signals[part] = part:GetPropertyChangedSignal("Transparency"):Connect(function()
+                    if not self.AdjustingTransparency[part] and math.abs(part.Transparency - targetTransparency) > 1e-3 then
+                        self.Transparency[part] = part.Transparency
+                        targetTransparency = self:_getTargetTransparency(part)
+
+                        self.AdjustingTransparency[part] = true
+                        part.Transparency = targetTransparency
+                        self.AdjustingTransparency[part] = false
+                    end
+                end)
+            end
+        elseif part:IsA("BillboardGui") or part:IsA("Beam") or part:IsA("Trail") then --// for Enabled
+            self:_updateBoolVisibility(part, "Enabled", visible)
+        elseif part:IsA("RopeConstraint") then -- // for Visible
+            self:_updateBoolVisibility(part, "Visible", visible)
+        end
+    end
+
+    function BlockInfo:updateVisibility(visible)
+        local char = self.Player.Character
+
+        if not char then return end
+
+        local root = char:FindFirstChild("HumanoidRootPart")
+        if root then
+            root.CanCollide = visible
+        end
+
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum and hum.SeatPart then
+            self.TargetTransparency = 0.9
+        else
+            self.TargetTransparency = 1
+        end
+
+        for k, v in pairs(char:GetDescendants()) do
+            self:_updatePartVisibility(v, visible)
+        end
+    end
+
+    function BlockInfo:destroy()
+        self:updateVisibility(true)
+
+        if self.CharacterAdded then self.CharacterAdded:Disconnect() end
+        if self.DescendantAdded then self.DescendantAdded:Disconnect() end
+        if self.Seated then self.Seated:Disconnect() end
+    end
+
+    BlockModule = {
+        BlockedPlayers = {},
+        BlockList = {},
+        NameCache = {}
+    }
+    BlockModule.__index = BlockModule
+
+    function BlockModule:init()
+        self._playerAdded = Players.PlayerAdded:Connect(function(player)
+            if self.BlockedPlayers[player.UserId] then
+                self:setBlocked(player.UserId, true)
+            end
+        end)
+
+        self._playerRemoving = Players.PlayerRemoving:Connect(function(player)
+            if self.BlockList[player.UserId] then
+                self.BlockList[player.UserId]:destroy()
+                self.BlockList[player.UserId] = nil
+            end
+        end)
+    end
+
+    function BlockModule:setBlocked(targetId, blocked)
+        self.BlockedPlayers[targetId] = blocked
+
+        local target = Players:GetPlayerByUserId(targetId)
+
+        --// update pre-mute list
+        --// this updates mutes but not unmutes. unmutes must be done explicitly.
+        local blockList = {}
+        for k, v in pairs(self.BlockedPlayers) do
+            if v then
+                blockList[#blockList + 1] = k
+            end
+        end
+
+        ChatEvents.SetBlockedUserIdsRequest:FireServer(blockList)
+
+        if place == "SBF" then
+            local billboards = LocalPlayer.PlayerGui.sbfBillboards
+
+            local nameTag = billboards:FindFirstChild(target.Name.."_NameTag")
+            local chatBubble = billboards:FindFirstChild(target.Name.."_ChatBubble")
+
+            if nameTag then
+                nameTag.Enabled = not blocked
+            end
+
+            if chatBubble then
+                chatBubble.Enabled = not blocked
+            end
+        end
+
+        if blocked and target then
+            if self.BlockList[targetId] then
+                self.BlockList[targetId]:updateVisibility()
+                return
+            end
+
+            local blockInfo = BlockInfo.new(target)
+            blockInfo:updateVisibility()
+
+            self.BlockList[targetId] = blockInfo
+        elseif self.BlockList[targetId] then
+            self.BlockList[targetId]:destroy()
+            self.BlockList[targetId] = nil
+
+            -- if not target then return end
+            return
+
+            coroutine.wrap(function()
+                if not ChatEvents.UnMutePlayerRequest:InvokeServer(target.Name) then
+                    warn("Failed to unmute player", targetId)
+                end
+            end)()
+        end
+
+        return target
+    end
+
+    function BlockModule:isBlocked(playerId)
+        return self.BlockList[playerId] ~= nil
+    end
+
+    function BlockModule:getPlayerName(playerId)
+        local name = self.NameCache[playerId]
+
+        if not name then
+            local player = game.Players:GetPlayerByUserId(playerId)
+
+            if player then
+                name = player.Name
+            else
+                local success, err = pcall(function()
+                    name = game.Players:GetNameFromUserIdAsync(playerId)
+                end)
+
+                if not success then
+                    return "<UNKNOWN>"
+                end
+            end
+        end
+
+        self.NameCache[playerId] = name
+
+        return name
+    end
+
+    function BlockModule:deinit()
+        for k, v in pairs(self.BlockList) do
+            if v then
+                self:setBlocked(k, false)
+            end
+        end
+        self._playerAdded:Disconnect()
+        self._playerRemoving:Disconnect()
+    end
+
+    BlockModule:init()
+
+    BFS.bindToExit("Clean up block list", function()
+        BlockModule:deinit()
+    end)
+end -- block
+
 do  -- tools
     local toolsTab = BFS.TabControl:createTab("Tools", "5T", "TabTools")
 
@@ -1103,6 +1389,88 @@ do  -- tools
 
         for k, v in pairs(animator:GetPlayingAnimationTracks()) do
             print("#"..tostring(k)..": "..v.Animation.AnimationId)
+        end
+    end)
+
+    addToolHeader("Blocked Players")
+
+    local cBlockedTextSize = 20
+
+    local blockList = BFS.Config.Value.blockList
+
+    local blockedFrame = Instance.new("Frame")
+    blockedFrame.BackgroundTransparency = 1
+    blockedFrame.BorderSizePixel = 0
+    blockedFrame.Size = UDim2.fromScale(1, 0)
+    blockedFrame.AutomaticSize = Enum.AutomaticSize.Y
+    blockedFrame.Parent = toolsScroll
+
+    BFS.UI.createListLayout(blockedFrame)
+
+    local function addBlocked(id)
+        if not blockList[id] then
+            blockList[id] = true
+            BFS.Config:save()
+        end
+
+        local target = BlockModule:setBlocked(id, true)
+
+        local username
+        if target then
+            username = target.Name
+        else
+            username = Players:GetNameFromUserIdAsync(id)
+        end
+
+        local listEntry = Instance.new("Frame")
+        listEntry.BackgroundTransparency = 1
+        listEntry.BorderSizePixel = 0
+        listEntry.Size = UDim2.fromScale(1, 0)
+        listEntry.AutomaticSize = Enum.AutomaticSize.Y
+        listEntry.Parent = blockedFrame
+
+        local usernameText = BFS.UI.createText(listEntry, cBlockedTextSize)
+        usernameText.TextXAlignment = Enum.TextXAlignment.Left
+        usernameText.TextYAlignment = Enum.TextYAlignment.Center
+        usernameText.Text = username
+        usernameText.Size = UDim2.new(0.8, 0, 0, cBlockedTextSize)
+
+        local closeButton = BFS.UI.createText(listEntry, cBlockedTextSize)
+        closeButton.TextXAlignment = Enum.TextXAlignment.Center
+        closeButton.TextYAlignment = Enum.TextYAlignment.Center
+        closeButton.Text = "x"
+        closeButton.Position = UDim2.fromScale(0.8, 0)
+        closeButton.Size = UDim2.new(0.2, 0, 0, cBlockedTextSize)
+
+        closeButton.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                BlockModule:setBlocked(id, false)
+                listEntry:Destroy()
+
+                blockList[id] = nil
+                BFS.Config:save()
+            end
+        end)
+    end
+
+    for id, blocked in pairs(blockList) do
+        if blocked then
+            addBlocked(id)
+        end
+    end
+
+    local blockField = BFS.UI.createTextBox(toolsScroll, "Player Name", 24)
+
+    blockField.FocusLost:Connect(function(enterPressed)
+        if not enterPressed then
+            return
+        end
+
+        for _, player in pairs(Players:GetPlayers()) do
+            if blockField.Text:lower() == player.Name:lower() then
+                addBlocked(player.UserId)
+                blockField.Text = ""
+            end
         end
     end)
 end -- tools
