@@ -926,7 +926,7 @@ do  -- presets
         end
 
         --
-        -- Plotting
+        -- Terrain
         --
 
         map:plotImage(self.cFountainPos, self.cFountainSize, map.TerrainLayer, "rbxassetid://10048236123")
@@ -936,7 +936,22 @@ do  -- presets
         map:addRegion("Scarlet Devil Mansion", self.cSDMPos, self.cSDMSize)
 
         map:plotImage(self.cRDRPos, self.cRDRSize, map.TerrainLayer, "rbxassetid://10048586517")
-        map:addRegion("Raging Devil Raceway", self.cRDRPos, self.cRDRSize)
+        map:addRegion("Raging Demon Raceway", self.cRDRPos, self.cRDRSize)
+
+        --
+        -- Waypoints
+        --
+
+        local cSpawnPrefix = "spawnwarpplate_"
+        local cSpawnColor = Color3.fromRGB(74, 118, 165)
+
+        for _, att in pairs(workspace.Terrain:GetChildren()) do
+            if att:IsA("Attachment") then
+                if att.Name:sub(1, cSpawnPrefix:len()) == cSpawnPrefix then
+                    map:plotWaypoint(att.Name:sub(cSpawnPrefix:len() + 1), att.WorldCFrame, cSpawnColor)
+                end
+            end
+        end
     end
 
     Presets.SBF = SBF

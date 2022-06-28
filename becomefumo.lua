@@ -435,6 +435,7 @@ At any time, you can press [0] to close the script and reset everything back to 
 - Players outside the streaming radius should now have their position, but not their orientation, shown on the map
 - Teleporting will now request streaming around the place you are about to go
 - Added a list of players and regions you can click to focus on the map
+- Added back SBF's spawns as waypoints
 
 <b>1.8.1</b>
 - Added rendered maps of SBF's fountain, SDM, and RDR islands
