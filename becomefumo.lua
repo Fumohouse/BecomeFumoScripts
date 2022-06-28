@@ -229,6 +229,14 @@ do  -- characters
                 })
 
                 if origPos then
+                    if not LocalPlayer.Character then
+                        LocalPlayer.CharacterAdded:Wait()
+                    end
+
+                    if not LocalPlayer.Character.PrimaryPart then
+                        LocalPlayer.Character:WaitForChild("HumanoidRootPart")
+                    end
+
                     BFS.teleport(origPos)
                 end
             end)
