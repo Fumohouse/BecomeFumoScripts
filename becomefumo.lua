@@ -117,100 +117,130 @@ secondaryRoot.BackgroundTransparency = 1
 secondaryRoot.BorderSizePixel = 0
 secondaryRoot.Parent = BFS.Root
 
-if place == "BCF" then  -- characters
-    local cCharacters = {}
-
-    for _, v in pairs(LocalPlayer.PlayerGui.MainGui.FumoSelectFrame.ScrollingFrame:GetChildren()) do -- steal from the gui instead of the replicated list, which does not include badge chars
-        if v:IsA("TextButton") then
-            cCharacters[#cCharacters + 1] = v.Name
-        end
-    end
-
-    table.sort(cCharacters)
-
-    -- interface
-
+do  -- characters
     local charactersTab = BFS.TabControl:createTab("Characters", "1C", "TabCharacters")
-
     local characterScroll = BFS.UI.createListScroll(charactersTab)
 
-    -- RIP
-    if BFS.Config.Value.replaceHumanoid then
-        characterScroll.Size = characterScroll.Size - UDim2.fromOffset(0, BFS.UIConsts.CheckboxSize + BFS.UIConsts.LabelButtonHeight)
-        characterScroll.Position = characterScroll.Position + UDim2.fromOffset(0, BFS.UIConsts.CheckboxSize + BFS.UIConsts.LabelButtonHeight)
-    end
+    if place == "BCF" then
+        local cCharacters = {}
 
-    local shouldReplaceHumanoid = false
-
-    if BFS.Config.Value.replaceHumanoid then
-        BFS.UI.createCheckbox(charactersTab, "Replace Humanoid", function(checked)
-            shouldReplaceHumanoid = checked
-        end)
-    end
-
-    local jumpListener = nil
-
-    local function replaceHumanoid(char, resetCam)
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        local newHum = hum:Clone()
-        hum:Destroy()
-        newHum.Parent = char
-
-        if resetCam then
-            workspace.CurrentCamera.CameraSubject = char
-
-            if not jumpListener then
-                BFS.log("connecting jump listener")
-
-                jumpListener = UserInput.InputBegan:Connect(function(input)
-                    if not UserInput:GetFocusedTextBox() and
-                        input.UserInputType == Enum.UserInputType.Keyboard and
-                        input.KeyCode == Enum.KeyCode.Space then
-                            newHum.Jump = true
-                    end
-                end)
+        for _, v in pairs(LocalPlayer.PlayerGui.MainGui.FumoSelectFrame.ScrollingFrame:GetChildren()) do -- steal from the gui instead of the replicated list, which does not include badge chars
+            if v:IsA("TextButton") then
+                cCharacters[#cCharacters + 1] = v.Name
             end
         end
-    end
 
-    local function disconnectJump()
-        if jumpListener then
-            BFS.log("disconnecting jump listener")
-            jumpListener:Disconnect()
-            jumpListener = nil
+        table.sort(cCharacters)
+
+        -- RIP
+        if BFS.Config.Value.replaceHumanoid then
+            characterScroll.Size = characterScroll.Size - UDim2.fromOffset(0, BFS.UIConsts.CheckboxSize + BFS.UIConsts.LabelButtonHeight)
+            characterScroll.Position = characterScroll.Position + UDim2.fromOffset(0, BFS.UIConsts.CheckboxSize + BFS.UIConsts.LabelButtonHeight)
         end
-    end
 
-    BFS.bindToExit("Disconnect Jump", disconnectJump)
+        local shouldReplaceHumanoid = false
 
-    if BFS.Config.Value.replaceHumanoid then
-        local replaceNowButton, _ = BFS.UI.createLabelButton(charactersTab, "Replace Humanoid Now", function()
-            replaceHumanoid(LocalPlayer.Character, true)
-        end)
+        if BFS.Config.Value.replaceHumanoid then
+            BFS.UI.createCheckbox(charactersTab, "Replace Humanoid", function(checked)
+                shouldReplaceHumanoid = checked
+            end)
+        end
 
-        replaceNowButton.Position = UDim2.fromOffset(0, BFS.UIConsts.CheckboxSize)
-    end
+        local jumpListener = nil
 
-    local waitingForSwitch = false
+        local function replaceHumanoid(char, resetCam)
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            local newHum = hum:Clone()
+            hum:Destroy()
+            newHum.Parent = char
 
-    local function switchCharacter(name)
-        disconnectJump()
+            if resetCam then
+                workspace.CurrentCamera.CameraSubject = char
 
-        ReplicatedStorage.ChangeChar:FireServer(name)
+                if not jumpListener then
+                    BFS.log("connecting jump listener")
 
-        if waitingForSwitch or not shouldReplaceHumanoid then return end
-        waitingForSwitch = true
+                    jumpListener = UserInput.InputBegan:Connect(function(input)
+                        if not UserInput:GetFocusedTextBox() and
+                            input.UserInputType == Enum.UserInputType.Keyboard and
+                            input.KeyCode == Enum.KeyCode.Space then
+                                newHum.Jump = true
+                        end
+                    end)
+                end
+            end
+        end
 
-        local char = LocalPlayer.CharacterAdded:Wait()
-        replaceHumanoid(char, false)
+        local function disconnectJump()
+            if jumpListener then
+                BFS.log("disconnecting jump listener")
+                jumpListener:Disconnect()
+                jumpListener = nil
+            end
+        end
 
-        waitingForSwitch = false
-    end
+        BFS.bindToExit("Disconnect Jump", disconnectJump)
 
-    for _, name in pairs(cCharacters) do
-        BFS.UI.createLabelButton(characterScroll, name, function()
-            switchCharacter(name)
-        end)
+        if BFS.Config.Value.replaceHumanoid then
+            local replaceNowButton, _ = BFS.UI.createLabelButton(charactersTab, "Replace Humanoid Now", function()
+                replaceHumanoid(LocalPlayer.Character, true)
+            end)
+
+            replaceNowButton.Position = UDim2.fromOffset(0, BFS.UIConsts.CheckboxSize)
+        end
+
+        local waitingForSwitch = false
+
+        local function switchCharacter(name)
+            disconnectJump()
+
+            ReplicatedStorage.ChangeChar:FireServer(name)
+
+            if waitingForSwitch or not shouldReplaceHumanoid then return end
+            waitingForSwitch = true
+
+            local char = LocalPlayer.CharacterAdded:Wait()
+            replaceHumanoid(char, false)
+
+            waitingForSwitch = false
+        end
+
+        for _, name in pairs(cCharacters) do
+            BFS.UI.createLabelButton(characterScroll, name, function()
+                switchCharacter(name)
+            end)
+        end
+    elseif place == "SBF" then
+        BFS.UI.createCategoryLabel(characterScroll, "Accessories")
+
+        local function addAccessory(id, displayName)
+            BFS.UI.createLabelButtonLarge(characterScroll, displayName, function()
+                local char = LocalPlayer.Character
+                if not char then
+                    return
+                end
+
+                local origPos = char:GetPrimaryPartCFrame()
+
+                ReplicatedStorage.Req:InvokeServer("ChangeFumo", {
+                    Fumo = char:GetAttribute("FumoType"),
+                    Scale = char:GetAttribute("FumoScale"),
+                    Hat = id,
+                })
+
+                if origPos then
+                    BFS.teleport(origPos)
+                end
+            end)
+        end
+
+        addAccessory("youmumyonandswords", "Myon and Swords")
+        addAccessory("pancak", "Pancake")
+        addAccessory("KOISHIIIIIIII", "Koishi Hat")
+        addAccessory("hanyuuhat", "Straw Hat")
+        addAccessory("ellyscythe", "Elly Scythe")
+        addAccessory("Keine", "Keine Glasses")
+        addAccessory("gagglasses", "Gag Glasses")
     end
 end -- characters
 
@@ -436,6 +466,7 @@ At any time, you can press [0] to close the script and reset everything back to 
 - Teleporting will now request streaming around the place you are about to go
 - Added a list of players and regions you can click to focus on the map
 - Added back SBF's spawns as waypoints
+- In SBF, the 1C tab is back with a list of accessories you can apply to your current character
 
 <b>1.8.1</b>
 - Added rendered maps of SBF's fountain, SDM, and RDR islands
