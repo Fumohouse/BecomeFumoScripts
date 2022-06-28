@@ -213,32 +213,38 @@ do  -- characters
     elseif place == "SBF" then
         BFS.UI.createCategoryLabel(characterScroll, "Accessories")
 
+        local function changeCharAndReturn(cb)
+            local char = LocalPlayer.Character
+            if not char then
+                return
+            end
+
+            local origPos = char:GetPrimaryPartCFrame()
+
+            cb(char)
+
+            if origPos then
+                if not LocalPlayer.Character then
+                    LocalPlayer.CharacterAdded:Wait()
+                end
+
+                if not LocalPlayer.Character.PrimaryPart then
+                    LocalPlayer.Character:WaitForChild("HumanoidRootPart")
+                end
+
+                BFS.teleport(origPos)
+            end
+        end
+
         local function addAccessory(id, displayName)
             BFS.UI.createLabelButtonLarge(characterScroll, displayName, function()
-                local char = LocalPlayer.Character
-                if not char then
-                    return
-                end
-
-                local origPos = char:GetPrimaryPartCFrame()
-
-                ReplicatedStorage.Req:InvokeServer("ChangeFumo", {
-                    Fumo = char:GetAttribute("FumoType"),
-                    Scale = char:GetAttribute("FumoScale"),
-                    Hat = id,
-                })
-
-                if origPos then
-                    if not LocalPlayer.Character then
-                        LocalPlayer.CharacterAdded:Wait()
-                    end
-
-                    if not LocalPlayer.Character.PrimaryPart then
-                        LocalPlayer.Character:WaitForChild("HumanoidRootPart")
-                    end
-
-                    BFS.teleport(origPos)
-                end
+                changeCharAndReturn(function(char)
+                    ReplicatedStorage.Req:InvokeServer("ChangeFumo", {
+                        Fumo = char:GetAttribute("FumoType"),
+                        Scale = char:GetAttribute("FumoScale"),
+                        Hat = id,
+                    })
+                end)
             end)
         end
 
@@ -249,6 +255,14 @@ do  -- characters
         addAccessory("ellyscythe", "Elly Scythe")
         addAccessory("Keine", "Keine Glasses")
         addAccessory("gagglasses", "Gag Glasses")
+
+        BFS.UI.createCategoryLabel(characterScroll, "Misc")
+
+        BFS.UI.createLabelButtonLarge(characterScroll, "Velvet Room Roll", function()
+            changeCharAndReturn(function()
+                ReplicatedStorage.Req:InvokeServer("ChangeFumoVelvet")
+            end)
+        end)
     end
 end -- characters
 
@@ -475,6 +489,7 @@ At any time, you can press [0] to close the script and reset everything back to 
 - Added a list of players and regions you can click to focus on the map
 - Added back SBF's spawns as waypoints
 - In SBF, the 1C tab is back with a list of accessories you can apply to your current character
+- Added a button to spawn as a velvet room character
 
 <b>1.8.1</b>
 - Added rendered maps of SBF's fountain, SDM, and RDR islands
