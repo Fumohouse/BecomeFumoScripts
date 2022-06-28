@@ -42,7 +42,7 @@ local cDefaultConfig = {
 
 BFS.Config:mergeDefaults(cDefaultConfig)
 
-version = "1.8.1"
+version = "1.8.2"
 
 do  -- double load prevention
     if BF_LOADED then
@@ -431,6 +431,9 @@ At any time, you can press [0] to close the script and reset everything back to 
     })
 
     local cChangelogContent = [[
+<b>1.8.2</b>
+- Players outside the streaming radius should now have their position, but not their orientation, shown on the map
+
 <b>1.8.1</b>
 - Added rendered maps of SBF's fountain, SDM, and RDR islands
 
@@ -2531,7 +2534,7 @@ BFS.Binds:bind("MapVis", function()
         map = BFSMap.Minimap.new(secondaryRoot, 30)
         plotAreas(map)
         plotTerrain(map)
-        BFSMap.Presets.SBF:plot(map)
+        BFSMap.Presets.SBF:setup(map)
         plotWaypoints(map)
 
         BFS.bindToExit("Destroy Map", function()

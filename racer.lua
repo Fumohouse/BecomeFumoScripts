@@ -1305,7 +1305,7 @@ end)
 
 map = BFSMap.Minimap.new(secondaryRoot, cPadding)
 plotTerrain(map)
-BFSMap.Presets.SBF:plot(map)
+BFSMap.Presets.SBF:setup(map)
 
 BFS.bindToExit("Destroy Map", function()
     map:destroy()

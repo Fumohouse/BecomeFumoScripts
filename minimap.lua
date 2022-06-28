@@ -260,8 +260,12 @@ do  -- PlayerDot
     PlayerDot = {}
     PlayerDot.__index = PlayerDot
 
-    function PlayerDot.new(player, layers)
+    function PlayerDot.new(minimap, player, layers)
         local self = setmetatable({}, PlayerDot)
+
+        self.Minimap = minimap
+
+        self.ScaleThreshold = 2
 
         local cIconSize = 20
 
@@ -304,12 +308,15 @@ do  -- PlayerDot
 
         self.InfoText = nil
 
-        self:update()
+        self.Position = Vector3.new()
+        self.OutsideStreaming = false
+
+        self:updateVisibility()
 
         return self
     end
 
-    function PlayerDot:update()
+    function PlayerDot:updateVisibility()
         if self.Player.UserId == LocalPlayer.UserId then
             self:setParent(self.Layers[3])
             self:setColor(Color3.fromRGB(255, 255, 0))
@@ -320,16 +327,65 @@ do  -- PlayerDot
         self:setColor(Color3.fromRGB(255, 255, 255))
     end
 
-    function PlayerDot:UpdateSize(scale)
-        self.Scale = scale
-
-        if scale > 2 then
+    function PlayerDot:updateSize(isLarge)
+        if isLarge then
             self.Dot.BackgroundTransparency = 1
             self.Icon.ImageTransparency = 0
-            self.Label.Visible = true
         else
             self.Dot.BackgroundTransparency = 0
             self.Icon.ImageTransparency = 1
+        end
+    end
+
+    function PlayerDot:update()
+        if not self.Player.Character then return end
+
+        local root = self.Player.Character.PrimaryPart
+        local pos3D
+        local orientation
+
+        if root then
+            self.OutsideStreaming = false
+            pos3D = root.Position
+            orientation = root.Orientation
+        elseif self.Minimap.FallbackPositionFunction then
+            self.OutsideStreaming = true
+            pos3D = self.Minimap.FallbackPositionFunction(self.Player)
+        else
+            return
+        end
+
+        if not pos3D then
+            return
+        end
+
+        self.Position = pos3D
+
+        local mapped = self.Minimap:mapPosition(Vector2.new(pos3D.X, pos3D.Z))
+        self.Frame.Position = UDim2.fromOffset(mapped.X, mapped.Y)
+
+        if orientation then
+            if self.Scale > self.ScaleThreshold then
+                self:updateSize(true)
+            end
+
+            self.Icon.Rotation = -orientation.Y - 45
+        else
+            self:updateSize(false)
+        end
+    end
+
+    function PlayerDot:UpdateSize(scale)
+        self.Scale = scale
+
+        if scale > self.ScaleThreshold then
+            if not self.OutsideStreaming then
+                self:updateSize(true)
+            end
+
+            self.Label.Visible = true
+        else
+            self:updateSize(false)
             self.Label.Visible = false
         end
     end
@@ -344,7 +400,7 @@ do  -- PlayerDot
     end
 
     function PlayerDot:ShowTooltip()
-        return self.Scale > 2
+        return self.Scale > self.ScaleThreshold
     end
 
     function PlayerDot:CreateTooltip(tp)
@@ -486,7 +542,7 @@ do  -- Minimap
         self.MapObjects = {}
 
         self.Players = {}
-        self.PlayerPositions = {}
+        self.FallbackPositionFunction = nil
 
         for _, v in pairs(Players:GetPlayers()) do
             self:_playerConnect(v)
@@ -670,7 +726,7 @@ do  -- Minimap
         for _, v in pairs(self.Players) do
             if v then
                 v:UpdateSize(self.ScaleFactor)
-                self:plotPlayer(v.Player)
+                v:update()
             end
         end
     end
@@ -692,21 +748,6 @@ do  -- Minimap
 
     function Minimap:mapPosition(pos)
         return (pos - self.WorldOrigin) * self.ScaleFactor
-    end
-
-    function Minimap:plotPlayer(player)
-        if not player.Character then return end
-
-        local humanRoot = player.Character:FindFirstChild("HumanoidRootPart")
-        if not humanRoot then return end
-
-        local pos3D = humanRoot.Position
-        local mapped = self:mapPosition(Vector2.new(pos3D.X, pos3D.Z))
-        self.PlayerPositions[player.UserId] = pos3D
-
-        if not self.Players[player.UserId] then return end
-        self.Players[player.UserId].Frame.Position = UDim2.fromOffset(mapped.X, mapped.Y)
-        self.Players[player.UserId].Icon.Rotation = -humanRoot.Orientation.Y - 45
     end
 
     function Minimap:addMapObject(obj, parent)
@@ -752,7 +793,7 @@ do  -- Minimap
 
     function Minimap:_playerConnect(player)
         if not self.Players[player.UserId] then
-            local dot = PlayerDot.new(player, self.PlayerLayers)
+            local dot = PlayerDot.new(self, player, self.PlayerLayers)
             dot:UpdateSize(self.ScaleFactor)
 
             self.Tooltips:register(dot)
@@ -768,7 +809,6 @@ do  -- Minimap
         end
 
         self.Players[player.UserId] = nil
-        self.PlayerPositions[player.UserId] = nil
     end
 
     function Minimap:_focus(position, scale)
@@ -780,8 +820,8 @@ do  -- Minimap
     end
 
     function Minimap:_heartbeat()
-        for _, v in pairs(Players:GetPlayers()) do
-            self:plotPlayer(v)
+        for _, player in pairs(self.Players) do
+            player:update()
         end
 
         if self.Expanded and not (self._expandTween and self._expandTween.PlaybackState ~= Enum.PlaybackState.Completed) then
@@ -795,7 +835,7 @@ do  -- Minimap
             self:_focus(pos, math.min(scale2D.X, scale2D.Y))
         else
             local id = (self.Focus and self.Focus.Player) or LocalPlayer.UserId
-            local pos = self.PlayerPositions[id] or self.PlayerPositions[LocalPlayer.UserId]
+            local pos = (self.Players[id] or self.Players[LocalPlayer.UserId]).Position
 
             self:_focus(Vector2.new(pos.X, pos.Z), self.ScaleFactorSmall)
         end
@@ -858,7 +898,17 @@ do  -- presets
         cRDRSize = Vector3.new(225.7150115966797, 66.67078399658203, 265.57061767578125),
     }
 
-    function SBF:plot(map)
+    function SBF:setup(map)
+        map.FallbackPositionFunction = function(player)
+            if player.Character then
+                return player.Character:GetAttribute("RootPosition")
+            end
+        end
+
+        --
+        -- Plotting
+        --
+
         -- Fountain
         map:plotImage(self.cFountainPos, self.cFountainSize, map.TerrainLayer, "rbxassetid://10048236123")
 
