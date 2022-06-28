@@ -105,7 +105,12 @@ do  -- TooltipProvider
 
         if obj.Clicked then
             info.lClicked = obj.TooltipObject.InputBegan:Connect(function(input)
-                if (not obj.ShowTooltip or obj:ShowTooltip()) and input.UserInputType == Enum.UserInputType.MouseButton1 then
+                if (not obj.ShowTooltip or obj:ShowTooltip()) and
+                    (
+                        input.UserInputType == Enum.UserInputType.MouseButton1 or
+                        input.UserInputType == Enum.UserInputType.MouseButton2 or
+                        input.UserInputType == Enum.UserInputType.MouseButton3
+                    ) then
                     obj:Clicked(input)
                 end
             end)
@@ -428,12 +433,16 @@ do  -- PlayerDot
     end
 
     function PlayerDot:Clicked(input)
-        if self.IsLocal then return end
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            if self.IsLocal then return end
 
-        local root = self.Player.Character:FindFirstChild("HumanoidRootPart")
+            local root = self.Player.Character:FindFirstChild("HumanoidRootPart")
 
-        if root then
-            BFS.teleport(root.CFrame)
+            if root then
+                BFS.teleport(root.CFrame)
+            else
+                BFS.teleport(CFrame.new(self.Position))
+            end
         end
     end
 end -- PlayerDot
@@ -541,6 +550,23 @@ do  -- Minimap
 
         self.MapObjects = {}
 
+        local toolsOverlay = Instance.new("Frame")
+        toolsOverlay.BackgroundTransparency = 1
+        toolsOverlay.BorderSizePixel = 0
+        toolsOverlay.Size = UDim2.fromScale(1, 1)
+        toolsOverlay.Visible = false
+        toolsOverlay.Parent = mapFrameO
+
+        self.ToolsOverlay = toolsOverlay
+
+        local listLayout = BFS.UI.createListLayout(toolsOverlay, Enum.HorizontalAlignment.Right, Enum.VerticalAlignment.Top)
+        listLayout.FillDirection = Enum.FillDirection.Horizontal
+
+        self.PlayerScroll = self:_createOverlayColumn("Players")
+        self.PlayerListItems = {}
+
+        self.RegionScroll = self:_createOverlayColumn("Regions")
+
         self.Players = {}
         self.FallbackPositionFunction = nil
 
@@ -588,6 +614,37 @@ do  -- Minimap
         return self
     end
 
+    function Minimap:addRegion(name, cf, size)
+        BFS.UI.createLabelButton(self.RegionScroll, name, function()
+            self:_focusArea(cf.Position, size)
+        end)
+    end
+
+    function Minimap:_createOverlayColumn(label)
+        local list = Instance.new("Frame")
+        list.BackgroundTransparency = 1
+        list.BorderSizePixel = 0
+        list.Size = UDim2.fromScale(0.1, 0.5)
+        list.Parent = self.ToolsOverlay
+
+        local scroll
+
+        local button = BFS.UI.createLabelButtonLarge(list, label, function()
+            scroll.Visible = not scroll.Visible
+        end)
+
+        button.Label.Size = UDim2.new(1, 0, 0, BFS.UIConsts.ButtonHeightLarge)
+
+        scroll = BFS.UI.createListScroll(list)
+        scroll.BackgroundTransparency = 0.2
+        scroll.BackgroundColor3 = BFS.UIConsts.BackgroundColor
+        scroll.Size = UDim2.new(1, 0, 1, -BFS.UIConsts.ButtonHeightLarge)
+        scroll.AnchorPoint = Vector2.new(0.5, 1)
+        scroll.Position = UDim2.fromScale(0.5, 1)
+
+        return scroll
+    end
+
     function Minimap:createLayer()
         local layer = Instance.new("Frame")
         layer.Size = UDim2.fromScale(1, 1)
@@ -626,10 +683,14 @@ do  -- Minimap
             goal.Size = UDim2.fromScale(1, 1)
             goal.Position = UDim2.fromScale(0, 1)
             self.ScaleFactor = 5
+
+            self.ToolsOverlay.Visible = true
         else
             goal.Size = self.MapSizeSmall
             goal.Position = UDim2.new(0, self.Padding, 1, -self.Padding)
             self.ScaleFactor = self.ScaleFactorSmall
+
+            self.ToolsOverlay.Visible = false
         end
 
         local tween = TweenService:Create(self.FrameOuter, tweenInfo, goal)
@@ -738,20 +799,34 @@ do  -- Minimap
         if not self.Players[player.UserId] then
             local dot = PlayerDot.new(self, player, self.PlayerLayers)
             dot:UpdateSize(self.ScaleFactor)
+            dot:update()
 
             self.Tooltips:register(dot)
 
             self.Players[player.UserId] = dot
+
+            local button = BFS.UI.createLabelButton(self.PlayerScroll, player.Name, function()
+                self:_focus(Vector2.new(dot.Position.X, dot.Position.Z), 10)
+            end)
+
+            self.PlayerListItems[player.UserId] = button
         end
     end
 
     function Minimap:_playerDisconnect(player)
-        if self.Players[player.UserId] then
-            self.Tooltips:deregister(self.Players[player.UserId])
-            self.Players[player.UserId].Frame:Destroy()
+        local id = player.UserId
+
+        if self.Players[id] then
+            self.Tooltips:deregister(self.Players[id])
+            self.Players[id].Frame:Destroy()
         end
 
-        self.Players[player.UserId] = nil
+        self.Players[id] = nil
+
+        if self.PlayerListItems[id] then
+            self.PlayerListItems[id]:Destroy()
+            self.PlayerListItems[id] = nil
+        end
     end
 
     function Minimap:_focus(position, scale)
@@ -760,6 +835,13 @@ do  -- Minimap
         self:updateZoom(position)
 
         self.FrameInner.Position = UDim2.new(0.5, -position.X, 0.5, -position.Y)
+    end
+
+    function Minimap:_focusArea(pos3D, size3D)
+        local scale2D = self.FrameOuter.AbsoluteSize / Vector2.new(size3D.X, size3D.Z)
+        local pos = Vector2.new(pos3D.X, pos3D.Z)
+
+        self:_focus(pos, math.min(scale2D.X, scale2D.Y))
     end
 
     function Minimap:_heartbeat()
@@ -772,10 +854,7 @@ do  -- Minimap
         end
 
         if self.Focus and self.Focus.Position and self.Focus.Size then
-            local scale2D = self.FrameOuter.AbsoluteSize / Vector2.new(self.Focus.Size.X, self.Focus.Size.Z)
-            local pos = Vector2.new(self.Focus.Position.X, self.Focus.Position.Z)
-
-            self:_focus(pos, math.min(scale2D.X, scale2D.Y))
+            self:_focusArea(self.Focus.Position, self.Focus.Size)
         else
             local id = (self.Focus and self.Focus.Player) or LocalPlayer.UserId
             local pos = (self.Players[id] or self.Players[LocalPlayer.UserId]).Position
@@ -850,14 +929,14 @@ do  -- presets
         -- Plotting
         --
 
-        -- Fountain
         map:plotImage(self.cFountainPos, self.cFountainSize, map.TerrainLayer, "rbxassetid://10048236123")
+        map:addRegion("Fountain Island", self.cFountainPos, self.cFountainSize)
 
-        -- SDM
         map:plotImage(self.cSDMPos, self.cSDMSize, map.TerrainLayer, "rbxassetid://10048435454")
+        map:addRegion("Scarlet Devil Mansion", self.cSDMPos, self.cSDMSize)
 
-        -- RDR
         map:plotImage(self.cRDRPos, self.cRDRSize, map.TerrainLayer, "rbxassetid://10048586517")
+        map:addRegion("Raging Devil Raceway", self.cRDRPos, self.cRDRSize)
     end
 
     Presets.SBF = SBF

@@ -30,7 +30,15 @@ function BFS.teleport(pos)
     end
 
     local origPos = char:GetPrimaryPartCFrame()
-    char:SetPrimaryPartCFrame(pos)
+
+    if workspace.StreamingEnabled then
+        coroutine.wrap(function()
+            LocalPlayer:RequestStreamAroundAsync(pos.Position)
+            char:SetPrimaryPartCFrame(pos)
+        end)()
+    else
+        char:SetPrimaryPartCFrame(pos)
+    end
 
     return origPos
 end
@@ -149,6 +157,7 @@ do -- gui class
     function UIUtils.createLabelButton(parent, labelText, cb)
         local label = UIUtils.createText(parent, cGui.LabelButtonHeight * 0.75)
         label.Text = labelText
+        label.TextTruncate = Enum.TextTruncate.AtEnd
         label.TextXAlignment = Enum.TextXAlignment.Center
         label.TextYAlignment = Enum.TextYAlignment.Center
         label.Size = UDim2.new(1, 0, 0, cGui.LabelButtonHeight)
@@ -185,6 +194,7 @@ do -- gui class
         label.TextXAlignment = Enum.TextXAlignment.Center
         label.TextYAlignment = Enum.TextYAlignment.Center
         label.AnchorPoint = Vector2.new(0.5, 0)
+        label.Position = UDim2.fromScale(0.5, 0)
         label.Size = UDim2.new(0.95, 0, 0, cGui.ButtonHeightLarge)
         label.Text = labelText
 
