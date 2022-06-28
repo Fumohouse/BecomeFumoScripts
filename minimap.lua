@@ -726,6 +726,17 @@ do  -- Minimap
         end
     end
 
+    function Minimap:plotImage(cf, size, parent, id)
+        local image = Instance.new("ImageLabel")
+        image.Image = id
+        image.ScaleType = Enum.ScaleType.Fit
+        image.Size = UDim2.fromScale(1, 1)
+        image.BorderSizePixel = 0
+        image.BackgroundTransparency = 1
+
+        self:plotBBox(cf, size, nil, nil, parent, image)
+    end
+
     function Minimap:plotBBox(cf, size, color, colorB, parent, contents)
         if not parent then parent = self.TerrainLayer end
 
@@ -830,3 +841,35 @@ do  -- Minimap
 
     BFSMap.Minimap = Minimap
 end -- Minimap
+
+do  -- presets
+    local Presets = {}
+
+    local SBF = {
+        cFountainPos = CFrame.new(-3.519104, 6.6499958, -13.2595749),
+        --cFountainSize = Vector3.new(194.03819274902344, 80.0999984741211, 196.51914978027344),
+        cFountainSize = Vector3.new(196.51914978027344, 80.0999984741211, 194.03819274902344),
+
+        cSDMPos = CFrame.new(12485.9893, -19.8234463, 420.502899),
+        cSDMSize = Vector3.new(420, 2.647937774658203, 420),
+
+        cRDRPos = CFrame.new(370.240845, -0.996834755, 267.614807),
+        -- cRDRSize = Vector3.new(265.57061767578125, 66.67078399658203, 225.7150115966797),
+        cRDRSize = Vector3.new(225.7150115966797, 66.67078399658203, 265.57061767578125),
+    }
+
+    function SBF:plot(map)
+        -- Fountain
+        map:plotImage(self.cFountainPos, self.cFountainSize, map.TerrainLayer, "rbxassetid://10048236123")
+
+        -- SDM
+        map:plotImage(self.cSDMPos, self.cSDMSize, map.TerrainLayer, "rbxassetid://10048435454")
+
+        -- RDR
+        map:plotImage(self.cRDRPos, self.cRDRSize, map.TerrainLayer, "rbxassetid://10048586517")
+    end
+
+    Presets.SBF = SBF
+
+    BFSMap.Presets = Presets
+end -- presets

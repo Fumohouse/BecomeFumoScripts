@@ -132,9 +132,6 @@ end
 -- constants
 --
 
-local cSDMSize = Vector3.new(420, 2.647937774658203, 420)
-local cSDMPos = CFrame.new(12485.9893, -19.8234463, 420.502899)
-
 local cDateFormat = "%d-%m-%y_%H-%M-%S"
 
 local cPadding = 30
@@ -860,7 +857,11 @@ do  -- race
     BFS.UI.createCategoryLabel(raceScroll, "Map Focus")
 
     BFS.UI.createLabelButtonLarge(raceScroll, "Focus map on SDM track", function()
-        map.Focus = { Size = cSDMSize, Position = cSDMPos }
+        map.Focus = { Size = BFSMap.Presets.SBF.cSDMSize, Position = BFSMap.Presets.SBF.cSDMPos }
+    end)
+
+    BFS.UI.createLabelButtonLarge(raceScroll, "Focus map on RDR track", function()
+        map.Focus = { Size = BFSMap.Presets.SBF.cRDRSize, Position = BFSMap.Presets.SBF.cRDRPos }
     end)
 
     BFS.UI.createLabelButtonLarge(raceScroll, "Focus map on me", function()
@@ -1261,16 +1262,6 @@ do  -- minimap
         else
             -- TODO
         end
-
-        -- SDM Track
-        local image = Instance.new("ImageLabel")
-        image.Image = "rbxassetid://9952398601"
-        image.ScaleType = Enum.ScaleType.Fit
-        image.Size = UDim2.fromScale(1, 1)
-        image.BorderSizePixel = 0
-        image.BackgroundTransparency = 1
-
-        target:plotBBox(cSDMPos, cSDMSize, nil, nil, target.TerrainLayer, image)
     end
 end -- minimap -- globals exposed: Minimap
 
@@ -1314,6 +1305,7 @@ end)
 
 map = BFSMap.Minimap.new(secondaryRoot, cPadding)
 plotTerrain(map)
+BFSMap.Presets.SBF:plot(map)
 
 BFS.bindToExit("Destroy Map", function()
     map:destroy()
