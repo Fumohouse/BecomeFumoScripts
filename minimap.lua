@@ -598,66 +598,9 @@ do  -- Minimap
         return layer
     end
 
-    function Minimap:_findBounds(insts, check)
-        local xMin = math.huge
-        local yMin = math.huge
-        local zMin = math.huge
-
-        local xMax = -math.huge
-        local yMax = -math.huge
-        local zMax = -math.huge
-
-        local function scan(inst)
-            if not (inst:IsA("Part") or inst:IsA("MeshPart")) or (check and not check(inst)) then return end
-
-            for _, player in pairs(Players:GetPlayers()) do
-                if player.Character and inst:IsDescendantOf(player.Character) then
-                    return
-                end
-            end
-
-            local posMin = inst.Position - inst.Size / 2 -- top left
-            local posMax = inst.Position + inst.Size / 2 -- bottom right
-
-            if posMin.X < xMin then
-                xMin = posMin.X
-            end
-
-            if posMax.X > xMax then
-                xMax = posMax.X
-            end
-
-            if posMin.Y < yMin then
-                yMin = posMin.Y
-            end
-
-            if posMax.Y > yMax then
-                yMax = posMax.Y
-            end
-
-            if posMin.Z < zMin then
-                zMin = posMin.Z
-            end
-
-            if posMax.Z > zMax then
-                zMax = posMax.Z
-            end
-        end
-
-        for _, v in pairs(insts) do
-            for _, part in pairs(v:GetDescendants()) do
-                scan(part)
-            end
-        end
-
-        return Vector3.new(xMin, yMin, zMin), Vector3.new(xMax, yMax, zMax)
-    end
-
     function Minimap:_findWorldBounds()
-        local posMin, posMax = self:_findBounds({ workspace })
-
-        -- must scan ActiveZone for zones player is currently inside
-        return Vector2.new(posMin.X, posMin.Z), Vector2.new(posMax.X, posMax.Z)
+        -- Dummy bounds
+        return Vector2.new(-20000, -20000), Vector2.new(20000, 20000)
     end
 
     function Minimap:setVisible(visible)
