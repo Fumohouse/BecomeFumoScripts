@@ -22,13 +22,16 @@
         c. Save your list of checkpoints: Type the file name and press "Save".
     2. In the 1R (Race) tab:
         a. Indicate how many laps the race should be, and press [ENTER]
-        b. Press "Race Active" to begin tracking players.
+        b. Press "Hide Checkpoints" to hide the checkpoints in the workspace and on the map.
+        c. If you do not want to log data about each racer every frame, switch off "Log Verbose Data"
+            - This data will easily reach 30+ megabytes.
+        d. Press "Race Active" to begin tracking players.
     3. Once the race is over, press "Race Active" again to export all logs, clear data, and end the race.
         - DO NOT END THE RACE EARLY! There is no way to recover/reimport the data after you end the race.
           Only do so when you are sure everyone has finished or forfeited.
 
     Notes:
-    - You should press "Race Active" close to the start of the race. It might be beneficial to press it a bit early, but missing one checkpoint isn't really a big deal.
+    - You should press "Race Active" by the time the countdown starts. If you are late, results may be incorrect.
     - A player will be placed on the leaderboard as soon as they enter any of the checkpoints.
     - Racers should know that a lap is finished only after they reach all checkpoints, **then reach the first one again.**
         - This means that **they should not stop short of the starting line after finishing.**
@@ -148,6 +151,7 @@ local raceData = {
     playerCount = 0,
     laps = 0,
     checkpointsVisible = true,
+    logVerboseData = true,
 }
 
 local function getColor(playerData, place)
@@ -836,7 +840,9 @@ do  -- race
             raceData:ExportLog()
 
             for _, player in pairs(raceData.players) do
-                player:FlushData()
+                if raceData.logVerboseData then
+                    player:FlushData()
+                end
                 player:Destroy()
             end
 
@@ -853,6 +859,13 @@ do  -- race
         raceData:SetCheckpointsVisible(not raceData.checkpointsVisible)
         setActive(not raceData.checkpointsVisible)
     end)
+
+    local collectDataToggle = BFS.UI.createLabelButtonLarge(raceScroll, "Log Verbose Data", function(setActive)
+        raceData.logVerboseData = not raceData.logVerboseData
+        setActive(raceData.logVerboseData)
+    end)
+
+    collectDataToggle.SetActive(true)
 
     BFS.UI.createCategoryLabel(raceScroll, "Map Focus")
 
@@ -873,7 +886,6 @@ do  -- race
     local lSpeedometer
     local lastSpeed
     local maxSpeed
-    local maxAccel
 
     local speedText
     local accelText
@@ -886,7 +898,6 @@ do  -- race
         else
             lastSpeed = 0
             maxSpeed = 0
-            maxAccel = 0
 
             lSpeedometer = RunService.Heartbeat:Connect(function(dT)
                 local char = LocalPlayer.Character
@@ -994,8 +1005,10 @@ do  -- race
             end
         end
 
-        for _, playerData in pairs(raceData.players) do
-            playerData:LogData()
+        if raceData.logVerboseData then
+            for _, playerData in pairs(raceData.players) do
+                playerData:LogData()
+            end
         end
     end)
 
