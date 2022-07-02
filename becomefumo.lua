@@ -255,6 +255,9 @@ do  -- characters
         addAccessory("ellyscythe", "Elly Scythe")
         addAccessory("Keine", "Keine Glasses")
         addAccessory("gagglasses", "Gag Glasses")
+        -- addAccessory("EdgyHat", "Edgy Hat")
+        addAccessory("ceat1", "White Socks")
+        addAccessory("ceat2", "Black Socks")
 
         BFS.UI.createCategoryLabel(characterScroll, "Misc")
 
@@ -483,6 +486,9 @@ At any time, you can press [0] to close the script and reset everything back to 
     })
 
     local cChangelogContent = [[
+<b>1.8.3</b>
+- Added more accessories
+
 <b>1.8.2</b>
 - Players outside the streaming radius should now have their position, but not their orientation, shown on the map
 - Teleporting will now request streaming around the place you are about to go
