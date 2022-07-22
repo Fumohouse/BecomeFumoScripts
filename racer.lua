@@ -966,7 +966,7 @@ do  -- race
         local whitelist = {}
         for _, player in pairs(Players:GetPlayers()) do
             if player.Character then
-                whitelist[#whitelist + 1] = player.Character.PrimaryPart
+                whitelist[#whitelist + 1] = player.Character.PrimaryPart or player.Character:FindFirstChild("HumanoidRootPart") -- rigless!!!
             end
         end
 
