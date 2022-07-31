@@ -42,7 +42,7 @@ local cDefaultConfig = {
 
 BFS.Config:mergeDefaults(cDefaultConfig)
 
-version = "1.8.2"
+version = "1.8.3"
 
 do  -- double load prevention
     if BF_LOADED then
@@ -258,6 +258,26 @@ do  -- characters
         -- addAccessory("EdgyHat", "Edgy Hat")
         addAccessory("ceat1", "White Socks")
         addAccessory("ceat2", "Black Socks")
+        addAccessory("NikoHat", "Classic Niko Hat")
+        addAccessory("MarisaHat", "Marisa Hat")
+        addAccessory("Marisapc98Hat", "Marisa (PC98) Hat")
+        addAccessory("Marisapc98casualHat", "Marisa (PC98 Casual) Hat")
+        addAccessory("MarisasoewHat", "Marisa (SOEW) Hat")
+        addAccessory("MarisaufoHat", "Marisa (UFO) Hat")
+        addAccessory("Marisav2Hat", "Marisa (v2) Hat")
+        addAccessory("MikoCape", "Miko Cape")
+        addAccessory("meilinghat", "Meiling Hat")
+        addAccessory("redmarisahat", "Red Marisa Hat")
+
+        BFS.UI.createCategoryLabel(characterScroll, "Abilities")
+
+        local function addAbility(id, displayName)
+            BFS.UI.createLabelButtonLarge(characterScroll, displayName, function()
+                ReplicatedStorage.Req:InvokeServer("CheckCharacterAbility", id)
+            end)
+        end
+
+        addAbility("Koishi", "Koishi (Hide)")
 
         BFS.UI.createCategoryLabel(characterScroll, "Misc")
 
@@ -487,7 +507,9 @@ At any time, you can press [0] to close the script and reset everything back to 
 
     local cChangelogContent = [[
 <b>1.8.3</b>
-- Added more accessories
+- Added abilities to the 1C menu (SBF)
+- Added more accessories (SBF)
+- Updated animation list for Become Fumo
 
 <b>1.8.2</b>
 - Players outside the streaming radius should now have their position, but not their orientation, shown on the map
@@ -1069,6 +1091,8 @@ do  -- animations
         addAnimation("September", "rbxassetid://7532444804")
         addAnimation("Spooky", "rbxassetid://7640665121")
         addAnimation("Nanodesu", "rbxassetid://8208645816")
+        addAnimation("Orin", "rbxassetid://10228321885")
+        addAnimation("California", "rbxassetid://10228119453")
 
         createAnimationCategory("Arcade")
         addAnimation("Taiko", "rbxassetid://7162205569")
