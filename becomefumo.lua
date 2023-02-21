@@ -1,4 +1,8 @@
 --[[
+    Become Fumo Scripts
+    Copyright (c) 2021-2022 voided_etc & contributors
+    Licensed under the MIT license. See the LICENSE.txt file at the project root for details.
+
     do - end blocks can be closed in most ides for organization
     variables beginning with c are constant and should not change
 ]]
@@ -6,14 +10,14 @@
 local BFS = getgenv().BFS
 
 if not BFS then
-    loadstring(game:HttpGet(("https://gist.githubusercontent.com/kyoseki/07f37b493f46895e67339e85c223423c/raw/gui.lua"), true))()
+    loadstring(game:HttpGet(("https://raw.githubusercontent.com/Fumohouse/BecomeFumoScripts/master/gui.lua"), true))()
     BFS = getgenv().BFS
 end
 
 local BFSMap = getgenv().BFSMap
 
 if not BFSMap then
-    loadstring(game:HttpGet(("https://gist.githubusercontent.com/kyoseki/07f37b493f46895e67339e85c223423c/raw/minimap.lua"), true))()
+    loadstring(game:HttpGet(("https://raw.githubusercontent.com/Fumohouse/BecomeFumoScripts/master/minimap.lua"), true))()
     BFSMap = getgenv().BFSMap
 end
 

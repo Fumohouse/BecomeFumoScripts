@@ -1,7 +1,7 @@
 --[[
     Become Fumo Scripts Minimap
-    voided_etc // 2021-2022
-    Use with attribution.
+    Copyright (c) 2021-2022 voided_etc & contributors
+    Licensed under the MIT license. See the LICENSE.txt file at the project root for details.
 ]]
 
 local BFS = getgenv().BFS

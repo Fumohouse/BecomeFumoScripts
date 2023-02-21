@@ -1,7 +1,8 @@
 --[[
     !! READ ME !!
     SBF Race Utilities
-    voided_etc // 2022
+    Copyright (c) 2021-2022 voided_etc & contributors
+    Licensed under the MIT license. See the LICENSE.txt file at the project root for details.
 
     Designed for UNC executors
 

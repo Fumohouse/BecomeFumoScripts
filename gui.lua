@@ -1,9 +1,7 @@
 --[[
     Become Fumo Scripts UI & Utility Functions
-    Copyright (c) 2021 voided_etc & contributors
-
-    This portion of BFS source is public.
-    Use with attribution.
+    Copyright (c) 2021-2022 voided_etc & contributors
+    Licensed under the MIT license. See the LICENSE.txt file at the project root for details.
 ]]
 
 local CoreGui = game:GetService("CoreGui")

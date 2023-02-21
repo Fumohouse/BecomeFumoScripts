@@ -1,3 +1,9 @@
+--[[
+    Become Fumo Scripts Orbit Script (Sphere)
+    Copyright (c) 2021-2022 voided_etc & contributors
+    Licensed under the MIT license. See the LICENSE.txt file at the project root for details.
+]]
+
 local data = {}
 local layer_count = 5
 local layer_num = 0
